@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# fahrme.de
 
-## Getting Started
+Современная автомобильная платформа-сообщество с iOS-стилем дизайна и адаптивным интерфейсом.
 
-First, run the development server:
+## 🚗 Особенности
 
+- **iOS-стиль дизайн** - современный интерфейс с blur-эффектами и плавными анимациями
+- **Адаптивная навигация** - закрепленная боковая навигация для зарегистрированных пользователей
+- **Темная/светлая тема** - переключение между темами
+- **Responsive дизайн** - оптимизирован для всех устройств
+- **Компактный интерфейс** - уменьшенные размеры для лучшего UX
+
+## 🛠 Технологии
+
+- **Next.js 15** - React фреймворк
+- **TypeScript** - типизация
+- **Tailwind CSS** - стилизация
+- **Lucide React** - иконки
+- **Next Themes** - управление темами
+
+## 🚀 Установка и запуск
+
+1. Клонируйте репозиторий:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/Roman1319/fahrme-de.git
+cd fahrme-de
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Установите зависимости:
+```bash
+npm install
+# или
+pnpm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Запустите проект:
+```bash
+npm run dev
+# или
+pnpm dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Откройте [http://localhost:3000](http://localhost:3000) в браузере
 
-## Learn More
+## 📱 Страницы
 
-To learn more about Next.js, take a look at the following resources:
+- **Главная** (`/`) - лендинг для неавторизованных пользователей
+- **Feed** (`/feed`) - лента постов для авторизованных
+- **Профиль** (`/profile`) - настройки профиля
+- **Сообщения** (`/messages`) - чат
+- **Уведомления** (`/notifications`) - уведомления
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🎨 Дизайн-система
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Цветовая палитра
+- **Primary**: #6B46C1 (фиолетовый)
+- **Accent**: #10B981 (зеленый)
+- **Secondary**: #F59E0B (оранжевый)
+- **Danger**: #EF4444 (красный)
 
-## Deploy on Vercel
+### Компоненты
+- **Sticky Sidebar** - закрепленная навигация
+- **Glassmorphism** - эффекты размытия
+- **Gradient Buttons** - кнопки с градиентами
+- **Responsive Grid** - адаптивные сетки
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📦 Структура проекта
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+├── app/                 # Next.js App Router
+│   ├── globals.css     # Глобальные стили
+│   ├── layout.tsx      # Корневой layout
+│   └── page.tsx        # Главная страница
+├── components/         # React компоненты
+│   ├── ui/            # UI компоненты
+│   └── ...
+└── lib/               # Утилиты и логика
+```
+
+## 🔧 Разработка
+
+### Команды
+- `npm run dev` - запуск в режиме разработки
+- `npm run build` - сборка для продакшена
+- `npm run start` - запуск продакшен сборки
+- `npm run lint` - проверка кода
+
+### Стили
+Проект использует Tailwind CSS с кастомными утилитами в `globals.css`:
+- Цветовые токены
+- Компонентные классы
+- Анимации и переходы
+
+## 📄 Лицензия
+
+MIT License
+
+## 👨‍💻 Автор
+
+Roman1319
+
+---
+
+Создано с ❤️ для автомобильного сообщества
