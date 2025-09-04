@@ -1,0 +1,529 @@
+@import "tailwindcss";
+
+/* токены */
+@theme {
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
+}
+
+/* улучшенная палитра на основе референсов */
+:root{
+  --bg: #0A0A0D;
+  --ink: #F8F9FC;
+  --primary-dark: #1A0B5C;
+  --primary: #6B46C1;
+  --accent: #10B981;
+  --secondary: #F59E0B;
+  --danger: #EF4444;
+
+  /* поверхности (DARK) - более контрастные */
+  --panel: rgba(20,20,25,.90);
+  --panel-strong: rgba(25,25,30,.95);
+  --panel-border: rgba(255,255,255,.16);
+  --panel-shadow: 0 25px 60px rgba(0,0,0,.60);
+}
+
+.light{
+  --bg: #F8FAFC;
+  --ink: #0F172A;
+  --primary-dark: #4C1D95;
+  --primary: #7C3AED;
+  --accent: #059669;
+  --secondary: #D97706;
+  --danger: #DC2626;
+
+  /* поверхности (LIGHT) — более контрастные и яркие */
+  --panel: rgba(255,255,255,.95);
+  --panel-strong: rgba(255,255,255,.98);
+  --panel-border: rgba(0,0,0,.12);
+  --panel-shadow: 0 12px 32px rgba(0,0,0,.18);
+}
+
+html, body, :root { height: 100%; }
+body{ color: var(--ink); background: var(--bg); }
+
+/* === собственные утилиты Tailwind v4 === */
+@utility glass {
+  @apply rounded-3xl border backdrop-blur-2xl;
+  background-color: var(--panel);
+  border-color: var(--panel-border);
+  box-shadow: var(--panel-shadow);
+}
+@utility section {
+  @apply rounded-xl border backdrop-blur-2xl p-3 md:p-4 transition-all duration-200;
+  background-color: var(--panel);
+  border-color: var(--panel-border);
+  box-shadow: var(--panel-shadow);
+}
+
+@utility img-rounded { @apply rounded-2xl overflow-hidden; }
+
+/* цветовые утилиты с градиентами */
+@utility bg-brand {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%) !important;
+  color: white !important;
+  box-shadow: 0 8px 32px rgba(107, 70, 193, 0.3);
+}
+@utility bg-accent {
+  background: linear-gradient(135deg, var(--accent) 0%, #059669 100%) !important;
+  color: white !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
+}
+
+@utility bg-secondary {
+  background: linear-gradient(135deg, var(--secondary) 0%, #D97706 100%) !important;
+  color: white !important;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.25);
+}
+
+@utility bg-danger {
+  background: linear-gradient(135deg, var(--danger) 0%, #DC2626 100%) !important;
+  color: white !important;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
+}
+@utility btn-primary {
+  @apply rounded-full px-2.5 py-1.5 text-xs font-semibold transition-all duration-200;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  box-shadow: 0 3px 12px rgba(107, 70, 193, 0.25);
+}
+.btn-primary:hover { 
+  background: linear-gradient(135deg, var(--primary-dark) 0%, #1A0B5C 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(107, 70, 193, 0.35);
+}
+
+/* улучшенные ленточки с градиентом */
+@utility ribbon {
+  @apply rounded-xl px-3 py-1 font-extrabold transition-all duration-200;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(107, 70, 193, 0.2);
+}
+.ribbon:hover {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, #1A0B5C 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(107, 70, 193, 0.3);
+}
+
+/* светлые чипки для брендов */
+@utility chip {
+  @apply rounded-full px-3 py-2 transition-colors;
+  background: color-mix(in oklab, white 70%, transparent);
+  border: 1px solid color-mix(in oklab, white 25%, transparent);
+}
+.chip:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary-dark);
+}
+
+/* внятный поиск в обеих темах */
+@utility search-input {
+  @apply rounded-full px-4 py-2 outline-none transition-[box-shadow,background-color,color] border;
+  background-color: rgba(255,255,255,.13);
+  border-color: var(--panel-border);
+  color: var(--ink);
+}
+.search-input::placeholder { color: color-mix(in oklab, var(--ink) 60%, transparent); }
+.search-input:focus { box-shadow: 0 0 0 2px var(--primary) inset; }
+
+.light .search-input{
+  background-color: var(--panel-strong); /* почти белое поле */
+  color: #0D0E12;
+}
+.light .search-input::placeholder{ color: rgba(0,0,0,.55); }
+
+/* плейсхолдер, если где-то не будет картинки */
+@utility bg-fallback {
+  background-image: radial-gradient(1200px 600px at 20% 0%, rgba(255,255,255,.14), transparent),
+                    linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+  background-color: color-mix(in oklab, var(--ink) 5%, transparent);
+}
+
+/* компактная типографика */
+h1,.h1{ @apply text-2xl md:text-3xl font-extrabold leading-tight; }
+h2,.h2{ @apply text-lg md:text-xl font-extrabold; }
+
+/* компактный контейнер */
+.container{ width:100%; max-width:800px; margin-inline:auto; padding-inline:0.75rem; }
+
+/* Улучшенная светлая панель с градиентом */
+@utility panel-light {
+  @apply rounded-3xl border backdrop-blur-xl transition-all duration-200;
+  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%);
+  color: #0F172A;
+  border-color: rgba(0,0,0,.15);
+  box-shadow: 0 12px 24px rgba(0,0,0,.12), 0 4px 8px rgba(0,0,0,.08);
+}
+
+/* Много-колоночный список брендов */
+.brands-list { list-style: none; margin: 0; padding: 0; }
+.brands-list a {
+  display: block;
+  padding: .28rem 0;
+  text-decoration: none;
+  color: var(--ink);
+  opacity: .92;
+  transition: color .15s ease, opacity .15s ease;
+}
+.light .brands-list a { color: #0D0E12; }
+.brands-list a:hover { color: var(--primary); opacity: 1; }
+
+/* Колонки (адаптивно) */
+.brands-cols { column-gap: 2rem; columns: 2; }
+@media (min-width:640px){ .brands-cols{ columns: 3; } }
+@media (min-width:768px){ .brands-cols{ columns: 4; } }
+@media (min-width:1024px){ .brands-cols{ columns: 6; } }
+
+/* Улучшенные медиа-плитки с градиентными тенями */
+@utility media-tile {
+  @apply rounded-3xl relative overflow-hidden transition-all duration-300;
+  box-shadow: 0 20px 60px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.2);
+}
+.media-tile img{
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform .3s ease;
+}
+.media-tile:hover{ 
+  transform: translateY(-4px);
+  box-shadow: 0 25px 70px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.3);
+}
+.media-tile:hover img{ transform: scale(1.05); }
+
+/* — Auth buttons — */
+@utility btn-ghost {
+  @apply rounded-full px-2.5 py-1 text-xs font-semibold transition-colors border;
+  background-color: color-mix(in oklab, var(--ink) 6%, transparent);
+  color: var(--ink);
+  border-color: var(--panel-border);
+}
+.btn-ghost:hover { background-color: color-mix(in oklab, var(--ink) 10%, transparent); }
+
+.light .btn-ghost{
+  background-color: white;
+  color: #0D0E12;
+  border-color: rgba(0,0,0,.08);
+}
+.light .btn-ghost:hover { background-color: #f4f6fb; }
+
+@utility btn-accent {
+  @apply rounded-full px-2.5 py-1 text-xs font-semibold transition-transform;
+  background-color: var(--accent);
+  color: #0B0B0E;
+}
+.btn-accent:hover { transform: translateY(-1px); }
+
+/* Full-width прозрачные полосы для шапки/подвала */
+@utility header-blur {
+  @apply sticky top-0 z-40 w-full backdrop-blur-xl;
+  background: linear-gradient(to bottom, color-mix(in oklab, var(--ink) 10%, transparent), transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--ink) 12%, transparent);
+}
+.light .header-blur{
+  background: linear-gradient(to bottom, rgba(255,255,255,.65), transparent);
+  border-bottom-color: rgba(0,0,0,.08);
+}
+
+@utility footer-blur {
+  @apply w-full backdrop-blur-xl;
+  background: linear-gradient(to top, color-mix(in oklab, var(--ink) 10%, transparent), transparent);
+  border-top: 1px solid color-mix(in oklab, var(--ink) 12%, transparent);
+}
+.light .footer-blur{
+  background: linear-gradient(to top, rgba(255,255,255,.65), transparent);
+  border-top-color: rgba(0,0,0,.08);
+}
+
+/* Ссылки в футере */
+.footer-link{ color: color-mix(in oklab, var(--ink) 75%, transparent); }
+.footer-link:hover{ color: var(--primary); }
+
+/* Карточка формы */
+@utility form-card {
+  @apply section max-w-lg w-full mx-auto;
+}
+
+/* Поле ввода (крупнее, чем search-input) */
+@utility form-input {
+  @apply w-full rounded-lg px-2.5 py-1.5 text-xs border outline-none transition-[box-shadow,background-color,color];
+  background-color: var(--panel-strong);
+  border-color: var(--panel-border);
+  color: var(--ink);
+}
+.form-input::placeholder{ color: color-mix(in oklab, var(--ink) 60%, transparent); }
+.form-input:focus{ box-shadow: 0 0 0 2px var(--primary) inset; }
+.light .form-input{ background-color: white; color: #0D0E12; }
+
+/* Лейблы и сообщения об ошибке */
+@utility form-label { @apply text-sm font-medium opacity-80; }
+@utility form-error { @apply text-sm text-red-400; }
+
+/* Вторичная кнопка */
+@utility btn-secondary {
+  @apply rounded-full px-2.5 py-1 text-xs font-semibold transition-colors border;
+  background-color: transparent;
+  color: var(--ink);
+  border-color: var(--panel-border);
+}
+.btn-secondary:hover{ background-color: color-mix(in oklab, var(--ink) 8%, transparent); }
+
+/* Кнопка-иконка (круглая, стеклянная) */
+@utility icon-btn {
+  @apply rounded-full border p-1.5 backdrop-blur-xl;
+  background-color: var(--panel);
+  border-color: var(--panel-border);
+}
+
+/* Бейдж для счетчиков */
+.badge{
+  position:absolute; top:-4px; right:-4px;
+  min-width:16px; height:16px; padding:0 4px;
+  border-radius:9999px; background:var(--primary); color:#fff;
+  font-size:10px; line-height:16px; text-align:center;
+  box-shadow:0 2px 6px rgba(0,0,0,.35);
+}
+
+/* Выпадающее меню / поповер */
+@utility menu {
+  @apply rounded-xl border backdrop-blur-xl p-1;
+  background-color: var(--panel-strong); border-color: var(--panel-border);
+  box-shadow: var(--panel-shadow);
+}
+.menu-item{ 
+  @apply px-2 py-1 rounded-md flex items-center gap-1.5 cursor-pointer text-xs;
+  background-color: var(--panel-strong);
+}
+.menu-item:hover{ background-color: color-mix(in oklab, var(--ink) 12%, transparent); }
+
+/* — Компактная поисковая строка — */
+.search-pill{
+  @apply flex items-center rounded-full border overflow-hidden backdrop-blur-xl transition-all duration-200;
+  height: 32px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+  border-color: var(--panel-border);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 6px 20px rgba(0,0,0,.3);
+}
+.light .search-pill{ 
+  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 8px 24px rgba(0,0,0,.15);
+}
+
+.search-pill .search-icon{ @apply ml-3 opacity-70; }
+
+.search-pill input{
+  height: 32px; line-height: 32px;
+  padding: 0 6px 0 4px;
+  @apply flex-1 bg-transparent outline-none text-xs;
+  color: var(--ink);
+}
+.light .search-pill input{ color:#0D0E12; }
+
+/* Компактная кнопка поиска */
+.search-btn{
+  height: 24px; line-height: 24px;
+  margin: 4px; padding: 0 10px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 11px;
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,.2), 0 2px 6px rgba(107, 70, 193, 0.3);
+  transition: all .2s ease;
+}
+.search-btn:hover{ 
+  background: linear-gradient(135deg, var(--primary-dark) 0%, #1A0B5C 100%);
+  transform: translateY(-1px);
+  box-shadow: inset 0 -2px 0 rgba(0,0,0,.3), 0 4px 12px rgba(107, 70, 193, 0.4);
+}
+.search-btn:active{ transform: translateY(1px); }
+
+/* — Круглые иконки — */
+.icon-btn{ @apply rounded-full border p-1 backdrop-blur-xl; background-color: var(--panel); border-color: var(--panel-border); }
+.icon-btn--tight{ @apply h-7 w-7 grid place-items-center; }
+.icon-btn:hover{ background-color: color-mix(in oklab, var(--ink) 10%, transparent); }
+
+/* Бейдж счётчика — чуть выше и правее */
+.badge{ top:-7px; right:-7px; }
+
+/* — Профильный триггер (инициалы + Du) — */
+.profile-group{ @apply flex items-center gap-2; }
+.profile-initials{
+  @apply rounded-full h-5 px-1 grid place-items-center text-xs font-extrabold;
+  background-color: var(--primary); color:#fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+}
+.profile-chip{
+  @apply rounded-full h-5 px-2 grid place-items-center text-xs font-semibold border;
+  background-color: color-mix(in oklab, var(--ink) 6%, transparent);
+  border-color: var(--panel-border);
+}
+.profile-chip:hover{ background-color: color-mix(in oklab, var(--ink) 10%, transparent); }
+
+/* === iOS-стиль боковая навигация === */
+@utility sidebar-item {
+  @apply relative overflow-hidden;
+  background-color: transparent;
+  color: var(--ink);
+  opacity: 0.7;
+  transform: translateX(0);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Анимация появления элементов */
+.sidebar-item {
+  animation: slideInLeft 0.4s ease-out forwards;
+}
+
+.sidebar-item:nth-child(1) { animation-delay: 0.1s; }
+.sidebar-item:nth-child(2) { animation-delay: 0.15s; }
+.sidebar-item:nth-child(3) { animation-delay: 0.2s; }
+.sidebar-item:nth-child(4) { animation-delay: 0.25s; }
+.sidebar-item:nth-child(5) { animation-delay: 0.3s; }
+.sidebar-item:nth-child(6) { animation-delay: 0.35s; }
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 0.7;
+    transform: translateX(0);
+  }
+}
+
+.sidebar-item--active {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white !important;
+  opacity: 1 !important;
+  box-shadow: 0 4px 16px rgba(107, 70, 193, 0.25);
+}
+
+.sidebar-item--inactive:hover {
+  background-color: color-mix(in oklab, var(--ink) 8%, transparent);
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+.sidebar-item--active:hover {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, #1A0B5C 100%);
+  transform: translateX(2px);
+  box-shadow: 0 6px 20px rgba(107, 70, 193, 0.35);
+}
+
+/* Sticky sidebar container */
+.sidebar-container {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background: linear-gradient(180deg, 
+    rgba(255,255,255,0.1) 0%, 
+    rgba(255,255,255,0.05) 50%, 
+    rgba(255,255,255,0.02) 100%
+  );
+  backdrop-filter: blur(20px);
+  border-right: 1px solid var(--panel-border);
+  z-index: 30;
+  margin-right: 1rem;
+}
+
+/* Скроллбар для сайдбара */
+.sidebar-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--ink) 20%, transparent);
+  border-radius: 2px;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--ink) 30%, transparent);
+}
+
+.light .sidebar-container {
+  background: linear-gradient(180deg, 
+    rgba(255,255,255,0.8) 0%, 
+    rgba(255,255,255,0.6) 50%, 
+    rgba(255,255,255,0.4) 100%
+  );
+  border-right-color: rgba(0,0,0,0.1);
+  margin-right: 1rem;
+}
+
+/* === Fahrme tokens (light+dark glass) === */
+@layer components {
+  /* стеклянная карточка как на фиде */
+  .fm-card{
+    @apply rounded-3xl backdrop-blur ring-1 shadow-sm
+           ring-black/10 text-neutral-900
+           bg-gradient-to-b from-white/95 to-white/90
+           dark:ring-white/10 dark:text-white/90
+           dark:bg-gradient-to-b dark:from-neutral-900/90 dark:to-neutral-900/85;
+  }
+
+  .fm-section-title{ @apply text-lg font-semibold tracking-tight; }
+  .fm-section-sub{ @apply mt-0.5 text-xs text-neutral-500 dark:text-neutral-400; }
+
+  .fm-input{
+    @apply w-full rounded-2xl px-3 py-2 text-sm outline-none shadow-sm
+           ring-1 ring-black/10 placeholder:text-neutral-400
+           bg-white/90 text-neutral-900 focus:ring-2 focus:ring-violet-500/40
+           dark:bg-neutral-800/50 dark:text-white/90 dark:ring-white/10 dark:placeholder:text-neutral-500;
+  }
+  
+  /* select НЕ наследуется от .fm-input — повторяем утилиты */
+  .fm-select{
+    @apply w-full rounded-2xl px-3 py-2 text-sm outline-none shadow-sm
+           ring-1 ring-black/10 placeholder:text-neutral-400
+           bg-white/90 text-neutral-900 focus:ring-2 focus:ring-violet-500/40 pr-8
+           dark:bg-neutral-800/50 dark:text-white/90 dark:ring-white/10 dark:placeholder:text-neutral-500;
+  }
+
+  /* textarea тоже повторяет базовые утилиты + своя высота */
+  .fm-textarea{
+    @apply w-full rounded-2xl px-3 py-2 text-sm outline-none shadow-sm
+           ring-1 ring-black/10 placeholder:text-neutral-400
+           bg-white/90 text-neutral-900 focus:ring-2 focus:ring-violet-500/40 min-h-[120px] resize-y
+           dark:bg-neutral-800/50 dark:text-white/90 dark:ring-white/10 dark:placeholder:text-neutral-500;
+  }
+
+  .fm-btn-primary{
+    @apply rounded-full px-4 py-1.5 text-sm font-semibold text-white
+           bg-violet-600 hover:bg-violet-500 active:bg-violet-700
+           shadow-md shadow-violet-600/20 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .fm-btn-secondary{
+    @apply rounded-full px-3 py-1.5 text-sm font-medium
+           bg-white/85 ring-1 ring-black/10 text-neutral-900 hover:bg-white/95
+           dark:bg-neutral-800/60 dark:text-white/90 dark:ring-white/10;
+  }
+
+  .fm-pill{
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs
+           bg-black/5 text-neutral-800 hover:bg-black/10
+           dark:bg-white/10 dark:text-white/90 dark:hover:bg-white/15;
+  }
+  .fm-radio{ @apply hidden; }
+  .fm-error{ @apply mt-1 text-xs text-red-500 dark:text-red-400; }
+
+  /* Dropzone */
+  .fm-dropzone{
+    @apply relative rounded-2xl ring-1 ring-black/10 dark:ring-white/10
+           bg-white/70 dark:bg-neutral-800/50 overflow-hidden;
+  }
+  .fm-dropzone__overlay{
+    @apply absolute inset-0 hidden place-items-center rounded-2xl
+           bg-black/30 text-white text-sm font-medium;
+  }
+  .fm-dropzone.dragover .fm-dropzone__overlay{ @apply grid; }
+}
