@@ -24,7 +24,17 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => { 
     setMounted(true); 
-    setUser(Auth.currentUser()); 
+    // Проверяем аутентификацию при загрузке
+    const currentUser = Auth.currentUser();
+    setUser(currentUser);
+    
+    // Дополнительная проверка через небольшую задержку
+    const timer = setTimeout(() => {
+      const user = Auth.currentUser();
+      setUser(user);
+    }, 50);
+    
+    return () => clearTimeout(timer);
   }, []);
   
   const refresh = () => setUser(Auth.currentUser());

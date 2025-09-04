@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
+import * as Auth from "@/lib/auth";
 
 export default function RedirectIfAuthed() {
   const { user } = useAuth();
@@ -14,30 +15,41 @@ export default function RedirectIfAuthed() {
 
   useEffect(() => {
     if (mounted) {
-      // Проверяем не только user из контекста, но и localStorage
       const checkAuth = () => {
         try {
-          const storedUser = localStorage.getItem('fahrme:user');
-          const storedProfile = localStorage.getItem('fahrme:profile');
-          const isStoredAuth = Boolean(storedUser || storedProfile);
+          // Проверяем через функцию currentUser() из auth.ts
+          const currentUser = Auth.currentUser();
           
-          // Перенаправляем только если пользователь авторизован И в контексте, И в localStorage
-          if (user && isStoredAuth) {
+          // Если пользователь авторизован (есть в localStorage), перенаправляем на /feed
+          if (currentUser) {
+            console.log('User is authenticated, redirecting to /feed');
             router.replace("/feed");
+            return;
+          }
+          
+          // Дополнительная проверка через контекст
+          if (user) {
+            console.log('User found in context, redirecting to /feed');
+            router.replace("/feed");
+            return;
           }
         } catch (error) {
-          // Если ошибка при чтении localStorage, не перенаправляем
-          console.warn('Error checking localStorage:', error);
+          console.warn('Error checking authentication:', error);
         }
       };
 
-      // Проверяем сразу и через небольшую задержку
+      // Проверяем сразу и через небольшую задержку для надежности
       checkAuth();
-      const timer = setTimeout(checkAuth, 200);
+      const timer = setTimeout(checkAuth, 100);
       
       return () => clearTimeout(timer);
     }
   }, [user, router, mounted]);
+
+  // Показываем индикатор загрузки во время проверки
+  if (!mounted) {
+    return null;
+  }
 
   return null;
 }

@@ -230,17 +230,32 @@ h2,.h2{ @apply text-lg md:text-xl font-extrabold; }
 
 @utility footer-blur {
   @apply w-full backdrop-blur-xl;
-  background: linear-gradient(to top, color-mix(in oklab, var(--ink) 10%, transparent), transparent);
-  border-top: 1px solid color-mix(in oklab, var(--ink) 12%, transparent);
+  background: linear-gradient(to top, color-mix(in oklab, var(--ink) 8%, transparent), transparent);
+  border-top: 1px solid color-mix(in oklab, var(--ink) 15%, transparent);
+  margin-left: calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
 }
 .light .footer-blur{
-  background: linear-gradient(to top, rgba(255,255,255,.65), transparent);
-  border-top-color: rgba(0,0,0,.08);
+  background: linear-gradient(to top, rgba(255,255,255,.8), transparent);
+  border-top-color: rgba(0,0,0,.12);
 }
 
 /* Ссылки в футере */
-.footer-link{ color: color-mix(in oklab, var(--ink) 75%, transparent); }
-.footer-link:hover{ color: var(--primary); }
+.footer-link{ 
+  color: color-mix(in oklab, var(--ink) 70%, transparent); 
+  transition: color 0.2s ease;
+  font-weight: 500;
+}
+.footer-link:hover{ 
+  color: var(--primary); 
+  text-decoration: underline;
+}
 
 /* Карточка формы */
 @utility form-card {
