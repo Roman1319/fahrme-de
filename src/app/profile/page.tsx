@@ -24,6 +24,8 @@ export default function ProfilePage() {
     const init: UserProfile = data || { id: 'local', displayName: '', otherLanguages: [] };
     setP(init);
     setAvatar(init.avatarUrl ?? null);
+    // Валидируем начальные данные
+    validate(init);
   }, []);
 
   const canSave = useMemo(() =>
@@ -64,10 +66,23 @@ export default function ProfilePage() {
   }
 
   async function onSave() {
-    if (!p) return;
+    if (!p) {
+      console.log('No profile data to save');
+      return;
+    }
+    
+    console.log('Saving profile:', { ...p, avatarUrl: avatar ?? null });
     setSaving(true);
+    
     try {
-      updateProfile({ ...p, avatarUrl: avatar ?? null });
+      const updated = updateProfile({ ...p, avatarUrl: avatar ?? null });
+      console.log('Profile saved successfully:', updated);
+      
+      // Показываем уведомление об успешном сохранении
+      alert('Профиль успешно сохранен!');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('Ошибка при сохранении профиля');
     } finally {
       setSaving(false);
     }
@@ -265,7 +280,12 @@ export default function ProfilePage() {
         {/* Кнопка сохранения */}
         <div className="section">
           <div className="flex justify-end">
-            <button className="btn-primary" disabled={!canSave || saving} onClick={onSave}>
+            <button 
+              className="btn-primary" 
+              disabled={!canSave || saving} 
+              onClick={onSave}
+              title={!canSave ? 'Bitte füllen Sie das Pflichtfeld "Spitzname" aus' : 'Profil speichern'}
+            >
               {saving ? 'Speichern…' : 'Speichern'}
             </button>
           </div>

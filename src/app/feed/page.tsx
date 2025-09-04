@@ -60,41 +60,38 @@ export default function FeedPage(){
 
   return (
     <RequireAuth>
-      <div className="flex flex-col min-h-screen">
-        <main className="container pb-12 flex-1">
-          <section className="space-y-4">
-            {/* Автомобиль дня - главный раздел */}
-            <CarOfTheDay 
-              yesterdayCar={yesterdayCar} 
-              todayCars={todayCars} 
-              onVote={handleVote} 
-            />
+      <main className="pb-12">
+        <section className="space-y-4">
+          {/* Автомобиль дня - главный раздел */}
+          <CarOfTheDay 
+            yesterdayCar={yesterdayCar} 
+            todayCars={todayCars} 
+            onVote={handleVote} 
+          />
 
-
-            {/* Лента постов */}
-            {posts.map(p=>(
-              <article key={p.id} className="section grid grid-cols-[80px_1fr] gap-3">
-                {/* мини-обложка слева */}
-                <div className="img-rounded w-[80px] h-[100px] relative overflow-hidden">
-                  <img src={p.cover} alt="" className="absolute inset-0 h-full w-full object-cover"/>
+          {/* Лента постов */}
+          {posts.map(p=>(
+            <article key={p.id} className="section grid grid-cols-[80px_1fr] gap-3">
+              {/* мини-обложка слева */}
+              <div className="img-rounded w-[80px] h-[100px] relative overflow-hidden">
+                <img src={p.cover} alt="" className="absolute inset-0 h-full w-full object-cover"/>
+              </div>
+              {/* контент */}
+              <div className="space-y-2">
+                <h3 className="text-lg md:text-xl font-extrabold leading-tight">{p.title}</h3>
+                <div className="img-rounded aspect-[16/9] relative overflow-hidden">
+                  <img src={p.cover} alt={p.title} className="absolute inset-0 h-full w-full object-cover"/>
                 </div>
-                {/* контент */}
-                <div className="space-y-2">
-                  <h3 className="text-lg md:text-xl font-extrabold leading-tight">{p.title}</h3>
-                  <div className="img-rounded aspect-[16/9] relative overflow-hidden">
-                    <img src={p.cover} alt={p.title} className="absolute inset-0 h-full w-full object-cover"/>
-                  </div>
-                  <p className="opacity-80">{p.excerpt}</p>
-                  <div className="flex items-center justify-between">
-                    <a href={`/post/${p.id}`} className="btn-primary">Weiterlesen →</a>
-                    <div className="text-sm opacity-70">@{p.author}</div>
-                  </div>
+                <p className="opacity-80">{p.excerpt}</p>
+                <div className="flex items-center justify-between">
+                  <a href={`/post/${p.id}`} className="btn-primary">Weiterlesen →</a>
+                  <div className="text-sm opacity-70">@{p.author}</div>
                 </div>
-              </article>
-            ))}
-          </section>
-        </main>
-      </div>
+              </div>
+            </article>
+          ))}
+        </section>
+      </main>
     </RequireAuth>
   );
 }

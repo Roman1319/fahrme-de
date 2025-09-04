@@ -1,5 +1,5 @@
 "use client";
-import { Home, Sparkles, Clock3, User, Settings, Info } from "lucide-react";
+import { Home, Sparkles, Clock3, Car, Settings } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { usePathname } from "next/navigation";
 
@@ -12,9 +12,8 @@ export default function Sidebar() {
     { icon: Home, label: "Startseite", href: startHref },
     { icon: Sparkles, label: "Beliebt", href: "/explore?tab=top" },
     { icon: Clock3,  label: "Neueste", href: "/explore?tab=new" },
-    { icon: User,    label: "Profil",  href: "/profile/me" },
+    { icon: Car,     label: "Meine Autos", href: "/my-cars" },
     { icon: Settings,label: "Einstellungen", href: "/settings" },
-    { icon: Info,    label: "Über uns", href: "/about" },
   ];
 
   return (

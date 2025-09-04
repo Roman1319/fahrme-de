@@ -3,6 +3,7 @@
 import { useAuth } from "./AuthProvider";
 import Sidebar from "./Sidebar";
 import SiteFooter from "./SiteFooter";
+import PageWrapper from "./PageWrapper";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -23,10 +24,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {/* Боковая навигация */}
         <Sidebar />
         
-        {/* Основной контент */}
-        <div className="flex-1 flex flex-col">
+        {/* Основной контент - автоматически рядом с сайдбаром */}
+        <PageWrapper>
           {children}
-        </div>
+        </PageWrapper>
       </div>
       {/* Подвал вне контейнера для полной ширины */}
       <SiteFooter />

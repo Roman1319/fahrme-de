@@ -17,15 +17,37 @@ export default function DropzoneAvatar({
   const [drag, setDrag] = useState(false);
 
   function readFile(file: File) {
-    if (!file.type.startsWith('image/')) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Bitte wählen Sie eine gültige Bilddatei aus.');
+      return;
+    }
+    
+    // Проверяем размер файла (максимум 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Die Bilddatei ist zu groß. Maximale Größe: 5MB');
+      return;
+    }
+    
     const reader = new FileReader();
-    reader.onload = () => onChange(String(reader.result));
+    reader.onload = () => {
+      const result = String(reader.result);
+      // Проверяем минимальный размер изображения
+      const img = new Image();
+      img.onload = () => {
+        if (img.width < 200 || img.height < 200) {
+          alert('Das Bild ist zu klein. Minimale Größe: 200x200 Pixel');
+          return;
+        }
+        onChange(result);
+      };
+      img.src = result;
+    };
     reader.readAsDataURL(file);
   }
 
   return (
     <div
-      className={`fm-dropzone ${drag ? 'dragover' : ''}`}
+      className={`fm-dropzone ${drag ? 'dragover' : ''} relative`}
       style={{ width: size * 2.5, padding: 12 }}
       onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
       onDragLeave={() => setDrag(false)}
@@ -36,7 +58,7 @@ export default function DropzoneAvatar({
     >
       <div className="flex items-center gap-4">
         <div
-          className="relative overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10"
+          className="relative overflow-hidden rounded-2xl ring-1 ring-black/10 dark:ring-white/10 bg-neutral-100 dark:bg-neutral-800"
           style={{ width: size, height: size }}
         >
           {value ? (
@@ -50,7 +72,7 @@ export default function DropzoneAvatar({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <label className="fm-btn-secondary cursor-pointer">
+          <label className="btn-secondary cursor-pointer">
             Bild auswählen
             <input
               ref={inputRef}
@@ -64,7 +86,7 @@ export default function DropzoneAvatar({
             />
           </label>
           {value && (
-            <button type="button" className="fm-btn-secondary" onClick={onRemove}>
+            <button type="button" className="btn-secondary" onClick={onRemove}>
               Entfernen
             </button>
           )}

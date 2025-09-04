@@ -1,5 +1,4 @@
 "use client";
-import SiteFooter from "@/components/SiteFooter";
 import * as M from "@/lib/messages";
 import { useEffect, useState } from "react";
 
@@ -59,7 +58,6 @@ export default function MessagesPage(){
           )}
         </section>
       </main>
-      <SiteFooter/>
     </>
   );
 }

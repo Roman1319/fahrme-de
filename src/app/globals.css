@@ -574,11 +574,15 @@ h2,.h2{ @apply text-lg md:text-xl font-extrabold; }
   /* Dropzone */
   .fm-dropzone{
     @apply relative rounded-2xl ring-1 ring-black/10 dark:ring-white/10
-           bg-white/70 dark:bg-neutral-800/50 overflow-hidden;
+           bg-white/70 dark:bg-neutral-800/50 overflow-hidden
+           transition-all duration-200 hover:ring-2 hover:ring-violet-500/30;
   }
   .fm-dropzone__overlay{
     @apply absolute inset-0 hidden place-items-center rounded-2xl
-           bg-black/30 text-white text-sm font-medium;
+           bg-black/30 text-white text-sm font-medium backdrop-blur-sm;
   }
   .fm-dropzone.dragover .fm-dropzone__overlay{ @apply grid; }
+  .fm-dropzone.dragover{
+    @apply ring-2 ring-violet-500/50 bg-violet-50/50 dark:bg-violet-900/20;
+  }
 }
