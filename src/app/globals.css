@@ -460,6 +460,46 @@ h2,.h2{ @apply text-lg md:text-xl font-extrabold; }
   margin-right: 1rem;
 }
 
+/* === Car of the Day Component === */
+.car-of-the-day {
+  @apply w-full;
+}
+
+.car-of-the-day .ribbon {
+  @apply text-lg px-4 py-2;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: white;
+  box-shadow: 0 4px 16px rgba(107, 70, 193, 0.25);
+}
+
+/* Специальные стили для Car of the Day */
+.car-of-the-day .section {
+  background: linear-gradient(135deg, 
+    rgba(20, 20, 25, 0.95) 0%, 
+    rgba(25, 25, 30, 0.98) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+}
+
+.light .car-of-the-day .section {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.95) 0%, 
+    rgba(248, 250, 252, 0.98) 100%
+  );
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+}
+
+.light .car-of-the-day .section h2 {
+  color: var(--ink);
+}
+
+.light .car-of-the-day .section p {
+  color: var(--ink);
+  opacity: 0.7;
+}
+
 /* === Fahrme tokens (light+dark glass) === */
 @layer components {
   /* стеклянная карточка как на фиде */

@@ -1,4 +1,30 @@
+"use client";
+
 import SiteFooter from "@/components/SiteFooter";
+import CarOfTheDay from "@/components/CarOfTheDay";
+
+// Данные для вчерашнего автомобиля дня
+const yesterdayCar = {
+  id: "yesterday",
+  make: "Nissan",
+  model: "GT-R",
+  year: 2019,
+  image: "/nissan-gtr-2019-4k-zd-3840x2400.jpg",
+  description: "Der legendäre GT-R mit seinem ikonischen Design und brutaler Performance. Ein Traum für jeden Autoliebhaber.",
+  votes: 1247
+};
+
+// Данные для выбора сегодняшнего автомобиля дня
+const todayCars = [
+  { id: "1", make: "BMW", model: "M3", image: "/bmw-g20.jpg" },
+  { id: "2", make: "Audi", model: "A4", image: "/a4-b9.jpg" },
+  { id: "3", make: "Mini", model: "Cooper S", image: "/mini-r56.jpg" },
+  { id: "4", make: "BMW", model: "M3", image: "/bmw-g20.jpg" },
+  { id: "5", make: "Audi", model: "A4", image: "/a4-b9.jpg" },
+  { id: "6", make: "Mini", model: "Cooper S", image: "/mini-r56.jpg" },
+  { id: "7", make: "BMW", model: "M3", image: "/bmw-g20.jpg" },
+  { id: "8", make: "Audi", model: "A4", image: "/a4-b9.jpg" }
+];
 
 const posts = [
   {
@@ -25,23 +51,23 @@ const posts = [
 ];
 
 export default function FeedPage(){
+  const handleVote = (carId: string) => {
+    // Логика голосования за автомобиль дня
+    console.log('Voting for car:', carId);
+    // Здесь можно добавить API вызов для голосования
+  };
+
   return (
     <>
       <main className="container pb-12">
         <section className="space-y-4">
-          {/* Заголовок секции */}
-          <div className="section"><div className="ribbon">Feed</div></div>
+          {/* Автомобиль дня - главный раздел */}
+          <CarOfTheDay 
+            yesterdayCar={yesterdayCar} 
+            todayCars={todayCars} 
+            onVote={handleVote} 
+          />
 
-          {/* Витрина превью — show1..show3 (дублируем для сетки) */}
-          <div className="section">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {["/show1.jpg","/show2.png","/show3.jpg","/show1.jpg","/show2.png","/show3.jpg"].map((src,i)=>(
-                <div key={i} className="img-rounded aspect-[4/3] relative overflow-hidden">
-                  <img src={src} alt={`show ${i+1}`} className="absolute inset-0 h-full w-full object-cover"/>
-                </div>
-              ))}
-            </div>
-          </div>
 
           {/* Лента постов */}
           {posts.map(p=>(
