@@ -50,11 +50,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       logout: ()=>{ 
         Auth.logout(); 
         setUser(null); 
-        // Принудительно обновляем состояние
-        setTimeout(() => {
-          setUser(Auth.currentUser()); // Должно вернуть null
-          window.location.href = '/'; 
-        }, 100);
+        // Немедленный редирект с принудительной перезагрузкой
+        window.location.href = '/'; 
       }
     }}>
       {children}

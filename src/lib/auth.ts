@@ -45,6 +45,9 @@ export function login(email: string, password: string): string | null {
 
 export function logout() {
   localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem('fahrme:profile');
+  localStorage.removeItem('fahrme:user');
+  // НЕ удаляем 'fahrme.users' - это список всех пользователей!
 }
 
 export function register(name: string, email: string, password: string): string | null {
