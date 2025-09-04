@@ -69,8 +69,12 @@ export default function ProfileMenu() {
               try {
                 localStorage.removeItem('fahrme:profile');
                 localStorage.removeItem('fahrme:user');
-              } catch {}
-              window.location.href = '/';
+                // Принудительно обновляем страницу для сброса состояния
+                window.location.href = '/';
+              } catch (error) {
+                console.warn('Error during logout:', error);
+                window.location.href = '/';
+              }
             }}
           />
         </nav>

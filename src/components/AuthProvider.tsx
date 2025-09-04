@@ -22,8 +22,24 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [user, setUser] = useState<User | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { setMounted(true); setUser(Auth.currentUser()); }, []);
+  useEffect(() => { 
+    setMounted(true); 
+    setUser(Auth.currentUser()); 
+  }, []);
+  
   const refresh = () => setUser(Auth.currentUser());
+  
+  // Слушаем изменения в localStorage для синхронизации состояния
+  useEffect(() => {
+    if (!mounted) return;
+    
+    const handleStorageChange = () => {
+      setUser(Auth.currentUser());
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [mounted]);
 
   return (
     <AuthCtx.Provider value={{
@@ -31,7 +47,15 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       refresh,
       login: (e,p)=>{ const err = Auth.login(e,p); setUser(Auth.currentUser()); return err; },
       register: (n,e,p)=>{ const err = Auth.register(n,e,p); setUser(Auth.currentUser()); return err; },
-      logout: ()=>{ Auth.logout(); setUser(null); window.location.href = '/'; }
+      logout: ()=>{ 
+        Auth.logout(); 
+        setUser(null); 
+        // Принудительно обновляем состояние
+        setTimeout(() => {
+          setUser(Auth.currentUser()); // Должно вернуть null
+          window.location.href = '/'; 
+        }, 100);
+      }
     }}>
       {children}
     </AuthCtx.Provider>
