@@ -70,7 +70,7 @@ export default function ProfileMenu() {
                 localStorage.removeItem('fahrme:profile');
                 localStorage.removeItem('fahrme:user');
               } catch {}
-              window.location.href = '/login';
+              window.location.href = '/';
             }}
           />
         </nav>

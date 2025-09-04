@@ -31,7 +31,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       refresh,
       login: (e,p)=>{ const err = Auth.login(e,p); setUser(Auth.currentUser()); return err; },
       register: (n,e,p)=>{ const err = Auth.register(n,e,p); setUser(Auth.currentUser()); return err; },
-      logout: ()=>{ Auth.logout(); setUser(null); }
+      logout: ()=>{ Auth.logout(); setUser(null); window.location.href = '/'; }
     }}>
       {children}
     </AuthCtx.Provider>
