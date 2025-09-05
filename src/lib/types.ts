@@ -17,13 +17,43 @@ export interface MyCar {
   power?: number;
   addedDate: string;
   ownerId: string; // ID владельца автомобиля
+  ownerAge?: number; // Возраст владельца
+  ownerCity?: string; // Город владельца
+  previousCar?: string; // Предыдущий автомобиль
 }
 
 export interface Comment {
   id: string;
   text: string;
   author: string;
+  authorEmail: string;
   timestamp: string;
   likes: number;
   carId: string;
+}
+
+export interface LogbookEntry {
+  id: string;
+  text: string;
+  author: string;
+  authorEmail: string;
+  timestamp: string;
+  likes: number;
+  carId: string;
+  type: 'maintenance' | 'modification' | 'event' | 'general';
+}
+
+export interface CarInteraction {
+  carId: string;
+  userEmail: string;
+  isFollowing: boolean;
+  isLiked: boolean;
+  followedAt?: string;
+  likedAt?: string;
+}
+
+export interface LogbookLike {
+  entryId: string;
+  userEmail: string;
+  likedAt: string;
 }

@@ -39,12 +39,17 @@ export default function MyCarsPage() {
 
   // Добавляем новую машину
   const addCar = (carData: Omit<MyCar, 'id' | 'addedDate' | 'ownerId'>) => {
+    if (!user) {
+      console.error('Пользователь не авторизован');
+      return;
+    }
+    
     const newCar: MyCar = {
       ...carData,
       name: carData.name || `${carData.make} ${carData.model}`, // Генерируем имя по умолчанию
       id: Date.now().toString(),
       addedDate: new Date().toISOString(),
-      ownerId: user?.email || 'anonymous', // Добавляем ID владельца
+      ownerId: user.email, // Всегда устанавливаем email текущего пользователя как владельца
     };
     saveCars([...cars, newCar]);
     setShowAddForm(false);

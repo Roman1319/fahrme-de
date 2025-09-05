@@ -2,10 +2,14 @@
 import { useAuth } from "./AuthProvider";
 import { User, LogOut, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
+import { readProfile } from "@/lib/profile";
+import AvatarButton from "./ui/AvatarButton";
+import AvatarTooltip from "./ui/AvatarTooltip";
 
 export default function UserMenu(){
   const { user, logout } = useAuth();
   const [open,setOpen]=useState(false);
+  const [profile, setProfile] = useState<{ avatarUrl?: string | null; displayName?: string } | null>(null);
 
   useEffect(()=>{
     const h=(e:MouseEvent)=>{ const t=e.target as HTMLElement; if(!t.closest?.("#user-popover")) setOpen(false); };
@@ -13,14 +17,34 @@ export default function UserMenu(){
     return ()=>document.removeEventListener("click",h);
   },[]);
 
+  useEffect(() => {
+    const p = readProfile();
+    if (p) {
+      setProfile({
+        avatarUrl: p.avatarUrl,
+        displayName: p.displayName
+      });
+    }
+  }, []);
+
   if(!user) return null;
-  const initials = (user.name?.match(/\b\p{L}/gu)?.slice(0,2).join("") ?? "DU").toUpperCase();
 
   return (
     <div className="relative">
       {/* Триггер как в референсе: фиолетовый бейдж + серый чип Du */}
       <button onClick={()=>setOpen(v=>!v)} className="profile-group" title={user.name}>
-        <span className="profile-initials">{initials}</span>
+        <AvatarTooltip
+          src={profile?.avatarUrl || null}
+          name={profile?.displayName || user.name || user.email || 'User'}
+          size={32}
+          userInfo={{
+            displayName: profile?.displayName || user.name || user.email || 'User',
+            fullName: user.name || user.email || 'User',
+            city: 'Мюнхен', // TODO: Get from profile
+            about: 'Ваш профиль'
+          }}
+          showActions={false}
+        />
         <span className="profile-chip">Du</span>
       </button>
 

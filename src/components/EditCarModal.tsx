@@ -28,7 +28,10 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
     gearbox: car.gearbox || '',
     drive: car.drive || '',
     description: car.description || '',
-    story: car.story || ''
+    story: car.story || '',
+    ownerAge: car.ownerAge || 0,
+    ownerCity: car.ownerCity || '',
+    previousCar: car.previousCar || ''
   });
   const [images, setImages] = useState<string[]>(car.images || []);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -84,7 +87,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="section w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className="modal-glass w-full max-w-lg max-h-[90vh] overflow-y-auto p-4">
         {/* Header */}
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold">Bearbeiten</h2>
@@ -245,6 +248,47 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
                 rows={4}
                 className="form-input"
               />
+            </div>
+          </div>
+
+          {/* Owner Info */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium opacity-80">Информация о владельце</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium mb-1 opacity-80">Возраст</label>
+                <input
+                  type="number"
+                  value={formData.ownerAge || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, ownerAge: parseInt(e.target.value) || 0 }))}
+                  placeholder="32"
+                  min="16"
+                  max="100"
+                  className="form-input"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium mb-1 opacity-80">Город</label>
+                <input
+                  type="text"
+                  value={formData.ownerCity}
+                  onChange={(e) => setFormData(prev => ({ ...prev, ownerCity: e.target.value }))}
+                  placeholder="Мюнхен"
+                  className="form-input"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium mb-1 opacity-80">Предыдущий автомобиль</label>
+                <input
+                  type="text"
+                  value={formData.previousCar}
+                  onChange={(e) => setFormData(prev => ({ ...prev, previousCar: e.target.value }))}
+                  placeholder="Audi Q3"
+                  className="form-input"
+                />
+              </div>
             </div>
           </div>
 

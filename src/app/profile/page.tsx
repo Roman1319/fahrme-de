@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { readProfile, updateProfile, UserProfile } from '@/lib/profile';
 import DropzoneAvatar from '@/components/ui/DropzoneAvatar';
 import { PillToggleGroup } from '@/components/ui/PillToggle';
+import { useAuth } from '@/components/AuthProvider';
 
 type Errors = Partial<Record<
   'phone'|'email'|'displayName'|'firstName'|'lastName',
@@ -14,6 +15,7 @@ const MAX_NICK = 30;
 const MAX_NAME = 40;
 
 export default function ProfilePage() {
+  const { user } = useAuth();
   const [p, setP] = useState<UserProfile | null>(null);
   const [saving, setSaving] = useState(false);
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -21,16 +23,39 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const data = readProfile();
-    const init: UserProfile = data || { id: 'local', displayName: '', otherLanguages: [] };
+    const init: UserProfile = data || { 
+      id: 'local', 
+      displayName: '', 
+      otherLanguages: [],
+      email: user?.email || null // Автоматически заполняем email из системы авторизации
+    };
+    
+    // Если у пользователя есть email, но в профиле его нет - обновляем
+    if (user?.email && init.email !== user.email) {
+      init.email = user.email;
+    }
+    
     setP(init);
     setAvatar(init.avatarUrl ?? null);
     // Валидируем начальные данные
     validate(init);
-  }, []);
+  }, [user]);
 
-  const canSave = useMemo(() =>
-    !!p && !Object.values(errors).some(Boolean) && (p.displayName?.trim().length ?? 0) > 0
-  , [p, errors]);
+  const canSave = useMemo(() => {
+    const hasProfile = !!p;
+    const noErrors = !Object.values(errors).some(Boolean);
+    const hasDisplayName = (p?.displayName?.trim().length ?? 0) > 0;
+    
+    console.log('CanSave check:', {
+      hasProfile,
+      noErrors,
+      hasDisplayName,
+      displayName: p?.displayName,
+      errors: Object.keys(errors).filter(k => errors[k as keyof Errors])
+    });
+    
+    return hasProfile && noErrors && hasDisplayName;
+  }, [p, errors]);
 
   function set<K extends keyof UserProfile>(key: K, val: UserProfile[K]) {
     setP(prev => prev ? ({ ...prev, [key]: val }) as UserProfile : prev);
@@ -66,8 +91,21 @@ export default function ProfilePage() {
   }
 
   async function onSave() {
+    console.log('=== SAVE BUTTON CLICKED ===');
+    console.log('Profile data (p):', p);
+    console.log('Avatar:', avatar);
+    console.log('Can save:', canSave);
+    console.log('Errors:', errors);
+    
     if (!p) {
       console.log('No profile data to save');
+      alert('Нет данных профиля для сохранения');
+      return;
+    }
+    
+    if (!canSave) {
+      console.log('Cannot save - validation failed');
+      alert('Нельзя сохранить - заполните обязательные поля');
       return;
     }
     
@@ -78,11 +116,15 @@ export default function ProfilePage() {
       const updated = updateProfile({ ...p, avatarUrl: avatar ?? null });
       console.log('Profile saved successfully:', updated);
       
+      // Проверяем, что данные действительно сохранились
+      const saved = readProfile();
+      console.log('Verification - saved data:', saved);
+      
       // Показываем уведомление об успешном сохранении
       alert('Profil erfolgreich gespeichert!');
     } catch (error) {
       console.error('Error saving profile:', error);
-      alert('Fehler beim Speichern des Profils');
+      alert('Fehler beim Speichern des Profils: ' + error);
     } finally {
       setSaving(false);
     }
@@ -122,12 +164,13 @@ export default function ProfilePage() {
               <span className="text-sm font-medium">E-Mail-Adresse</span>
               <input
                 type="email"
-                className="form-input"
+                className="form-input bg-white/5 cursor-not-allowed"
                 placeholder="dein.name@mail.de"
                 value={p.email ?? ''}
-                onChange={(e) => { set('email', e.target.value); validate({ email: e.target.value }); }}
+                readOnly
+                title="Email адрес нельзя изменить - это ваш адрес для входа в систему"
               />
-              {errors.email && <span className="form-error">{errors.email}</span>}
+              <p className="opacity-70 text-xs">Email адрес нельзя изменить - это ваш адрес для входа в систему</p>
             </label>
 
             <label className="sm:col-span-2 flex flex-col gap-1">

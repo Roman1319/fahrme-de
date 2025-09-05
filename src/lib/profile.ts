@@ -39,3 +39,25 @@ export function updateProfile(patch: Partial<UserProfile>) {
   saveProfile(next);
   return next;
 }
+
+export function readProfileByEmail(email: string): UserProfile | null {
+  try {
+    // В реальном приложении здесь был бы запрос к серверу
+    // Пока что используем текущий профиль если email совпадает
+    const currentProfile = readProfile();
+    if (currentProfile?.email === email) {
+      return currentProfile;
+    }
+    
+    // Для демо-целей создаем базовый профиль
+    return {
+      id: email,
+      displayName: email.split('@')[0],
+      email: email,
+      avatarUrl: null,
+      otherLanguages: []
+    };
+  } catch {
+    return null;
+  }
+}

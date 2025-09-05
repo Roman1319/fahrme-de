@@ -1,6 +1,8 @@
 "use client";
 import * as M from "@/lib/messages";
 import { useEffect, useState } from "react";
+import AvatarButton from "@/components/ui/AvatarButton";
+import AvatarTooltip from "@/components/ui/AvatarTooltip";
 
 export default function MessagesPage(){
   const [threads, setThreads] = useState<M.Thread[]>([]);
@@ -29,7 +31,25 @@ export default function MessagesPage(){
             {threads.map(t=>(
               <button key={t.id} onClick={()=>setActive(t.with)}
                 className={`menu-item ${active===t.with ? "bg-brand text-white" : ""}`}>
-                <div className="h-6 w-6 rounded-full bg-brand grid place-items-center text-xs font-bold text-white">{t.with[0].toUpperCase()}</div>
+                <AvatarTooltip
+                  src={null} // TODO: Get user's avatar from profile
+                  name={t.with}
+                  size={24}
+                  userInfo={{
+                    displayName: t.with,
+                    fullName: t.with,
+                    city: 'Мюнхен',
+                    about: 'Пользователь'
+                  }}
+                  onSubscribe={() => {
+                    console.log('Subscribe to user:', t.with);
+                    alert('Функция подписки будет реализована позже');
+                  }}
+                  onMessage={() => {
+                    console.log('Message user:', t.with);
+                    alert('Функция отправки сообщений будет реализована позже');
+                  }}
+                />
                 <div className="flex-1 text-left">
                   <div className="font-medium">{t.with}</div>
                   <div className="text-xs opacity-70">{t.messages.slice(-1)[0]?.body ?? "…"}</div>
