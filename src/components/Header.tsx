@@ -28,7 +28,7 @@ export default function Header({ variant="default", showAuth=true }: Props) {
 
   return (
     <header className="header-blur">
-      <div className="container flex items-center justify-between gap-3 py-3">
+      <div className="max-w-5xl mx-auto w-full flex items-center justify-between gap-3 py-3 px-4">
         {/* Лого */}
         <a href={homeHref} className="flex items-center gap-2 shrink-0">
           <img src="/logo.png" alt="fahrme.de" className="h-6 w-auto rounded-md" />
@@ -36,7 +36,7 @@ export default function Header({ variant="default", showAuth=true }: Props) {
         </a>
 
         {/* Центр: поисковая пилюля — только для фида */}
-        <div className="flex-1 max-w-[820px] mx-4 hidden md:block">
+        <div className="flex-1 max-w-2xl mx-4 hidden md:block">
           {variant==="feed" && (
             <form className="search-pill" onSubmit={onSearch}>
               <Search size={16} className="search-icon" />

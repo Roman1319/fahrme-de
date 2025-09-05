@@ -4,9 +4,12 @@ import { useState, useEffect } from "react";
 import { Plus, Car, Edit, Trash2 } from "lucide-react";
 import RequireAuth from "@/components/RequireAuth";
 import ImageUpload from "@/components/ui/ImageUpload";
+import AutoCompleteInput from "@/components/ui/AutoCompleteInput";
+import { useCarData } from "@/hooks/useCarData";
 
 interface MyCar {
   id: string;
+  name: string; // Имя машины
   make: string;
   model: string;
   year: number;
@@ -44,12 +47,15 @@ export default function MyCarsPage() {
   const saveCars = (newCars: MyCar[]) => {
     setCars(newCars);
     localStorage.setItem('fahrme:my-cars', JSON.stringify(newCars));
+    // Отправляем событие об изменении основного автомобиля
+    window.dispatchEvent(new CustomEvent('mainVehicleChanged'));
   };
 
   // Добавляем новую машину
   const addCar = (carData: Omit<MyCar, 'id' | 'addedDate'>) => {
     const newCar: MyCar = {
       ...carData,
+      name: carData.name || `${carData.make} ${carData.model}`, // Генерируем имя по умолчанию
       id: Date.now().toString(),
       addedDate: new Date().toISOString(),
     };
@@ -110,14 +116,14 @@ export default function MyCarsPage() {
               </button>
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2">
               {cars.map((car) => (
-                <div key={car.id} className="section p-4">
+                <div key={car.id} className="section p-3">
                   <div className="aspect-square rounded-lg overflow-hidden mb-3 bg-neutral-100 dark:bg-neutral-800">
                     {car.images && car.images.length > 0 ? (
                       <img
                         src={car.images[0]}
-                        alt={`${car.make} ${car.model}`}
+                        alt={car.name || `${car.make} ${car.model}`}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -130,11 +136,11 @@ export default function MyCarsPage() {
                   <div className="space-y-2">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="font-semibold text-lg leading-tight">
-                          {car.make} {car.model}
+                        <h3 className="font-semibold text-base leading-tight">
+                          {car.name || `${car.make} ${car.model}`}
                         </h3>
-                        <p className="text-sm opacity-70">
-                          {car.year}
+                        <p className="text-xs opacity-70">
+                          {car.make} {car.model} • {car.year}
                         </p>
                       </div>
                       {car.isFormerCar && (
@@ -203,10 +209,13 @@ function AddCarForm({
   onAdd: (car: Omit<MyCar, 'id' | 'addedDate'>) => void;
   onCancel: () => void;
 }) {
+  const { makes, getModels, isLoading: carDataLoading } = useCarData();
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [formData, setFormData] = useState({
+    name: '', // Имя машины
     make: '',
     model: '',
-    year: new Date().getFullYear(),
+    year: 0, // Пустое значение для года
     color: '',
     description: '',
     story: '',
@@ -217,15 +226,50 @@ function AddCarForm({
     volume: '',
     gearbox: '',
     drive: '',
-    power: 100
+    power: 0
   });
+
+  // Безопасное обновление доступных моделей при изменении марки
+  useEffect(() => {
+    try {
+      if (formData.make && makes.length > 0) {
+        const models = getModels(formData.make);
+        setAvailableModels(models);
+        
+        // Сбрасываем модель, если она не доступна для выбранной марки
+        if (formData.model && !models.includes(formData.model)) {
+          setFormData(prev => ({ ...prev, model: '' }));
+        }
+      } else {
+        setAvailableModels([]);
+        if (!formData.make) {
+          setFormData(prev => ({ ...prev, model: '' }));
+        }
+      }
+    } catch (error) {
+      console.warn('Error updating models:', error);
+      setAvailableModels([]);
+    }
+  }, [formData.make, getModels, makes.length]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.make && formData.model) {
+    
+    if (formData.name && formData.make && formData.model && formData.year > 0) {
       onAdd(formData);
     }
   };
+
+  // Обработчик выбора марки
+  const handleMakeSelect = (make: string) => {
+    setFormData(prev => ({ ...prev, make, model: '' }));
+  };
+
+  // Обработчик выбора модели
+  const handleModelSelect = (model: string) => {
+    setFormData(prev => ({ ...prev, model }));
+  };
+
 
 
   return (
@@ -234,10 +278,10 @@ function AddCarForm({
         <h2 className="h2 mb-4">Auto hinzufügen</h2>
         <form onSubmit={handleSubmit} className="space-y-6">
           
-          {/* Основная информация о машине */}
+          {/* Grundlegende Fahrzeuginformationen */}
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Auto</h3>
+              <h3 className="text-lg font-semibold mb-2">Fahrzeug</h3>
               <p className="text-sm opacity-70 mb-4">
                 Erzählen Sie uns von Ihrem Auto. Falls Ihr Modell nicht aufgeführt ist, 
                 <a href="/contact" className="text-primary hover:underline ml-1">schreiben Sie uns</a>.
@@ -247,33 +291,57 @@ function AddCarForm({
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="form-label">Marke *</label>
-                <input
-                  className="form-input"
+                <AutoCompleteInput
                   value={formData.make}
-                  onChange={(e) => setFormData({...formData, make: e.target.value})}
+                  onChange={(value) => setFormData({...formData, make: value})}
+                  onSelect={handleMakeSelect}
                   placeholder="z.B. BMW"
-                  required
+                  options={makes.map(make => make.name)}
+                  maxSuggestions={66}
+                  disabled={carDataLoading}
                 />
+                {carDataLoading && (
+                  <p className="text-xs text-neutral-500 mt-1">Lade Markendaten...</p>
+                )}
               </div>
               <div>
                 <label className="form-label">Modell *</label>
-                <input
-                  className="form-input"
+                <AutoCompleteInput
                   value={formData.model}
-                  onChange={(e) => setFormData({...formData, model: e.target.value})}
+                  onChange={(value) => setFormData({...formData, model: value})}
+                  onSelect={handleModelSelect}
                   placeholder="z.B. 3er"
-                  required
+                  options={availableModels}
+                  maxSuggestions={20}
+                  disabled={!formData.make || carDataLoading}
                 />
+                {!formData.make && (
+                  <p className="text-xs text-neutral-500 mt-1">Wählen Sie zuerst eine Marke</p>
+                )}
               </div>
               <div>
                 <label className="form-label">Baujahr</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  value={formData.year}
-                  onChange={(e) => setFormData({...formData, year: parseInt(e.target.value)})}
-                  min="1900"
-                  max={new Date().getFullYear() + 1}
+                <AutoCompleteInput
+                  value={formData.year === 0 ? '' : formData.year.toString()}
+                  onChange={(value) => {
+                    if (value === '') {
+                      setFormData({...formData, year: 0});
+                    } else {
+                      const year = parseInt(value);
+                      if (!isNaN(year) && year >= 1900 && year <= new Date().getFullYear() + 1) {
+                        setFormData({...formData, year});
+                      }
+                    }
+                  }}
+                  onSelect={(value) => {
+                    const year = parseInt(value);
+                    if (!isNaN(year)) {
+                      setFormData({...formData, year});
+                    }
+                  }}
+                  placeholder="z.B. 2020"
+                  options={Array.from({ length: new Date().getFullYear() - 1899 }, (_, i) => (new Date().getFullYear() - i).toString())}
+                  maxSuggestions={50}
                 />
               </div>
               <div>
@@ -285,9 +353,19 @@ function AddCarForm({
                   placeholder="z.B. Schwarz"
                 />
               </div>
+              <div className="md:col-span-2">
+                <label className="form-label">Fahrzeugname *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  placeholder="z.B. Mein BMW, Rote Schönheit, Das Biest"
+                />
+              </div>
             </div>
 
-            {/* Переключатели */}
+            {/* Schalter */}
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -321,7 +399,7 @@ function AddCarForm({
             </div>
           </div>
 
-          {/* Фотографии */}
+          {/* Fotos */}
           <div className="space-y-4">
             <div>
               <h3 className="text-lg font-semibold mb-2">Fotos</h3>
@@ -341,7 +419,7 @@ function AddCarForm({
 
           </div>
 
-          {/* Рассказ о машине */}
+          {/* Geschichte des Autos */}
           <div className="space-y-4">
             <div>
               <h3 className="text-lg font-semibold mb-2">Geschichte des Autos</h3>
@@ -380,7 +458,7 @@ function AddCarForm({
             </div>
           </div>
 
-          {/* Характеристики */}
+          {/* Eigenschaften */}
           <div className="space-y-4">
             <div>
               <h3 className="text-lg font-semibold mb-2">Eigenschaften</h3>
@@ -453,12 +531,21 @@ function AddCarForm({
               <div>
                 <label className="form-label">Leistung (PS)</label>
                 <input
-                  type="number"
+                  type="text"
                   className="form-input"
-                  value={formData.power}
-                  onChange={(e) => setFormData({...formData, power: parseInt(e.target.value) || 0})}
-                  min="0"
-                  max="2000"
+                  value={formData.power === 0 ? '' : formData.power.toString()}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setFormData({...formData, power: 0});
+                    } else {
+                      const numValue = parseInt(value);
+                      if (!isNaN(numValue) && numValue >= 0 && numValue <= 9999) {
+                        setFormData({...formData, power: numValue});
+                      }
+                    }
+                  }}
+                  placeholder="z.B. 150"
                 />
               </div>
             </div>
@@ -469,7 +556,7 @@ function AddCarForm({
               Abbrechen
             </button>
             <button type="submit" className="btn-primary">
-              Auto hinzufügen
+              Fahrzeug hinzufügen
             </button>
           </div>
         </form>

@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowUpRight } from "lucide-react";
+import Image from "next/image";
 
 interface CarOfTheDayProps {
   yesterdayCar: {
@@ -37,13 +38,16 @@ export default function CarOfTheDay({ yesterdayCar, todayCars, onVote }: CarOfTh
       <div className="section">
         {/* Вчерашний автомобиль дня */}
         <div className="mb-6">
-          <h3 className="h2 mb-4">Fahrzeug des Tages (Gestern)</h3>
+          <h3 className="text-xl font-bold mb-3">Fahrzeug des Tages (Gestern)</h3>
           <div className="relative rounded-xl overflow-hidden">
-            <div className="relative h-64 md:h-80">
-              <img 
+            <div className="relative h-52 md:h-64">
+              <Image 
                 src={yesterdayCar.image} 
                 alt={`${yesterdayCar.make} ${yesterdayCar.model}`}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
+                priority
               />
               
               {/* Overlay с информацией */}
@@ -51,10 +55,10 @@ export default function CarOfTheDay({ yesterdayCar, todayCars, onVote }: CarOfTh
               
               {/* Информация об автомобиле */}
               <div className="absolute bottom-4 left-4 right-4">
-                <h4 className="text-xl font-bold text-white mb-1">
+                <h4 className="text-lg font-bold text-white mb-1">
                   {yesterdayCar.make} {yesterdayCar.model} {yesterdayCar.year}
                 </h4>
-                <p className="text-white/80 text-sm mb-2">
+                <p className="text-white/80 text-xs mb-2">
                   {yesterdayCar.description}
                 </p>
                 <div className="flex items-center gap-4">
@@ -72,29 +76,31 @@ export default function CarOfTheDay({ yesterdayCar, todayCars, onVote }: CarOfTh
 
         {/* Выбор сегодняшнего автомобиля дня */}
         <div>
-          <h3 className="h2 mb-4">Wähle das Fahrzeug des Tages (Heute)</h3>
+          <h3 className="text-xl font-bold mb-3">Wähle das Fahrzeug des Tages (Heute)</h3>
           <p className="opacity-70 text-sm mb-4">
             Stimme für deinen Favoriten ab! Die Wahl endet in 23h 45m.
           </p>
           
           {/* Сетка автомобилей для выбора */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {todayCars.map((car) => (
               <button
                 key={car.id}
                 onClick={() => onVote?.(car.id)}
                 className="group relative aspect-square rounded-xl overflow-hidden hover:scale-105 transition-all duration-200"
               >
-                <img 
+                <Image 
                   src={car.image} 
                   alt={`${car.make} ${car.model}`}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 50vw, 25vw"
                 />
                 
                 {/* Overlay при наведении */}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                  <div className="bg-brand rounded-lg px-3 py-1.5">
-                    <span className="text-white text-sm font-medium">
+                  <div className="bg-brand rounded-lg px-2 py-1">
+                    <span className="text-white text-xs font-medium">
                       {car.make} {car.model}
                     </span>
                   </div>

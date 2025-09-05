@@ -20,14 +20,16 @@ export default function MainLayout({ children }: MainLayoutProps) {
   // Для зарегистрированных пользователей показываем навигацию
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="container mx-auto flex flex-1">
-        {/* Боковая навигация */}
+      <div className="flex flex-1 max-w-5xl mx-auto w-full">
+        {/* Левая боковая навигация */}
         <Sidebar />
         
-        {/* Основной контент - автоматически рядом с сайдбаром */}
-        <PageWrapper>
-          {children}
-        </PageWrapper>
+        {/* Основной контент */}
+        <div className="flex-1 px-4">
+          <PageWrapper>
+            {children}
+          </PageWrapper>
+        </div>
       </div>
       {/* Подвал вне контейнера для полной ширины */}
       <SiteFooter />
