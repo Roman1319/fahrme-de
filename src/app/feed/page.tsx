@@ -4,7 +4,7 @@ import SiteFooter from "@/components/SiteFooter";
 import CarOfTheDay from "@/components/CarOfTheDay";
 import RequireAuth from "@/components/RequireAuth";
 
-// Данные для вчерашнего автомобиля дня
+// Daten für das gestrige Auto des Tages
 const yesterdayCar = {
   id: "yesterday",
   make: "Nissan",
@@ -15,7 +15,7 @@ const yesterdayCar = {
   votes: 1247
 };
 
-// Данные для выбора сегодняшнего автомобиля дня
+// Daten für die Auswahl des heutigen Autos des Tages
 const todayCars = [
   { id: "1", make: "BMW", model: "M3", image: "/bmw-g20.jpg" },
   { id: "2", make: "Audi", model: "A4", image: "/a4-b9.jpg" },
@@ -53,9 +53,9 @@ const posts = [
 
 export default function FeedPage(){
   const handleVote = (carId: string) => {
-    // Логика голосования за автомобиль дня
+    // Logik für die Abstimmung über das Auto des Tages
     console.log('Voting for car:', carId);
-    // Здесь можно добавить API вызов для голосования
+    // Hier kann ein API-Aufruf für die Abstimmung hinzugefügt werden
   };
 
   return (
@@ -85,7 +85,19 @@ export default function FeedPage(){
                 <p className="opacity-80">{p.excerpt}</p>
                 <div className="flex items-center justify-between">
                   <a href={`/post/${p.id}`} className="btn-primary">Weiterlesen →</a>
-                  <div className="text-sm opacity-70">@{p.author}</div>
+                  <div className="flex items-center gap-4 text-sm opacity-70">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-accent rounded-full"></div>
+                      <span>{p.stats.likes} Likes</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-primary rounded-full"></div>
+                      <span>{p.stats.comments} Kommentare</span>
+                    </div>
+                    <div className="bg-accent text-black px-2 py-1 rounded-full text-xs font-medium">
+                      @{p.author}
+                    </div>
+                  </div>
                 </div>
               </div>
             </article>

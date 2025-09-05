@@ -7,36 +7,36 @@
   --radius-3xl: 1.75rem;
 }
 
-/* улучшенная палитра на основе референсов */
+/* официальная палитра fahrme.de */
 :root{
-  --bg: #0A0A0D;
-  --ink: #F8F9FC;
-  --primary-dark: #1A0B5C;
-  --primary: #6B46C1;
-  --accent: #10B981;
+  --bg: #000000;
+  --ink: #F8F9FA;
+  --primary-dark: #3F297A;
+  --primary: #6A3FFB;
+  --accent: #33D49D;
   --secondary: #F59E0B;
   --danger: #EF4444;
 
-  /* поверхности (DARK) - более контрастные */
-  --panel: rgba(20,20,25,.90);
-  --panel-strong: rgba(25,25,30,.95);
-  --panel-border: rgba(255,255,255,.16);
+  /* поверхности (DARK) */
+  --panel: rgba(33,33,36,.90);
+  --panel-strong: rgba(33,33,36,.95);
+  --panel-border: rgba(206,212,218,.16);
   --panel-shadow: 0 25px 60px rgba(0,0,0,.60);
 }
 
 .light{
-  --bg: #F8FAFC;
-  --ink: #0F172A;
-  --primary-dark: #4C1D95;
-  --primary: #7C3AED;
-  --accent: #059669;
-  --secondary: #D97706;
-  --danger: #DC2626;
+  --bg: #F8F9FA;
+  --ink: #000000;
+  --primary-dark: #3F297A;
+  --primary: #6A3FFB;
+  --accent: #33D49D;
+  --secondary: #F59E0B;
+  --danger: #EF4444;
 
-  /* поверхности (LIGHT) — более контрастные и яркие */
-  --panel: rgba(255,255,255,.95);
-  --panel-strong: rgba(255,255,255,.98);
-  --panel-border: rgba(0,0,0,.12);
+  /* поверхности (LIGHT) */
+  --panel: rgba(248,249,250,.95);
+  --panel-strong: rgba(248,249,250,.98);
+  --panel-border: rgba(134,142,150,.12);
   --panel-shadow: 0 12px 32px rgba(0,0,0,.18);
 }
 
@@ -63,12 +63,12 @@ body{ color: var(--ink); background: var(--bg); }
 @utility bg-brand {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%) !important;
   color: white !important;
-  box-shadow: 0 8px 32px rgba(107, 70, 193, 0.3);
+  box-shadow: 0 8px 32px rgba(106, 63, 251, 0.3);
 }
 @utility bg-accent {
   background: linear-gradient(135deg, var(--accent) 0%, #059669 100%) !important;
-  color: white !important;
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
+  color: #000000 !important;
+  box-shadow: 0 4px 16px rgba(51, 212, 157, 0.25);
 }
 
 @utility bg-secondary {
@@ -86,12 +86,12 @@ body{ color: var(--ink); background: var(--bg); }
   @apply rounded-full px-2.5 py-1.5 text-xs font-semibold transition-all duration-200;
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
-  box-shadow: 0 3px 12px rgba(107, 70, 193, 0.25);
+  box-shadow: 0 3px 12px rgba(106, 63, 251, 0.25);
 }
 .btn-primary:hover { 
-  background: linear-gradient(135deg, var(--primary-dark) 0%, #1A0B5C 100%);
+  background: linear-gradient(135deg, var(--primary-dark) 0%, #3F297A 100%);
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(107, 70, 193, 0.35);
+  box-shadow: 0 6px 20px rgba(106, 63, 251, 0.35);
 }
 
 /* улучшенные ленточки с градиентом */
@@ -99,12 +99,12 @@ body{ color: var(--ink); background: var(--bg); }
   @apply rounded-xl px-3 py-1 font-extrabold transition-all duration-200;
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
-  box-shadow: 0 4px 12px rgba(107, 70, 193, 0.2);
+  box-shadow: 0 4px 12px rgba(106, 63, 251, 0.2);
 }
 .ribbon:hover {
-  background: linear-gradient(135deg, var(--primary-dark) 0%, #1A0B5C 100%);
+  background: linear-gradient(135deg, var(--primary-dark) 0%, #3F297A 100%);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(107, 70, 193, 0.3);
+  box-shadow: 0 6px 16px rgba(106, 63, 251, 0.3);
 }
 
 /* светлые чипки для брендов */
@@ -122,23 +122,23 @@ body{ color: var(--ink); background: var(--bg); }
 /* внятный поиск в обеих темах */
 @utility search-input {
   @apply rounded-full px-4 py-2 outline-none transition-[box-shadow,background-color,color] border;
-  background-color: rgba(255,255,255,.13);
+  background-color: rgba(248,249,250,.13);
   border-color: var(--panel-border);
   color: var(--ink);
 }
 .search-input::placeholder { color: color-mix(in oklab, var(--ink) 60%, transparent); }
 .search-input:focus { box-shadow: 0 0 0 2px var(--primary) inset; }
 
-.light .search-input{
+.light .search-input{ 
   background-color: var(--panel-strong); /* почти белое поле */
-  color: #0D0E12;
+  color: #000000;
 }
 .light .search-input::placeholder{ color: rgba(0,0,0,.55); }
 
 /* плейсхолдер, если где-то не будет картинки */
 @utility bg-fallback {
-  background-image: radial-gradient(1200px 600px at 20% 0%, rgba(255,255,255,.14), transparent),
-                    linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+  background-image: radial-gradient(1200px 600px at 20% 0%, rgba(248,249,250,.14), transparent),
+                    linear-gradient(180deg, rgba(248,249,250,.08), rgba(248,249,250,.02));
   background-color: color-mix(in oklab, var(--ink) 5%, transparent);
 }
 
@@ -152,9 +152,9 @@ h2,.h2{ @apply text-lg md:text-xl font-extrabold; }
 /* Улучшенная светлая панель с градиентом */
 @utility panel-light {
   @apply rounded-3xl border backdrop-blur-xl transition-all duration-200;
-  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%);
-  color: #0F172A;
-  border-color: rgba(0,0,0,.15);
+  background: linear-gradient(135deg, rgba(248,249,250,0.95) 0%, rgba(248,249,250,0.9) 100%);
+  color: #000000;
+  border-color: rgba(134,142,150,.15);
   box-shadow: 0 12px 24px rgba(0,0,0,.12), 0 4px 8px rgba(0,0,0,.08);
 }
 
@@ -168,7 +168,7 @@ h2,.h2{ @apply text-lg md:text-xl font-extrabold; }
   opacity: .92;
   transition: color .15s ease, opacity .15s ease;
 }
-.light .brands-list a { color: #0D0E12; }
+.light .brands-list a { color: #000000; }
 .brands-list a:hover { color: var(--primary); opacity: 1; }
 
 /* Колонки (адаптивно) */
@@ -205,17 +205,25 @@ h2,.h2{ @apply text-lg md:text-xl font-extrabold; }
 
 .light .btn-ghost{
   background-color: white;
-  color: #0D0E12;
-  border-color: rgba(0,0,0,.08);
+  color: #000000;
+  border-color: rgba(134,142,150,.08);
 }
 .light .btn-ghost:hover { background-color: #f4f6fb; }
 
 @utility btn-accent {
   @apply rounded-full px-2.5 py-1 text-xs font-semibold transition-transform;
   background-color: var(--accent);
-  color: #0B0B0E;
+  color: #000000 !important;
 }
 .btn-accent:hover { transform: translateY(-1px); }
+
+/* Правило: во всех элементах с мятным цветом текст всегда черный */
+.bg-accent,
+.btn-accent,
+[class*="bg-accent"],
+[class*="btn-accent"] {
+  color: #000000 !important;
+}
 
 /* Full-width прозрачные полосы для шапки/подвала */
 @utility header-blur {
@@ -224,8 +232,8 @@ h2,.h2{ @apply text-lg md:text-xl font-extrabold; }
   border-bottom: 1px solid color-mix(in oklab, var(--ink) 12%, transparent);
 }
 .light .header-blur{
-  background: linear-gradient(to bottom, rgba(255,255,255,.65), transparent);
-  border-bottom-color: rgba(0,0,0,.08);
+  background: linear-gradient(to bottom, rgba(248,249,250,.65), transparent);
+  border-bottom-color: rgba(134,142,150,.08);
 }
 
 @utility footer-blur {
@@ -242,8 +250,8 @@ h2,.h2{ @apply text-lg md:text-xl font-extrabold; }
   margin-right: -50vw;
 }
 .light .footer-blur{
-  background: linear-gradient(to top, rgba(255,255,255,.8), transparent);
-  border-top-color: rgba(0,0,0,.12);
+  background: linear-gradient(to top, rgba(248,249,250,.8), transparent);
+  border-top-color: rgba(134,142,150,.12);
 }
 
 /* Ссылки в футере */
@@ -259,12 +267,12 @@ h2,.h2{ @apply text-lg md:text-xl font-extrabold; }
 
 /* Карточка формы */
 @utility form-card {
-  @apply section max-w-lg w-full mx-auto;
+  @apply section max-w-sm w-full mx-auto;
 }
 
 /* Поле ввода (крупнее, чем search-input) */
 @utility form-input {
-  @apply w-full rounded-lg px-2.5 py-1.5 text-xs border outline-none transition-[box-shadow,background-color,color];
+  @apply w-full rounded-lg px-2 py-1 text-xs border outline-none transition-[box-shadow,background-color,color];
   background-color: var(--panel-strong);
   border-color: var(--panel-border);
   color: var(--ink);
@@ -318,13 +326,13 @@ h2,.h2{ @apply text-lg md:text-xl font-extrabold; }
 .search-pill{
   @apply flex items-center rounded-full border overflow-hidden backdrop-blur-xl transition-all duration-200;
   height: 32px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+  background: linear-gradient(135deg, rgba(248,249,250,0.1) 0%, rgba(248,249,250,0.05) 100%);
   border-color: var(--panel-border);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 6px 20px rgba(0,0,0,.3);
+  box-shadow: inset 0 1px 0 rgba(248,249,250,.08), 0 6px 20px rgba(0,0,0,.3);
 }
 .light .search-pill{ 
-  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 8px 24px rgba(0,0,0,.15);
+  background: linear-gradient(135deg, rgba(248,249,250,0.95) 0%, rgba(248,249,250,0.9) 100%);
+  box-shadow: inset 0 1px 0 rgba(248,249,250,.8), 0 8px 24px rgba(0,0,0,.15);
 }
 
 .search-pill .search-icon{ @apply ml-3 opacity-70; }
@@ -380,7 +388,7 @@ h2,.h2{ @apply text-lg md:text-xl font-extrabold; }
 
 /* === iOS-стиль боковая навигация === */
 @utility sidebar-item {
-  @apply relative overflow-hidden;
+  @apply relative overflow-hidden rounded-lg;
   background-color: transparent;
   color: var(--ink);
   opacity: 0.7;
@@ -415,34 +423,33 @@ h2,.h2{ @apply text-lg md:text-xl font-extrabold; }
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white !important;
   opacity: 1 !important;
-  box-shadow: 0 4px 16px rgba(107, 70, 193, 0.25);
+  box-shadow: 0 4px 16px rgba(106, 63, 251, 0.25);
+  border-radius: 0.5rem;
 }
 
 .sidebar-item--inactive:hover {
   background-color: color-mix(in oklab, var(--ink) 8%, transparent);
   opacity: 1;
   transform: translateX(2px);
+  border-radius: 0.5rem;
 }
 
 .sidebar-item--active:hover {
-  background: linear-gradient(135deg, var(--primary-dark) 0%, #1A0B5C 100%);
+  background: linear-gradient(135deg, var(--primary-dark) 0%, #3F297A 100%);
   transform: translateX(2px);
-  box-shadow: 0 6px 20px rgba(107, 70, 193, 0.35);
+  box-shadow: 0 6px 20px rgba(106, 63, 251, 0.35);
 }
 
-/* Sticky sidebar container */
+/* Sticky sidebar container - как блоки в feed */
 .sidebar-container {
   position: sticky;
   top: 0;
   height: 100vh;
   overflow-y: auto;
-  background: linear-gradient(180deg, 
-    rgba(255,255,255,0.1) 0%, 
-    rgba(255,255,255,0.05) 50%, 
-    rgba(255,255,255,0.02) 100%
-  );
-  backdrop-filter: blur(20px);
-  border-right: 1px solid var(--panel-border);
+  @apply rounded-xl border backdrop-blur-2xl;
+  background-color: var(--panel);
+  border-color: var(--panel-border);
+  box-shadow: var(--panel-shadow);
   z-index: 30;
   margin-right: 1rem;
 }
@@ -466,12 +473,9 @@ h2,.h2{ @apply text-lg md:text-xl font-extrabold; }
 }
 
 .light .sidebar-container {
-  background: linear-gradient(180deg, 
-    rgba(255,255,255,0.8) 0%, 
-    rgba(255,255,255,0.6) 50%, 
-    rgba(255,255,255,0.4) 100%
-  );
-  border-right-color: rgba(0,0,0,0.1);
+  background-color: var(--panel);
+  border-color: var(--panel-border);
+  box-shadow: var(--panel-shadow);
   margin-right: 1rem;
 }
 

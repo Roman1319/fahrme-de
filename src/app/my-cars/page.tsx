@@ -2,34 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Car, Edit, Trash2 } from "lucide-react";
+import Link from "next/link";
 import RequireAuth from "@/components/RequireAuth";
 import ImageUpload from "@/components/ui/ImageUpload";
 import AutoCompleteInput from "@/components/ui/AutoCompleteInput";
+import EditCarModal from "@/components/EditCarModal";
 import { useCarData } from "@/hooks/useCarData";
-
-interface MyCar {
-  id: string;
-  name: string; // Имя машины
-  make: string;
-  model: string;
-  year: number;
-  color: string;
-  images?: string[];
-  description?: string;
-  story?: string;
-  isFormerCar: boolean;
-  isMainVehicle?: boolean;
-  engine?: string;
-  volume?: string;
-  gearbox?: string;
-  drive?: string;
-  power?: number;
-  addedDate: string;
-}
+import { MyCar } from "@/lib/types";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function MyCarsPage() {
+  const { user } = useAuth();
   const [cars, setCars] = useState<MyCar[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingCar, setEditingCar] = useState<MyCar | null>(null);
 
   // Загружаем машины из localStorage
   useEffect(() => {
@@ -52,12 +38,13 @@ export default function MyCarsPage() {
   };
 
   // Добавляем новую машину
-  const addCar = (carData: Omit<MyCar, 'id' | 'addedDate'>) => {
+  const addCar = (carData: Omit<MyCar, 'id' | 'addedDate' | 'ownerId'>) => {
     const newCar: MyCar = {
       ...carData,
       name: carData.name || `${carData.make} ${carData.model}`, // Генерируем имя по умолчанию
       id: Date.now().toString(),
       addedDate: new Date().toISOString(),
+      ownerId: user?.email || 'anonymous', // Добавляем ID владельца
     };
     saveCars([...cars, newCar]);
     setShowAddForm(false);
@@ -77,6 +64,15 @@ export default function MyCarsPage() {
       isMainVehicle: car.id === id
     }));
     saveCars(updatedCars);
+  };
+
+  // Сохраняем отредактированную машину
+  const handleSaveEditedCar = (updatedCar: MyCar) => {
+    const updatedCars = cars.map(car => 
+      car.id === updatedCar.id ? updatedCar : car
+    );
+    saveCars(updatedCars);
+    setEditingCar(null);
   };
 
   return (
@@ -110,33 +106,35 @@ export default function MyCarsPage() {
               </p>
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
-                className="btn-primary text-base px-6 py-3"
+                className="bg-[#6A3FFB] hover:bg-[#3F297A] text-white text-base px-6 py-3 rounded-full transition-colors"
               >
                 Erstes Auto hinzufügen
               </button>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2">
+            <div className="grid gap-2.5 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2">
               {cars.map((car) => (
-                <div key={car.id} className="section p-3">
-                  <div className="aspect-square rounded-lg overflow-hidden mb-3 bg-neutral-100 dark:bg-neutral-800">
-                    {car.images && car.images.length > 0 ? (
-                      <img
-                        src={car.images[0]}
-                        alt={car.name || `${car.make} ${car.model}`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Car size={32} className="opacity-50" />
-                      </div>
-                    )}
-                  </div>
+                <div key={car.id} className="section p-2 group">
+                  <Link href={`/car/${car.id}`} className="block">
+                    <div className="aspect-square rounded-lg overflow-hidden mb-2 bg-neutral-100 dark:bg-neutral-800 cursor-pointer">
+                      {car.images && car.images.length > 0 ? (
+                        <img
+                          src={car.images[0]}
+                          alt={car.name || `${car.make} ${car.model}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Car size={20} className="opacity-50" />
+                        </div>
+                      )}
+                    </div>
+                  </Link>
                   
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="font-semibold text-base leading-tight">
+                        <h3 className="font-semibold text-xs leading-tight">
                           {car.name || `${car.make} ${car.model}`}
                         </h3>
                         <p className="text-xs opacity-70">
@@ -144,13 +142,13 @@ export default function MyCarsPage() {
                         </p>
                       </div>
                       {car.isFormerCar && (
-                        <span className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 px-2 py-1 rounded-full">
+                        <span className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 px-1 py-0.5 rounded-full">
                           Ehemalig
                         </span>
                       )}
                     </div>
                     
-                    <div className="space-y-1 text-sm opacity-70">
+                    <div className="space-y-0.5 text-xs opacity-70">
                       {car.color && <p className="truncate">Farbe: {car.color}</p>}
                       {car.engine && <p className="truncate">Motor: {car.engine}</p>}
                       {car.power && <p className="truncate">Leistung: {car.power} PS</p>}
@@ -162,23 +160,51 @@ export default function MyCarsPage() {
                       </p>
                     )}
                     
-                    <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center justify-between pt-1">
                       <span className="text-xs opacity-60">
                         {new Date(car.addedDate).toLocaleDateString('de-DE')}
                       </span>
-                      <div className="flex gap-1">
-                        <button className="icon-btn" title="Bearbeiten">
-                          <Edit size={14} />
-                        </button>
-                        <button 
-                          className="icon-btn text-red-500 hover:text-red-600" 
-                          onClick={() => deleteCar(car.id)}
-                          title="Löschen"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
                     </div>
+                  </div>
+
+                  {/* Кнопки действий одинакового размера */}
+                  <div className="flex gap-1 mt-2">
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setEditingCar(car);
+                      }}
+                      className="flex-1 px-2 py-1 text-xs text-white border border-[#868E96] rounded-full hover:bg-[#343A40] transition-colors"
+                    >
+                      Bearbeiten
+                    </button>
+                    {!car.isMainVehicle ? (
+                      <button 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setMainVehicle(car.id);
+                        }}
+                        className="flex-1 px-2 py-1 text-xs text-white border border-[#868E96] rounded-full hover:bg-[#343A40] transition-colors"
+                      >
+                        Hauptauto
+                      </button>
+                    ) : (
+                      <button 
+                        className="flex-1 px-2 py-1 text-xs text-black bg-[#33D49D] rounded-full"
+                        disabled
+                      >
+                        Hauptauto
+                      </button>
+                    )}
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        deleteCar(car.id);
+                      }}
+                      className="flex-1 px-2 py-1 text-xs text-[#6A3FFB] border border-[#6A3FFB] rounded-full hover:bg-[#343A40] transition-colors"
+                    >
+                      Löschen
+                    </button>
                   </div>
                 </div>
               ))}
@@ -193,6 +219,16 @@ export default function MyCarsPage() {
                 setShowAddForm(false);
               }}
               onCancel={() => setShowAddForm(false)}
+            />
+          )}
+
+          {/* Edit Car Modal */}
+          {editingCar && (
+            <EditCarModal
+              car={editingCar}
+              isOpen={!!editingCar}
+              onClose={() => setEditingCar(null)}
+              onSave={handleSaveEditedCar}
             />
           )}
         </div>
@@ -552,10 +588,10 @@ function AddCarForm({
           </div>
 
           <div className="flex gap-2 justify-end pt-4">
-            <button type="button" className="btn-secondary" onClick={onCancel}>
+            <button type="button" className="bg-[#868E96] hover:bg-[#343A40] text-white px-4 py-2 rounded-full transition-colors" onClick={onCancel}>
               Abbrechen
             </button>
-            <button type="submit" className="btn-primary">
+            <button type="submit" className="bg-[#6A3FFB] hover:bg-[#3F297A] text-white px-4 py-2 rounded-full transition-colors">
               Fahrzeug hinzufügen
             </button>
           </div>

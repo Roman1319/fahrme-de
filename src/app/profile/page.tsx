@@ -79,10 +79,10 @@ export default function ProfilePage() {
       console.log('Profile saved successfully:', updated);
       
       // Показываем уведомление об успешном сохранении
-      alert('Профиль успешно сохранен!');
+      alert('Profil erfolgreich gespeichert!');
     } catch (error) {
       console.error('Error saving profile:', error);
-      alert('Ошибка при сохранении профиля');
+      alert('Fehler beim Speichern des Profils');
     } finally {
       setSaving(false);
     }
@@ -139,7 +139,7 @@ export default function ProfilePage() {
                   Ändern
                 </button>
               </div>
-              <p className="opacity-70 text-sm">Demo: ohne Backend – кнопка einfach für вида.</p>
+              <p className="opacity-70 text-sm">Demo: ohne Backend – Button nur zur Ansicht.</p>
             </label>
           </div>
         </section>

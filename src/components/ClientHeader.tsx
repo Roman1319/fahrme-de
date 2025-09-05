@@ -14,12 +14,6 @@ export default function ClientHeader() {
     setMounted(true);
   }, []);
 
-  // Определяем вариант Header в зависимости от страницы
-  const getHeaderVariant = () => {
-    if (pathname === '/feed') return 'feed';
-    return 'default';
-  };
-
-  // Показываем Header всегда, но аватар только для залогиненных
-  return <Header variant={getHeaderVariant()} />;
+  // Показываем Header всегда с поиском
+  return <Header variant="feed" />;
 }

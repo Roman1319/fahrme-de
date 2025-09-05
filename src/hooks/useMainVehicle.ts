@@ -1,24 +1,5 @@
 import { useState, useEffect } from 'react';
-
-interface MyCar {
-  id: string;
-  name: string;
-  make: string;
-  model: string;
-  year: number;
-  color: string;
-  images?: string[];
-  description?: string;
-  story?: string;
-  isFormerCar: boolean;
-  isMainVehicle?: boolean;
-  engine?: string;
-  volume?: string;
-  gearbox?: string;
-  drive?: string;
-  power?: number;
-  addedDate: string;
-}
+import { MyCar } from '@/lib/types';
 
 export function useMainVehicle() {
   const [mainVehicle, setMainVehicle] = useState<MyCar | null>(null);

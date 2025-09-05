@@ -16,7 +16,7 @@ export default function Sidebar() {
     { icon: Clock3,  label: "Neueste", href: "/explore?tab=new" },
   ];
 
-  // Динамически создаем подпункты для Meine Autos
+  // Dynamisch erstellte Unterpunkte für Meine Autos
   const getMyItems = () => {
     const subItems = [
       { label: "Alle Autos", href: "/my-cars" }
@@ -25,7 +25,7 @@ export default function Sidebar() {
     if (mainVehicle && !isLoading) {
       subItems.unshift({
         label: `${mainVehicle.make} ${mainVehicle.model}`,
-        href: "/my-cars?filter=main"
+        href: `/car/${mainVehicle.id}`
       });
     } else if (!isLoading) {
       subItems.unshift({
@@ -86,13 +86,13 @@ export default function Sidebar() {
     <aside className="hidden lg:block w-52 sidebar-container">
       <div className="p-4 h-full">
         <nav className="flex flex-col gap-2">
-          {/* Основные разделы */}
+          {/* Hauptbereiche */}
           {mainItems.map(item => renderItem(item))}
           
-          {/* Разделитель */}
+          {/* Trennlinie */}
           <div className="my-2 border-t border-neutral-200 dark:border-neutral-700"></div>
           
-          {/* Мои разделы */}
+          {/* Meine Bereiche */}
           {myItems.map(item => (
             <div key={item.href + item.label}>
               {renderItem(item)}
@@ -106,10 +106,10 @@ export default function Sidebar() {
             </div>
           ))}
           
-          {/* Разделитель */}
+          {/* Trennlinie */}
           <div className="my-2 border-t border-neutral-200 dark:border-neutral-700"></div>
           
-          {/* Настройки */}
+          {/* Einstellungen */}
           {settingsItems.map(item => renderItem(item))}
         </nav>
       </div>

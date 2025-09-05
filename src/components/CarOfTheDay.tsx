@@ -68,6 +68,12 @@ export default function CarOfTheDay({ yesterdayCar, todayCars, onVote }: CarOfTh
                       {yesterdayCar.votes} Stimmen gewonnen
                     </span>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-primary rounded-full"></div>
+                    <span className="text-white/80 text-sm">
+                      Fahrzeug des Tages
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -113,7 +119,7 @@ export default function CarOfTheDay({ yesterdayCar, todayCars, onVote }: CarOfTh
           <div className="mt-4 flex justify-center">
             <button 
               onClick={() => onVote?.('all')}
-              className="btn-primary flex items-center gap-2"
+              className="btn-accent flex items-center gap-2"
             >
               Wahl des Autos des Tages
               <ArrowUpRight size={16} />

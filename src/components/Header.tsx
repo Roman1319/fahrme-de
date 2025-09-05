@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type Props = {
-  variant?: "default" | "feed";  // feed — с большой search-пилюлей
+  variant?: "default" | "feed";  // feed — mit großer Such-Pille
   showAuth?: boolean;
 };
 
@@ -29,29 +29,27 @@ export default function Header({ variant="default", showAuth=true }: Props) {
   return (
     <header className="header-blur">
       <div className="max-w-5xl mx-auto w-full flex items-center justify-between gap-3 py-3 px-4">
-        {/* Лого */}
+        {/* Logo */}
         <a href={homeHref} className="flex items-center gap-2 shrink-0">
           <img src="/logo.png" alt="fahrme.de" className="h-6 w-auto rounded-md" />
           <span className="font-extrabold text-lg">fahrme.de</span>
         </a>
 
-        {/* Центр: поисковая пилюля — только для фида */}
+        {/* Mitte: Such-Pille — überall */}
         <div className="flex-1 max-w-2xl mx-4 hidden md:block">
-          {variant==="feed" && (
-            <form className="search-pill" onSubmit={onSearch}>
-              <Search size={16} className="search-icon" />
-              <input
-                value={q}
-                onChange={(e)=>setQ(e.target.value)}
-                placeholder="Suche in Beiträgen & Logbüchern"
-                aria-label="Suche"
-              />
-              <button type="submit" className="search-btn">Suchen</button>
-            </form>
-          )}
+          <form className="search-pill" onSubmit={onSearch}>
+            <Search size={16} className="search-icon" />
+            <input
+              value={q}
+              onChange={(e)=>setQ(e.target.value)}
+              placeholder="Suche in Beiträgen & Logbüchern"
+              aria-label="Suche"
+            />
+            <button type="submit" className="search-btn">Suchen</button>
+          </form>
         </div>
 
-        {/* Правый кластер */}
+        {/* Rechter Cluster */}
         <div className="flex items-center gap-2">
           <button className="icon-btn icon-btn--tight" title="Theme">
             <ThemeToggle/>
