@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, MessageCircle, Eye, Star, Edit, MoreVertical, Plus, Share2 } from 'lucide-react';
+import { Heart, MessageCircle, Eye, Star, Edit, MoreVertical, Plus, Share2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { MyCar, Comment, LogbookEntry } from '@/lib/types';
 import EditCarModal from '@/components/EditCarModal';
 import { useAuth } from '@/components/AuthProvider';
@@ -19,12 +19,16 @@ import {
   getCarStats,
   addComment,
   getComments,
+  editComment,
+  deleteComment,
+  likeComment,
   addLogbookEntry,
   getLogbookEntries,
   toggleLogbookEntryLike,
   getLogbookEntryLikes,
   hasUserLikedLogbookEntry
 } from '@/lib/interactions';
+import CommentsList from '@/components/ui/CommentsList';
 
 export default function CarPage() {
   const params = useParams();
@@ -36,7 +40,6 @@ export default function CarPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [logbookEntries, setLogbookEntries] = useState<LogbookEntry[]>([]);
-  const [newComment, setNewComment] = useState('');
   const [newLogbookEntry, setNewLogbookEntry] = useState('');
   const [showComments, setShowComments] = useState(false);
   const [showLogbook, setShowLogbook] = useState(false);
@@ -44,6 +47,9 @@ export default function CarPage() {
   const [userInteraction, setUserInteraction] = useState<{ isFollowing: boolean; isLiked: boolean } | null>(null);
   const [ownerProfile, setOwnerProfile] = useState<{ avatarUrl?: string | null; displayName?: string } | null>(null);
   const [commentProfiles, setCommentProfiles] = useState<Record<string, { avatarUrl?: string | null; displayName?: string }>>({});
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   
   // Проверяем, является ли текущий пользователь владельцем автомобиля
   const isOwner = car && user && isCarOwner(car, user.email);
@@ -56,6 +62,7 @@ export default function CarPage() {
     loadCarStats();
     loadUserInteraction();
     loadOwnerProfile();
+    setCurrentImageIndex(0); // Сбрасываем индекс изображения при загрузке нового автомобиля
     
     // Исправляем владение автомобилями при загрузке (только один раз)
     if (user?.email) {
@@ -149,12 +156,52 @@ export default function CarPage() {
     }
   };
 
-  const handleAddComment = () => {
-    if (!newComment.trim() || !user) return;
+  const handleAddComment = (text: string, images?: string[]) => {
+    if (!user) return;
 
-    addComment(carId, newComment, user.name, user.email);
+    addComment(carId, text, user.name, user.email, undefined, images || []);
     loadComments();
-    setNewComment('');
+  };
+
+  const handleAddReply = (parentId: string, text: string, images?: string[]) => {
+    if (!user) return;
+
+    addComment(carId, text, user.name, user.email, parentId, images || []);
+    loadComments();
+  };
+
+  const handleEditComment = (commentId: string, text: string) => {
+    editComment(carId, commentId, text);
+    loadComments();
+  };
+
+  const handleDeleteComment = (commentId: string) => {
+    deleteComment(carId, commentId);
+    loadComments();
+  };
+
+  const handleLikeComment = (commentId: string) => {
+    if (!user) return;
+    
+    likeComment(carId, commentId, user.email);
+    loadComments();
+  };
+
+  const handleLikeReply = (parentId: string, replyId: string) => {
+    if (!user) return;
+    
+    likeComment(carId, replyId, user.email);
+    loadComments();
+  };
+
+  const handleEditReply = (parentId: string, replyId: string, text: string) => {
+    editComment(carId, replyId, text);
+    loadComments();
+  };
+
+  const handleDeleteReply = (parentId: string, replyId: string) => {
+    deleteComment(carId, replyId);
+    loadComments();
   };
 
   const handleAddLogbookEntry = () => {
@@ -166,7 +213,7 @@ export default function CarPage() {
   };
 
   const handleToggleFollow = () => {
-    if (!user) return;
+    if (!user || isOwner) return;
     
     toggleCarFollow(carId, user.email);
     loadUserInteraction();
@@ -174,7 +221,7 @@ export default function CarPage() {
   };
 
   const handleToggleLike = () => {
-    if (!user) return;
+    if (!user || isOwner) return;
     
     toggleCarLike(carId, user.email);
     loadUserInteraction();
@@ -188,21 +235,7 @@ export default function CarPage() {
     loadLogbookEntries();
   };
 
-  const handleLikeComment = (commentId: string) => {
-    const updatedComments = comments.map(comment => 
-      comment.id === commentId 
-        ? { ...comment, likes: comment.likes + 1 }
-        : comment
-    );
-    setComments(updatedComments);
-    localStorage.setItem(`fahrme:comments:${carId}`, JSON.stringify(updatedComments));
-  };
 
-  const handleDeleteComment = (commentId: string) => {
-    const updatedComments = comments.filter(comment => comment.id !== commentId);
-    setComments(updatedComments);
-    localStorage.setItem(`fahrme:comments:${carId}`, JSON.stringify(updatedComments));
-  };
 
   const handleSaveCar = (updatedCar: MyCar) => {
     const savedCars = localStorage.getItem('fahrme:my-cars');
@@ -225,13 +258,52 @@ export default function CarPage() {
   const handleSubscribeToUser = (userEmail: string) => {
     // TODO: Implement subscribe functionality
     console.log('Subscribe to user:', userEmail);
-    alert('Функция подписки будет реализована позже');
+    alert('Abonnement-Funktion wird später implementiert');
   };
 
   const handleMessageUser = (userEmail: string) => {
     // TODO: Implement message functionality
     console.log('Message user:', userEmail);
-    alert('Функция отправки сообщений будет реализована позже');
+    alert('Nachrichten-Funktion wird später implementiert');
+  };
+
+  const nextImage = () => {
+    if (car?.images && car.images.length > 0 && !isTransitioning) {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentImageIndex((prev) => (prev + 1) % (car.images?.length || 1));
+        setTimeout(() => setIsTransitioning(false), 50);
+      }, 150);
+    }
+  };
+
+  const prevImage = () => {
+    if (car?.images && car.images.length > 0 && !isTransitioning) {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        const imagesLength = car.images?.length || 1;
+        setCurrentImageIndex((prev) => (prev - 1 + imagesLength) % imagesLength);
+        setTimeout(() => setIsTransitioning(false), 50);
+      }, 150);
+    }
+  };
+
+  const goToImage = (index: number) => {
+    if (car?.images && car.images.length > 0 && !isTransitioning && index !== currentImageIndex) {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentImageIndex(index);
+        setTimeout(() => setIsTransitioning(false), 50);
+      }, 150);
+    }
+  };
+
+  const openImageModal = () => {
+    setShowImageModal(true);
+  };
+
+  const closeImageModal = () => {
+    setShowImageModal(false);
   };
 
   if (isLoading) {
@@ -295,16 +367,66 @@ export default function CarPage() {
             )}
           </div>
 
-          {/* Hero Image */}
-          <div className="img-rounded aspect-[16/10] relative overflow-hidden mb-3">
+          {/* Photo Gallery */}
+          <div className="img-rounded aspect-[16/10] relative overflow-hidden mb-3 group">
             {car.images && car.images.length > 0 ? (
-              <Image
-                src={car.images[0]}
-                alt={car.name || `${car.make} ${car.model}`}
-                fill
-                className="object-cover"
-                priority
-              />
+              <>
+                <div className="relative w-full h-full">
+                  <Image
+                    src={car.images[currentImageIndex]}
+                    alt={car.name || `${car.make} ${car.model}`}
+                    fill
+                    className={`object-cover cursor-pointer transition-all duration-300 ${
+                      isTransitioning ? 'opacity-0 scale-105' : 'opacity-100 scale-100'
+                    }`}
+                    priority
+                    onClick={openImageModal}
+                  />
+                </div>
+                
+                {/* Navigation arrows */}
+                {car.images.length > 1 && (
+                  <>
+                    <button
+                      onClick={prevImage}
+                      disabled={isTransitioning}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <button
+                      onClick={nextImage}
+                      disabled={isTransitioning}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </>
+                )}
+                
+                {/* Image counter */}
+                {car.images.length > 1 && (
+                  <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                    {currentImageIndex + 1} / {car.images.length}
+                  </div>
+                )}
+                
+                {/* Dots indicator */}
+                {car.images.length > 1 && (
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                    {car.images.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => goToImage(index)}
+                        disabled={isTransitioning}
+                        className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                          index === currentImageIndex ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/70'
+                        } disabled:cursor-not-allowed`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             ) : (
               <div className="w-full h-full bg-fallback flex items-center justify-center">
                 <span className="opacity-50 text-sm">Kein Foto</span>
@@ -313,52 +435,70 @@ export default function CarPage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-1.5 flex-wrap mb-3">
-            <button 
-              onClick={handleToggleFollow}
-              className={`px-2 py-1 text-xs ${userInteraction?.isFollowing ? 'btn-accent' : 'btn-secondary'}`}
-            >
-              {userInteraction?.isFollowing ? '✓ Abonniert' : 'Auto abonnieren'}
-            </button>
-            <button 
-              onClick={handleToggleLike}
-              className={`px-2 py-1 text-xs flex items-center gap-1 ${userInteraction?.isLiked ? 'btn-accent' : 'btn-secondary'}`}
-            >
-              <Heart size={12} className={userInteraction?.isLiked ? 'fill-current' : ''} />
-              {carStats.likes} Likes
-            </button>
-            <button className="btn-secondary px-2 py-1 text-xs">
-              {car.make} abonnieren
-            </button>
-          </div>
+          {!isOwner && (
+            <div className="flex gap-1.5 flex-wrap mb-3">
+              <button 
+                onClick={handleToggleFollow}
+                className={`px-2 py-1 text-xs ${userInteraction?.isFollowing ? 'btn-accent' : 'btn-secondary'}`}
+              >
+                {userInteraction?.isFollowing ? '✓ Abonniert' : 'Auto abonnieren'}
+              </button>
+            </div>
+          )}
 
           {/* Car Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
             <div className="bg-white/5 rounded-lg p-3 text-center">
               <div className="text-lg font-bold text-accent">0</div>
-              <div className="text-xs opacity-70">Рейтинг авто</div>
+              <div className="text-xs opacity-70">Auto-Bewertung</div>
               <div className="text-xs opacity-50">0-100</div>
             </div>
             <div className="bg-white/5 rounded-lg p-3 text-center">
               <div className="text-lg font-bold text-primary">{logbookEntries.length}</div>
-              <div className="text-xs opacity-70">Посты</div>
-              <div className="text-xs opacity-50">всего</div>
+              <div className="text-xs opacity-70">Posts</div>
+              <div className="text-xs opacity-50">insgesamt</div>
             </div>
             <div className="bg-white/5 rounded-lg p-3 text-center">
-              <div className="text-lg font-bold text-accent flex items-center justify-center gap-1">
-                <Heart size={14} className="fill-current" />
-                <span>{carStats.likes}</span>
-                <span className="text-pink-400">•</span>
-                <span className="text-purple-400">•</span>
-                <span>{comments.length}</span>
+              <div className="text-left mb-2">
+                <div className="text-xs opacity-70">Reaktionen</div>
               </div>
-              <div className="text-xs opacity-70">Реакции</div>
-              <div className="text-xs opacity-50">суммарно</div>
+              <div className="flex items-center justify-center gap-2 mb-1">
+                {isOwner ? (
+                  <div className="flex items-center gap-1 text-white opacity-70">
+                    <Heart 
+                      size={16} 
+                      className="fill-current text-red-500" 
+                    />
+                    <span className="text-lg font-bold">{carStats.likes}</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleToggleLike}
+                    className={`flex items-center gap-1 transition-all ${
+                      userInteraction?.isLiked 
+                        ? 'text-red-500' 
+                        : 'text-white opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <Heart 
+                      size={16} 
+                      className={`${userInteraction?.isLiked ? 'fill-current' : ''}`} 
+                    />
+                    <span className="text-lg font-bold">{carStats.likes}</span>
+                  </button>
+                )}
+                <div className="w-1 h-1 bg-white/30 rounded-full"></div>
+                <div className="flex items-center gap-1">
+                  <MessageCircle size={16} className="text-purple-400" />
+                  <span className="text-lg font-bold">{comments.length}</span>
+                </div>
+              </div>
+              <div className="text-xs opacity-50">insgesamt</div>
             </div>
             <div className="bg-white/5 rounded-lg p-3 text-center">
               <div className="text-lg font-bold text-accent">{carStats.followers}</div>
-              <div className="text-xs opacity-70">Подписчики</div>
-              <div className="text-xs opacity-50">на машину</div>
+              <div className="text-xs opacity-70">Abonnenten</div>
+              <div className="text-xs opacity-50">für das Auto</div>
             </div>
           </div>
 
@@ -368,13 +508,13 @@ export default function CarPage() {
               <div className="relative">
                 <AvatarTooltip
                   src={ownerProfile?.avatarUrl || null}
-                  name={ownerProfile?.displayName || car.ownerId || 'Пользователь'}
+                  name={ownerProfile?.displayName || car.ownerId || 'Benutzer'}
                   size={48}
                   userInfo={{
-                    displayName: ownerProfile?.displayName || car.ownerId || 'Пользователь',
-                    fullName: car.ownerId || 'Пользователь',
+                    displayName: ownerProfile?.displayName || car.ownerId || 'Benutzer',
+                    fullName: car.ownerId || 'Benutzer',
                     city: car.ownerCity || 'Мюнхен',
-                    about: `Владелец ${car.make} ${car.model}`
+                    about: `Besitzer von ${car.make} ${car.model}`
                   }}
                   onSubscribe={!isOwner ? () => handleSubscribeToUser(car.ownerId || '') : undefined}
                   onMessage={!isOwner ? () => handleMessageUser(car.ownerId || '') : undefined}
@@ -386,18 +526,18 @@ export default function CarPage() {
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="text-base font-bold">
-                    {isOwner ? 'Du' : (car.ownerId || 'Пользователь')}
+                    {isOwner ? 'Du' : (car.ownerId || 'Benutzer')}
                   </div>
                   {car.ownerAge && (
                     <div className="text-xs opacity-70">
-                      {car.ownerAge} года
+                      {car.ownerAge} Jahre
                     </div>
                   )}
                 </div>
                 <div className="text-sm opacity-80 mb-1">
-                  Я езжу на <Link href={`/car/${car.id}`} className="font-semibold hover:opacity-100 transition-opacity">{car.make} {car.model}</Link>
-                  {car.isFormerCar && ' (бывшая машина)'}
-                  {car.previousCar && ` (до этого — ${car.previousCar})`}
+                  Ich fahre <Link href={`/car/${car.id}`} className="font-semibold hover:opacity-100 transition-opacity">{car.make} {car.model}</Link>
+                  {car.isFormerCar && ' (ehemaliges Auto)'}
+                  {car.previousCar && ` (davor — ${car.previousCar})`}
                 </div>
                 <div className="text-xs opacity-60">
                   {car.ownerCity || 'Мюнхен'}
@@ -651,93 +791,18 @@ export default function CarPage() {
 
       {/* Comments Section */}
       <div className="section">
-        <div className="flex justify-between items-center mb-3">
-          <h2 className="text-sm font-bold">Комментарии</h2>
-          <span className="text-xs opacity-70">{comments.length} комментариев</span>
-        </div>
-        
-        {/* Add Comment Form */}
-        {user && (
-          <div className="mb-4">
-            <div className="flex gap-2">
-              <AvatarTooltip
-                src={ownerProfile?.avatarUrl || null}
-                name={user.email || 'User'}
-                size={32}
-                userInfo={{
-                  displayName: ownerProfile?.displayName || user.name || user.email || 'User',
-                  fullName: user.name || user.email || 'User',
-                  city: ownerProfile?.city || 'Мюнхен',
-                  about: 'Вы'
-                }}
-                showActions={false}
-              />
-              <div className="flex-1">
-                <textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Напишите комментарий об этом автомобиле..."
-                  className="w-full p-3 bg-white/5 border border-white/10 rounded-lg text-sm resize-none focus:outline-none focus:border-accent transition-colors"
-                  rows={3}
-                />
-                <div className="flex justify-end mt-2">
-                  <button
-                    onClick={handleAddComment}
-                    disabled={!newComment.trim()}
-                    className="btn-accent px-4 py-1.5 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Отправить
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Comments List */}
-        <div className="space-y-3">
-          {comments.length === 0 ? (
-            <div className="text-center py-6 text-sm opacity-70">
-              Пока нет комментариев. Будьте первым!
-            </div>
-          ) : (
-            comments.map((comment) => {
-              const authorProfile = commentProfiles[comment.authorEmail];
-              return (
-                <div key={comment.id} className="flex gap-3">
-                  <AvatarTooltip
-                    src={authorProfile?.avatarUrl || null}
-                    name={authorProfile?.displayName || comment.author}
-                    size={32}
-                    userInfo={{
-                      displayName: authorProfile?.displayName || comment.author,
-                      fullName: comment.author,
-                      city: 'Мюнхен', // TODO: Get from profile
-                      about: `Автор комментария`
-                    }}
-                    onSubscribe={() => handleSubscribeToUser(comment.authorEmail)}
-                    onMessage={() => handleMessageUser(comment.authorEmail)}
-                    showActions={comment.authorEmail !== user?.email}
-                  />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-sm">{authorProfile?.displayName || comment.author}</span>
-                    <span className="text-xs opacity-60">
-                      {new Date(comment.timestamp).toLocaleDateString('ru-RU', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  </div>
-                  <p className="text-sm opacity-80 leading-relaxed">{comment.text}</p>
-                </div>
-              </div>
-              );
-            })
-          )}
-        </div>
+        <CommentsList
+          comments={comments}
+          onAddComment={handleAddComment}
+          onLikeComment={handleLikeComment}
+          onEditComment={handleEditComment}
+          onDeleteComment={handleDeleteComment}
+          onAddReply={handleAddReply}
+          onLikeReply={handleLikeReply}
+          onEditReply={handleEditReply}
+          onDeleteReply={handleDeleteReply}
+          title="Kommentare"
+        />
       </div>
 
       {/* Edit Car Modal */}
@@ -748,6 +813,84 @@ export default function CarPage() {
           onClose={() => setShowEditModal(false)}
           onSave={handleSaveCar}
         />
+      )}
+
+      {/* Image Modal */}
+      {showImageModal && car?.images && car.images.length > 0 && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
+          onClick={closeImageModal}
+        >
+          <div 
+            className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              onClick={closeImageModal}
+              className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+            >
+              <X size={24} />
+            </button>
+
+            {/* Navigation arrows */}
+            {car.images.length > 1 && (
+              <>
+                <button
+                  onClick={prevImage}
+                  disabled={isTransitioning}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                <button
+                  onClick={nextImage}
+                  disabled={isTransitioning}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight size={24} />
+                </button>
+              </>
+            )}
+
+            {/* Image */}
+            <div className="relative w-full h-full flex items-center justify-center">
+              <Image
+                src={car.images[currentImageIndex]}
+                alt={car.name || `${car.make} ${car.model}`}
+                width={1200}
+                height={800}
+                className={`max-w-full max-h-full object-contain transition-all duration-300 ${
+                  isTransitioning ? 'opacity-0 scale-105' : 'opacity-100 scale-100'
+                }`}
+                priority
+              />
+            </div>
+
+            {/* Image counter */}
+            {car.images.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white text-sm px-3 py-1 rounded">
+                {currentImageIndex + 1} / {car.images.length}
+              </div>
+            )}
+
+            {/* Dots indicator */}
+            {car.images.length > 1 && (
+              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-2">
+                {car.images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToImage(index)}
+                    disabled={isTransitioning}
+                    className={`w-3 h-3 rounded-full transition-all duration-200 ${
+                      index === currentImageIndex ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/70'
+                    } disabled:cursor-not-allowed`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </main>
   );

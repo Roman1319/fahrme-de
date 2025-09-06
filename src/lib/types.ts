@@ -30,6 +30,11 @@ export interface Comment {
   timestamp: string;
   likes: number;
   carId: string;
+  parentId?: string; // Для вложенных комментариев
+  replies?: Comment[]; // Вложенные комментарии
+  isEdited?: boolean; // Был ли отредактирован
+  editedAt?: string; // Время редактирования
+  images?: string[]; // Прикрепленные изображения
 }
 
 export interface LogbookEntry {

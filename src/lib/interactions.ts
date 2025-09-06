@@ -99,7 +99,7 @@ export function hasUserLikedLogbookEntry(entryId: string, userEmail: string): bo
 
 // === Управление комментариями ===
 
-export function addComment(carId: string, text: string, author: string, authorEmail: string): Comment {
+export function addComment(carId: string, text: string, author: string, authorEmail: string, parentId?: string, images?: string[]): Comment {
   const comment: Comment = {
     id: Date.now().toString(),
     text,
@@ -107,8 +107,11 @@ export function addComment(carId: string, text: string, author: string, authorEm
     authorEmail,
     timestamp: new Date().toLocaleString('de-DE'),
     likes: 0,
-    carId
+    carId,
+    parentId,
+    images: images || []
   };
+  
   
   const comments = getComments(carId);
   comments.push(comment);
@@ -121,7 +124,15 @@ export function getComments(carId: string): Comment[] {
   const savedComments = localStorage.getItem(`fahrme:comments:${carId}`);
   if (savedComments) {
     try {
-      return JSON.parse(savedComments);
+      const comments = JSON.parse(savedComments);
+      
+      // Миграция: добавляем поле images для старых комментариев
+      const migratedComments = comments.map((comment: any) => ({
+        ...comment,
+        images: comment.images || []
+      }));
+      
+      return migratedComments;
     } catch (error) {
       console.error('Error loading comments:', error);
       return [];
@@ -132,6 +143,47 @@ export function getComments(carId: string): Comment[] {
 
 export function saveComments(carId: string, comments: Comment[]): void {
   localStorage.setItem(`fahrme:comments:${carId}`, JSON.stringify(comments));
+}
+
+export function editComment(carId: string, commentId: string, text: string): boolean {
+  const comments = getComments(carId);
+  const comment = comments.find(c => c.id === commentId);
+  
+  if (comment) {
+    comment.text = text;
+    comment.isEdited = true;
+    comment.editedAt = new Date().toLocaleString('de-DE');
+    saveComments(carId, comments);
+    return true;
+  }
+  
+  return false;
+}
+
+export function deleteComment(carId: string, commentId: string): boolean {
+  const comments = getComments(carId);
+  const filteredComments = comments.filter(c => c.id !== commentId);
+  
+  if (filteredComments.length < comments.length) {
+    saveComments(carId, filteredComments);
+    return true;
+  }
+  
+  return false;
+}
+
+export function likeComment(carId: string, commentId: string, userEmail: string): boolean {
+  const comments = getComments(carId);
+  const comment = comments.find(c => c.id === commentId);
+  
+  if (comment) {
+    // Простая логика лайков - в реальном приложении нужно хранить отдельно
+    comment.likes += 1;
+    saveComments(carId, comments);
+    return true;
+  }
+  
+  return false;
 }
 
 // === Управление записями бортового журнала ===

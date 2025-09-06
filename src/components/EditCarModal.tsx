@@ -28,10 +28,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
     gearbox: car.gearbox || '',
     drive: car.drive || '',
     description: car.description || '',
-    story: car.story || '',
-    ownerAge: car.ownerAge || 0,
-    ownerCity: car.ownerCity || '',
-    previousCar: car.previousCar || ''
+    story: car.story || ''
   });
   const [images, setImages] = useState<string[]>(car.images || []);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,24 +73,20 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
   };
 
   const handleImageUpload = (newImages: string[]) => {
-    setImages(prev => [...prev, ...newImages]);
-  };
-
-  const handleImageRemove = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+    setImages(newImages);
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="modal-glass w-full max-w-lg max-h-[90vh] overflow-y-auto p-4">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto section p-6">
         {/* Header */}
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold">Bearbeiten</h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="h2">Auto bearbeiten</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-white/60 hover:text-white transition-colors p-1"
           >
             <X size={20} />
           </button>
@@ -103,7 +96,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1 opacity-80">Marke *</label>
+              <label className="form-label">Marke *</label>
               <AutoCompleteInput
                 value={formData.make}
                 onChange={(value) => setFormData(prev => ({ ...prev, make: value, model: '' }))}
@@ -114,7 +107,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
             </div>
             
             <div>
-              <label className="block text-xs font-medium mb-1 opacity-80">Modell *</label>
+              <label className="form-label">Modell *</label>
               <AutoCompleteInput
                 value={formData.model}
                 onChange={(value) => setFormData(prev => ({ ...prev, model: value }))}
@@ -125,7 +118,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1 opacity-80">Fahrzeugname</label>
+              <label className="form-label">Fahrzeugname</label>
               <input
                 type="text"
                 value={formData.name}
@@ -136,7 +129,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1 opacity-80">Baujahr *</label>
+              <label className="form-label">Baujahr *</label>
               <AutoCompleteInput
                 value={formData.year === 0 ? '' : formData.year.toString()}
                 onChange={(value) => setFormData(prev => ({ ...prev, year: value ? parseInt(value) : 0 }))}
@@ -147,7 +140,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1 opacity-80">Farbe</label>
+              <label className="form-label">Farbe</label>
               <input
                 type="text"
                 value={formData.color}
@@ -158,7 +151,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1 opacity-80">Leistung (PS)</label>
+              <label className="form-label">Leistung (PS)</label>
               <input
                 type="text"
                 value={formData.power === 0 ? '' : formData.power.toString()}
@@ -182,7 +175,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
           {/* Technical Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1 opacity-80">Motor</label>
+              <label className="form-label">Motor</label>
               <input
                 type="text"
                 value={formData.engine}
@@ -193,7 +186,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1 opacity-80">Hubraum</label>
+              <label className="form-label">Hubraum</label>
               <input
                 type="text"
                 value={formData.volume}
@@ -204,7 +197,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1 opacity-80">Getriebe</label>
+              <label className="form-label">Getriebe</label>
               <input
                 type="text"
                 value={formData.gearbox}
@@ -215,7 +208,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1 opacity-80">Antrieb</label>
+              <label className="form-label">Antrieb</label>
               <input
                 type="text"
                 value={formData.drive}
@@ -229,7 +222,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
           {/* Description and Story */}
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-medium mb-1 opacity-80">Beschreibung</label>
+              <label className="form-label">Beschreibung</label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
@@ -240,7 +233,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1 opacity-80">Geschichte</label>
+              <label className="form-label">Geschichte</label>
               <textarea
                 value={formData.story}
                 onChange={(e) => setFormData(prev => ({ ...prev, story: e.target.value }))}
@@ -251,78 +244,15 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
             </div>
           </div>
 
-          {/* Owner Info */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium opacity-80">Информация о владельце</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-medium mb-1 opacity-80">Возраст</label>
-                <input
-                  type="number"
-                  value={formData.ownerAge || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, ownerAge: parseInt(e.target.value) || 0 }))}
-                  placeholder="32"
-                  min="16"
-                  max="100"
-                  className="form-input"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium mb-1 opacity-80">Город</label>
-                <input
-                  type="text"
-                  value={formData.ownerCity}
-                  onChange={(e) => setFormData(prev => ({ ...prev, ownerCity: e.target.value }))}
-                  placeholder="Мюнхен"
-                  className="form-input"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium mb-1 opacity-80">Предыдущий автомобиль</label>
-                <input
-                  type="text"
-                  value={formData.previousCar}
-                  onChange={(e) => setFormData(prev => ({ ...prev, previousCar: e.target.value }))}
-                  placeholder="Audi Q3"
-                  className="form-input"
-                />
-              </div>
-            </div>
-          </div>
 
           {/* Photo Upload */}
           <div>
-            <label className="block text-xs font-medium mb-1 opacity-80">Fotos</label>
+            <label className="form-label">Fotos</label>
             <ImageUpload
               images={images}
               onImagesChange={handleImageUpload}
               maxImages={10}
-              className="mb-3"
             />
-            
-            {/* Display current images */}
-            {images.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {images.map((image, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={image}
-                      alt={`Foto ${index + 1}`}
-                      className="w-full h-16 object-cover rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleImageRemove(index)}
-                      className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 transition-colors"
-                    >
-                      <X size={10} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Actions */}
@@ -330,14 +260,14 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
             <button
               type="button"
               onClick={onClose}
-              className="btn-secondary px-3 py-1.5 text-xs"
+              className="btn-secondary"
             >
               Abbrechen
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="btn-primary px-3 py-1.5 text-xs"
+              className="btn-primary"
             >
               {isSubmitting ? 'Speichern...' : 'Speichern'}
             </button>
