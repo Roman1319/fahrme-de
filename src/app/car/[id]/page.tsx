@@ -26,7 +26,8 @@ import {
   getLogbookEntries,
   toggleLogbookEntryLike,
   getLogbookEntryLikes,
-  hasUserLikedLogbookEntry
+  hasUserLikedLogbookEntry,
+  deleteLogbookEntry
 } from '@/lib/interactions';
 import CommentsList from '@/components/ui/CommentsList';
 
@@ -40,7 +41,7 @@ export default function CarPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [logbookEntries, setLogbookEntries] = useState<LogbookEntry[]>([]);
-  const [newLogbookEntry, setNewLogbookEntry] = useState('');
+  const [newComment, setNewComment] = useState('');
   const [showComments, setShowComments] = useState(false);
   const [showLogbook, setShowLogbook] = useState(false);
   const [carStats, setCarStats] = useState({ followers: 0, likes: 0 });
@@ -121,6 +122,11 @@ export default function CarPage() {
         if (foundCar && !foundCar.ownerId) {
           console.warn('Автомобиль без владельца:', foundCar);
           // Можно показать сообщение или перенаправить
+        }
+        
+        // Добавляем тестовое изображение, если у автомобиля нет изображений
+        if (foundCar && (!foundCar.images || foundCar.images.length === 0)) {
+          foundCar.images = ['/bmw-g20.jpg'];
         }
         
         setCar(foundCar || null);
@@ -204,13 +210,6 @@ export default function CarPage() {
     loadComments();
   };
 
-  const handleAddLogbookEntry = () => {
-    if (!newLogbookEntry.trim() || !user) return;
-
-    addLogbookEntry(carId, newLogbookEntry, user.name, user.email, 'general');
-    loadLogbookEntries();
-    setNewLogbookEntry('');
-  };
 
   const handleToggleFollow = () => {
     if (!user || isOwner) return;
@@ -233,6 +232,17 @@ export default function CarPage() {
     
     toggleLogbookEntryLike(entryId, user.email);
     loadLogbookEntries();
+  };
+
+  const handleDeleteLogbookEntry = (entryId: string) => {
+    if (!user) return;
+    
+    if (confirm('Möchten Sie diesen Logbuch-Eintrag wirklich löschen?')) {
+      const success = deleteLogbookEntry(carId, entryId);
+      if (success) {
+        loadLogbookEntries();
+      }
+    }
   };
 
 
@@ -306,6 +316,19 @@ export default function CarPage() {
     setShowImageModal(false);
   };
 
+  const formatTimeAgo = (timestamp: string) => {
+    const now = new Date();
+    const entryTime = new Date(timestamp);
+    const diffInSeconds = Math.floor((now.getTime() - entryTime.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return 'только что';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} мин`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} ч`;
+    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} дн`;
+    if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)} мес`;
+    return `${Math.floor(diffInSeconds / 31536000)} г`;
+  };
+
   if (isLoading) {
     return (
       <main className="pb-12">
@@ -340,35 +363,36 @@ export default function CarPage() {
 
         {/* Header */}
         <div className="section">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <h1 className="text-lg md:text-xl font-extrabold">{car.name || `${car.make} ${car.model}`}</h1>
-              <p className="opacity-70 text-xs mt-1">
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base md:text-lg font-extrabold truncate">{car.name || `${car.make} ${car.model}`}</h1>
+              <p className="opacity-70 text-xs mt-1 truncate">
                 {car.year} • {car.make} {car.model}
                 {car.color && ` • ${car.color}`}
               </p>
             </div>
             {isOwner && (
-              <div className="flex gap-1.5">
+              <div className="flex gap-1 flex-shrink-0 ml-2">
                 <button 
                   onClick={() => setShowEditModal(true)}
-                  className="btn-primary flex items-center gap-1 px-2 py-1 text-xs"
+                  className="btn-primary flex items-center gap-1 px-1.5 py-1 text-xs"
                 >
-                  <Edit size={12} />
-                  Bearbeiten
+                  <Edit size={10} />
+                  <span className="hidden sm:inline">Bearbeiten</span>
                 </button>
                 <button 
                   onClick={() => setShowComments(true)}
-                  className="btn-accent px-2 py-1 text-xs"
+                  className="btn-accent px-1.5 py-1 text-xs"
                 >
-                  In Logbuch schreiben
+                  <span className="hidden sm:inline">In Logbuch schreiben</span>
+                  <span className="sm:hidden">Logbuch</span>
                 </button>
               </div>
             )}
           </div>
 
           {/* Photo Gallery */}
-          <div className="img-rounded aspect-[16/10] relative overflow-hidden mb-3 group">
+          <div className="img-rounded aspect-[4/3] md:aspect-[16/10] relative overflow-hidden mb-2 group max-h-96 md:max-h-[500px]">
             {car.images && car.images.length > 0 ? (
               <>
                 <div className="relative w-full h-full">
@@ -376,11 +400,13 @@ export default function CarPage() {
                     src={car.images[currentImageIndex]}
                     alt={car.name || `${car.make} ${car.model}`}
                     fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     className={`object-cover cursor-pointer transition-all duration-300 ${
                       isTransitioning ? 'opacity-0 scale-105' : 'opacity-100 scale-100'
                     }`}
                     priority
                     onClick={openImageModal}
+                    quality={75}
                   />
                 </div>
                 
@@ -428,15 +454,21 @@ export default function CarPage() {
                 )}
               </>
             ) : (
-              <div className="w-full h-full bg-fallback flex items-center justify-center">
-                <span className="opacity-50 text-sm">Kein Foto</span>
+              <div className="w-full h-full bg-fallback flex flex-col items-center justify-center text-center p-4">
+                <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-3">
+                  <svg className="w-8 h-8 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <span className="opacity-60 text-sm font-medium">Kein Foto verfügbar</span>
+                <span className="opacity-40 text-xs mt-1">Fügen Sie ein Bild hinzu</span>
               </div>
             )}
           </div>
 
           {/* Action Buttons */}
           {!isOwner && (
-            <div className="flex gap-1.5 flex-wrap mb-3">
+            <div className="flex gap-1.5 flex-wrap mb-2">
               <button 
                 onClick={handleToggleFollow}
                 className={`px-2 py-1 text-xs ${userInteraction?.isFollowing ? 'btn-accent' : 'btn-secondary'}`}
@@ -447,29 +479,29 @@ export default function CarPage() {
           )}
 
           {/* Car Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-            <div className="bg-white/5 rounded-lg p-3 text-center">
-              <div className="text-lg font-bold text-accent">0</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
+            <div className="bg-white/5 rounded-lg p-2 text-center">
+              <div className="text-base font-bold text-accent">0</div>
               <div className="text-xs opacity-70">Auto-Bewertung</div>
               <div className="text-xs opacity-50">0-100</div>
             </div>
-            <div className="bg-white/5 rounded-lg p-3 text-center">
-              <div className="text-lg font-bold text-primary">{logbookEntries.length}</div>
+            <div className="bg-white/5 rounded-lg p-2 text-center">
+              <div className="text-base font-bold text-primary">{logbookEntries.length}</div>
               <div className="text-xs opacity-70">Posts</div>
               <div className="text-xs opacity-50">insgesamt</div>
             </div>
-            <div className="bg-white/5 rounded-lg p-3 text-center">
-              <div className="text-left mb-2">
+            <div className="bg-white/5 rounded-lg p-2 text-center">
+              <div className="text-left mb-1">
                 <div className="text-xs opacity-70">Reaktionen</div>
               </div>
-              <div className="flex items-center justify-center gap-2 mb-1">
+              <div className="flex items-center justify-center gap-1 mb-1">
                 {isOwner ? (
                   <div className="flex items-center gap-1 text-white opacity-70">
                     <Heart 
-                      size={16} 
+                      size={14} 
                       className="fill-current text-red-500" 
                     />
-                    <span className="text-lg font-bold">{carStats.likes}</span>
+                    <span className="text-sm font-bold">{carStats.likes}</span>
                   </div>
                 ) : (
                   <button
@@ -481,35 +513,35 @@ export default function CarPage() {
                     }`}
                   >
                     <Heart 
-                      size={16} 
+                      size={14} 
                       className={`${userInteraction?.isLiked ? 'fill-current' : ''}`} 
                     />
-                    <span className="text-lg font-bold">{carStats.likes}</span>
+                    <span className="text-sm font-bold">{carStats.likes}</span>
                   </button>
                 )}
                 <div className="w-1 h-1 bg-white/30 rounded-full"></div>
                 <div className="flex items-center gap-1">
-                  <MessageCircle size={16} className="text-purple-400" />
-                  <span className="text-lg font-bold">{comments.length}</span>
+                  <MessageCircle size={14} className="text-purple-400" />
+                  <span className="text-sm font-bold">{comments.length}</span>
                 </div>
               </div>
               <div className="text-xs opacity-50">insgesamt</div>
             </div>
-            <div className="bg-white/5 rounded-lg p-3 text-center">
-              <div className="text-lg font-bold text-accent">{carStats.followers}</div>
+            <div className="bg-white/5 rounded-lg p-2 text-center">
+              <div className="text-base font-bold text-accent">{carStats.followers}</div>
               <div className="text-xs opacity-70">Abonnenten</div>
               <div className="text-xs opacity-50">für das Auto</div>
             </div>
           </div>
 
           {/* Owner Info */}
-          <div className="bg-white/5 rounded-lg p-3 flex items-center justify-between">
+          <div className="bg-white/5 rounded-lg p-2 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">
                 <AvatarTooltip
                   src={ownerProfile?.avatarUrl || null}
                   name={ownerProfile?.displayName || car.ownerId || 'Benutzer'}
-                  size={48}
+                  size={40}
                   userInfo={{
                     displayName: ownerProfile?.displayName || car.ownerId || 'Benutzer',
                     fullName: car.ownerId || 'Benutzer',
@@ -521,25 +553,25 @@ export default function CarPage() {
                   showActions={!isOwner}
                 />
                 {/* Online indicator */}
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-dark"></div>
+                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-dark"></div>
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="text-base font-bold">
+                  <div className="text-sm font-bold truncate">
                     {isOwner ? 'Du' : (car.ownerId || 'Benutzer')}
                   </div>
                   {car.ownerAge && (
-                    <div className="text-xs opacity-70">
+                    <div className="text-xs opacity-70 flex-shrink-0">
                       {car.ownerAge} Jahre
                     </div>
                   )}
                 </div>
-                <div className="text-sm opacity-80 mb-1">
+                <div className="text-xs opacity-80 mb-1 truncate">
                   Ich fahre <Link href={`/car/${car.id}`} className="font-semibold hover:opacity-100 transition-opacity">{car.make} {car.model}</Link>
                   {car.isFormerCar && ' (ehemaliges Auto)'}
                   {car.previousCar && ` (davor — ${car.previousCar})`}
                 </div>
-                <div className="text-xs opacity-60">
+                <div className="text-xs opacity-60 truncate">
                   {car.ownerCity || 'Мюнхен'}
                 </div>
               </div>
@@ -558,7 +590,7 @@ export default function CarPage() {
             {car.power && (
               <div className="flex items-center gap-2">
                 <span className="text-accent">•</span>
-                <span className="opacity-80">Dmotor {car.engine}, {car.power} PS</span>
+                <span className="opacity-80">Motor {car.engine}, {car.power} PS</span>
               </div>
             )}
             {car.gearbox && (
@@ -586,7 +618,7 @@ export default function CarPage() {
         {car.description && (
           <div className="section">
             <h2 className="text-sm font-bold mb-2">Beschreibung</h2>
-            <p className="opacity-80 text-xs leading-relaxed">{car.description}</p>
+            <p className="opacity-80 text-xs leading-relaxed break-words whitespace-pre-wrap">{car.description}</p>
           </div>
         )}
 
@@ -594,7 +626,7 @@ export default function CarPage() {
         {car.story && (
           <div className="section">
             <h2 className="text-sm font-bold mb-2">Geschichte</h2>
-            <p className="opacity-80 text-xs leading-relaxed">{car.story}</p>
+            <p className="opacity-80 text-xs leading-relaxed break-words whitespace-pre-wrap">{car.story}</p>
           </div>
         )}
 
@@ -602,57 +634,104 @@ export default function CarPage() {
         <div className="section">
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-sm font-bold">Logbuch</h2>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               {isOwner && (
                 <button 
-                  onClick={() => setShowLogbook(true)}
-                  className="btn-accent flex items-center gap-1 px-2 py-1 text-xs"
+                  onClick={() => window.location.href = `/cars/${car.make.toLowerCase()}/${car.model.toLowerCase()}/${carId}/logbook/new`}
+                  className="btn-accent flex items-center gap-1 px-1.5 py-1 text-xs"
                 >
-                  <Plus size={12} />
-                  Neuer Eintrag
+                  <Plus size={10} />
+                  <span className="hidden sm:inline">Neuer Eintrag</span>
+                  <span className="sm:hidden">Neu</span>
                 </button>
               )}
               <button 
                 onClick={() => setShowLogbook(true)}
-                className="btn-primary px-2 py-1 text-xs"
+                className="btn-primary px-1.5 py-1 text-xs"
               >
-                alle Einträge
+                <span className="hidden sm:inline">alle Einträge</span>
+                <span className="sm:hidden">alle</span>
               </button>
             </div>
           </div>
           {logbookEntries.length === 0 ? (
-            <p className="opacity-70 text-center py-4 text-xs">Noch keine Einträge im Logbuch</p>
+            <p className="opacity-70 text-center py-3 text-xs">Noch keine Einträge im Logbuch</p>
           ) : (
-            <div className="space-y-2">
-              {logbookEntries.slice(0, 3).map((entry) => (
-                <div key={entry.id} className="border-b border-white/10 pb-2 last:border-b-0">
-                  <div className="flex justify-between items-start mb-1">
-                    <div className="flex items-center gap-2">
-                      <div className="bg-accent text-black px-1.5 py-0.5 rounded-full text-xs font-medium">
-                        @{entry.author}
+            <div className="space-y-3">
+              {logbookEntries.slice(0, 3).map((entry) => {
+                // Извлекаем первое изображение из текста
+                const firstImageMatch = entry.text.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+                const firstImage = firstImageMatch ? firstImageMatch[2] : null;
+                
+                // Извлекаем заголовок (первая строка без markdown)
+                const title = entry.text.split('\n')[0].replace(/^\*\*(.*)\*\*$/, '$1').replace(/^#+\s*/, '');
+                
+                return (
+                  <div key={entry.id} className="bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors cursor-pointer">
+                    <div className="flex gap-3">
+                      {/* Превью изображения */}
+                      <div className="flex-shrink-0">
+                        {firstImage ? (
+                          <div className="w-16 h-16 rounded-lg overflow-hidden">
+                            <img 
+                              src={firstImage} 
+                              alt={title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-16 h-16 rounded-lg bg-white/10 flex items-center justify-center">
+                            <svg className="w-6 h-6 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        )}
                       </div>
-                      <span className="text-xs opacity-70">{entry.timestamp}</span>
-                      <span className="text-xs opacity-50 bg-white/10 px-1 py-0.5 rounded">
-                        {entry.type}
-                      </span>
+                      
+                      {/* Контент */}
+                      <div className="flex-1 min-w-0">
+                        {/* Заголовок */}
+                        <h3 className="text-sm font-bold text-white/90 mb-1 truncate">
+                          {title}
+                        </h3>
+                        
+                        {/* Категория */}
+                        <div className="text-xs text-white/60 mb-2">
+                          {entry.type}
+                        </div>
+                        
+                        {/* Статистика и действия */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4 text-xs text-white/60">
+                            <div className="flex items-center gap-1">
+                              <Heart className="w-3 h-3" />
+                              <span>{getLogbookEntryLikes(entry.id)}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <MessageCircle className="w-3 h-3" />
+                              <span>0</span>
+                            </div>
+                            <span className="text-white/50">
+                              {formatTimeAgo(entry.timestamp)}
+                            </span>
+                          </div>
+                          
+                          {/* Кнопка удаления (только для владельца) */}
+                          {isOwner && (
+                            <button
+                              onClick={() => handleDeleteLogbookEntry(entry.id)}
+                              className="text-red-400 hover:text-red-300 transition-colors p-1"
+                              title="Eintrag löschen"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <p className="opacity-80 mb-1 text-xs">{entry.text}</p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleToggleLogbookLike(entry.id)}
-                      className={`flex items-center gap-1 transition-opacity text-xs ${
-                        hasUserLikedLogbookEntry(entry.id, user?.email || '') 
-                          ? 'opacity-100 text-accent' 
-                          : 'opacity-70 hover:opacity-100'
-                      }`}
-                    >
-                      <Heart className={`w-3 h-3 ${hasUserLikedLogbookEntry(entry.id, user?.email || '') ? 'fill-current' : ''}`} />
-                      <span>{getLogbookEntryLikes(entry.id)}</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -660,58 +739,61 @@ export default function CarPage() {
 
       {/* Comments Modal */}
       {showComments && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="section w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="h2">Kommentare</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
+          <div className="section w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold">Kommentare</h2>
               <button
                 onClick={() => setShowComments(false)}
-                className="opacity-70 hover:opacity-100 transition-opacity"
+                className="opacity-70 hover:opacity-100 transition-opacity text-xl"
               >
                 ✕
               </button>
             </div>
 
             {/* Add Comment */}
-            <div className="mb-6">
+            <div className="mb-4">
               <textarea
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Ihr Kommentar..."
-                className="form-input mb-3"
-                rows={3}
+                className="form-input mb-2 text-sm"
+                rows={2}
               />
               <button
-                onClick={handleAddComment}
-                className="btn-primary"
+                onClick={() => {
+                  handleAddComment(newComment);
+                  setNewComment('');
+                }}
+                className="btn-primary text-sm px-3 py-1"
               >
                 Senden
               </button>
             </div>
 
             {/* Comments List */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               {comments.map((comment) => (
-                <div key={comment.id} className="border-b border-white/10 pb-4 last:border-b-0">
-                  <div className="flex justify-between items-start mb-2">
+                <div key={comment.id} className="border-b border-white/10 pb-3 last:border-b-0">
+                  <div className="flex justify-between items-start mb-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{comment.author}</span>
-                      <span className="text-sm opacity-70">{comment.timestamp}</span>
+                      <span className="font-medium text-sm">{comment.author}</span>
+                      <span className="text-xs opacity-70">{comment.timestamp}</span>
                     </div>
                     <button
                       onClick={() => handleDeleteComment(comment.id)}
-                      className="text-sm opacity-70 hover:opacity-100 transition-opacity"
+                      className="text-xs opacity-70 hover:opacity-100 transition-opacity"
                     >
                       Löschen
                     </button>
                   </div>
-                  <p className="opacity-80 mb-2">{comment.text}</p>
+                  <p className="opacity-80 mb-2 text-sm">{comment.text}</p>
                   <div className="flex items-center gap-4">
                     <button
                       onClick={() => handleLikeComment(comment.id)}
-                      className="flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
+                      className="flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity text-sm"
                     >
-                      <Heart className="w-4 h-4" />
+                      <Heart className="w-3 h-3" />
                       <span>{comment.likes}</span>
                     </button>
                   </div>
@@ -724,13 +806,13 @@ export default function CarPage() {
 
       {/* Logbook Modal */}
       {showLogbook && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="section w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="h2">Logbuch</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
+          <div className="section w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold">Logbuch</h2>
               <button
                 onClick={() => setShowLogbook(false)}
-                className="opacity-70 hover:opacity-100 transition-opacity"
+                className="opacity-70 hover:opacity-100 transition-opacity text-xl"
               >
                 ✕
               </button>
@@ -738,52 +820,116 @@ export default function CarPage() {
 
             {/* Add Logbook Entry */}
             {isOwner && (
-              <div className="mb-6">
-                <textarea
-                  value={newLogbookEntry}
-                  onChange={(e) => setNewLogbookEntry(e.target.value)}
-                  placeholder="Neuer Logbuch-Eintrag..."
-                  className="form-input mb-3"
-                  rows={3}
-                />
+              <div className="mb-4">
                 <button
-                  onClick={handleAddLogbookEntry}
-                  className="btn-primary"
+                  onClick={() => {
+                    setShowLogbook(false);
+                    window.location.href = `/cars/${car.make.toLowerCase()}/${car.model.toLowerCase()}/${carId}/logbook/new`;
+                  }}
+                  className="btn-primary w-full flex items-center justify-center gap-2 py-3"
                 >
-                  Eintrag hinzufügen
+                  <Plus size={16} />
+                  Neuer Eintrag erstellen
                 </button>
               </div>
             )}
 
             {/* Logbook Entries List */}
-            <div className="space-y-4">
-              {logbookEntries.map((entry) => (
-                <div key={entry.id} className="border-b border-white/10 pb-4 last:border-b-0">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{entry.author}</span>
-                      <span className="text-sm opacity-70">{entry.timestamp}</span>
-                      <span className="text-xs opacity-50 bg-white/10 px-2 py-1 rounded">
-                        {entry.type}
-                      </span>
+            <div className="space-y-3">
+              {logbookEntries.map((entry) => {
+                // Извлекаем первое изображение из текста
+                const firstImageMatch = entry.text.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+                const firstImage = firstImageMatch ? firstImageMatch[2] : null;
+                
+                // Извлекаем заголовок (первая строка без markdown)
+                const title = entry.text.split('\n')[0].replace(/^\*\*(.*)\*\*$/, '$1').replace(/^#+\s*/, '');
+                
+                return (
+                  <Link 
+                    key={entry.id} 
+                    href={`/cars/${car.make.toLowerCase()}/${car.model.toLowerCase()}/${carId}/logbook/${entry.id}`}
+                    className="block bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors cursor-pointer"
+                  >
+                    <div className="flex gap-3">
+                      {/* Превью изображения */}
+                      <div className="flex-shrink-0">
+                        {firstImage ? (
+                          <div className="w-20 h-20 rounded-lg overflow-hidden">
+                            <img 
+                              src={firstImage} 
+                              alt={title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-20 h-20 rounded-lg bg-white/10 flex items-center justify-center">
+                            <svg className="w-8 h-8 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Контент */}
+                      <div className="flex-1 min-w-0">
+                        {/* Заголовок */}
+                        <h3 className="text-base font-bold text-white/90 mb-1">
+                          {title}
+                        </h3>
+                        
+                        {/* Автор и время */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm text-white/70">@{entry.author}</span>
+                          <span className="text-xs text-white/50">{formatTimeAgo(entry.timestamp)}</span>
+                          <span className="text-xs text-white/50 bg-white/10 px-2 py-1 rounded">
+                            {entry.type}
+                          </span>
+                        </div>
+                        
+                        {/* Статистика и действия */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4 text-sm text-white/60">
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleToggleLogbookLike(entry.id);
+                              }}
+                              className={`flex items-center gap-1 transition-opacity ${
+                                hasUserLikedLogbookEntry(entry.id, user?.email || '') 
+                                  ? 'opacity-100 text-accent' 
+                                  : 'opacity-70 hover:opacity-100'
+                              }`}
+                            >
+                              <Heart className={`w-4 h-4 ${hasUserLikedLogbookEntry(entry.id, user?.email || '') ? 'fill-current' : ''}`} />
+                              <span>{getLogbookEntryLikes(entry.id)}</span>
+                            </button>
+                            <div className="flex items-center gap-1">
+                              <MessageCircle className="w-4 h-4" />
+                              <span>0</span>
+                            </div>
+                          </div>
+                          
+                          {/* Кнопка удаления (только для владельца) */}
+                          {isOwner && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleDeleteLogbookEntry(entry.id);
+                              }}
+                              className="text-red-400 hover:text-red-300 transition-colors p-1"
+                              title="Eintrag löschen"
+                            >
+                              <X size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <p className="opacity-80 mb-2">{entry.text}</p>
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={() => handleToggleLogbookLike(entry.id)}
-                      className={`flex items-center gap-1 transition-opacity ${
-                        hasUserLikedLogbookEntry(entry.id, user?.email || '') 
-                          ? 'opacity-100 text-accent' 
-                          : 'opacity-70 hover:opacity-100'
-                      }`}
-                    >
-                      <Heart className={`w-4 h-4 ${hasUserLikedLogbookEntry(entry.id, user?.email || '') ? 'fill-current' : ''}`} />
-                      <span>{getLogbookEntryLikes(entry.id)}</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -818,7 +964,7 @@ export default function CarPage() {
       {/* Image Modal */}
       {showImageModal && car?.images && car.images.length > 0 && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-2"
           onClick={closeImageModal}
         >
           <div 
@@ -828,9 +974,9 @@ export default function CarPage() {
             {/* Close button */}
             <button
               onClick={closeImageModal}
-              className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
+              className="absolute top-2 right-2 z-10 w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors"
             >
-              <X size={24} />
+              <X size={20} />
             </button>
 
             {/* Navigation arrows */}
@@ -839,16 +985,16 @@ export default function CarPage() {
                 <button
                   onClick={prevImage}
                   disabled={isTransitioning}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <ChevronLeft size={24} />
+                  <ChevronLeft size={20} />
                 </button>
                 <button
                   onClick={nextImage}
                   disabled={isTransitioning}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <ChevronRight size={24} />
+                  <ChevronRight size={20} />
                 </button>
               </>
             )}
@@ -858,31 +1004,33 @@ export default function CarPage() {
               <Image
                 src={car.images[currentImageIndex]}
                 alt={car.name || `${car.make} ${car.model}`}
-                width={1200}
-                height={800}
+                width={800}
+                height={600}
+                sizes="(max-width: 768px) 90vw, (max-width: 1200px) 70vw, 60vw"
                 className={`max-w-full max-h-full object-contain transition-all duration-300 ${
                   isTransitioning ? 'opacity-0 scale-105' : 'opacity-100 scale-100'
                 }`}
                 priority
+                quality={85}
               />
             </div>
 
             {/* Image counter */}
             {car.images.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white text-sm px-3 py-1 rounded">
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs px-2 py-1 rounded">
                 {currentImageIndex + 1} / {car.images.length}
               </div>
             )}
 
             {/* Dots indicator */}
             {car.images.length > 1 && (
-              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-2">
+              <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex gap-1.5">
                 {car.images.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => goToImage(index)}
                     disabled={isTransitioning}
-                    className={`w-3 h-3 rounded-full transition-all duration-200 ${
+                    className={`w-2 h-2 rounded-full transition-all duration-200 ${
                       index === currentImageIndex ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/70'
                     } disabled:cursor-not-allowed`}
                   />

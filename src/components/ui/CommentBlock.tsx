@@ -199,17 +199,20 @@ export default function CommentBlock({
               
               {/* Изображения комментария */}
               {comment.images && Array.isArray(comment.images) && comment.images.length > 0 && (
-                <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="mt-3 grid grid-cols-2 gap-2 max-w-sm">
                   {comment.images.map((image, index) => (
                     <div
                       key={index}
-                      className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group"
+                      className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group max-h-32"
                       onClick={() => openImageModal(index)}
                     >
-                      <img
+                      <Image
                         src={image}
                         alt={`Комментарий ${index + 1}`}
-                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        fill
+                        sizes="(max-width: 768px) 50vw, 200px"
+                        className="object-cover transition-transform group-hover:scale-105"
+                        quality={75}
                         onError={(e) => {
                           console.error('Error loading image:', e);
                           console.log('Image src:', image);
@@ -359,7 +362,7 @@ export default function CommentBlock({
           }`}
           onClick={closeImageModal}
         >
-          <div className="relative max-w-4xl max-h-full w-full h-full flex items-center justify-center">
+          <div className="relative max-w-3xl max-h-[90vh] w-full h-full flex items-center justify-center">
             {/* Кнопка закрытия */}
             <button
               onClick={closeImageModal}
@@ -374,11 +377,15 @@ export default function CommentBlock({
                 isAnimating ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
               }`}
             >
-              <img
+              <Image
                 src={comment.images[selectedImageIndex]}
                 alt={`Комментарий ${selectedImageIndex + 1}`}
+                width={800}
+                height={600}
+                sizes="(max-width: 768px) 90vw, (max-width: 1200px) 70vw, 60vw"
                 className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
                 onClick={closeImageModal}
+                quality={85}
               />
             </div>
 

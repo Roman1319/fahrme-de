@@ -1,6 +1,6 @@
 // Утилиты для управления взаимодействиями пользователей с автомобилями
 
-import { CarInteraction, LogbookLike, Comment, LogbookEntry } from './types';
+import { CarInteraction, LogbookLike, Comment, LogbookEntry, LogbookDraft } from './types';
 
 const INTERACTIONS_KEY = 'fahrme:interactions';
 const LOGBOOK_LIKES_KEY = 'fahrme:logbook-likes';
@@ -228,6 +228,84 @@ export function getLogbookEntries(carId: string): LogbookEntry[] {
 
 export function saveLogbookEntries(carId: string, entries: LogbookEntry[]): void {
   localStorage.setItem(`fahrme:logbook:${carId}`, JSON.stringify(entries));
+}
+
+export function deleteLogbookEntry(carId: string, entryId: string): boolean {
+  const entries = getLogbookEntries(carId);
+  const entryIndex = entries.findIndex(entry => entry.id === entryId);
+  
+  if (entryIndex === -1) {
+    return false;
+  }
+  
+  entries.splice(entryIndex, 1);
+  saveLogbookEntries(carId, entries);
+  
+  // Также удаляем все лайки для этой записи
+  const likes = getLogbookLikes();
+  const updatedLikes = likes.filter(like => like.entryId !== entryId);
+  saveLogbookLikes(updatedLikes);
+  
+  return true;
+}
+
+// === Управление черновиками записей бортового журнала ===
+
+export function createLogbookDraft(carId: string, userId: string): LogbookDraft {
+  const draft: LogbookDraft = {
+    id: Date.now().toString(),
+    carId,
+    userId,
+    title: '',
+    text: '',
+    type: 'general',
+    images: [],
+    mileage: undefined,
+    mileageUnit: 'km',
+    cost: undefined,
+    currency: 'EUR',
+    poll: undefined,
+    allowComments: true,
+    pinToCarPage: false,
+    publishDate: new Date().toISOString(),
+    language: 'Deutsch',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  
+  saveLogbookDraft(draft);
+  return draft;
+}
+
+export function getLogbookDraft(carId: string, userId: string): LogbookDraft | null {
+  const savedDrafts = localStorage.getItem(`fahrme:logbook-drafts:${carId}:${userId}`);
+  if (savedDrafts) {
+    try {
+      return JSON.parse(savedDrafts);
+    } catch (error) {
+      console.error('Error loading logbook draft:', error);
+      return null;
+    }
+  }
+  return null;
+}
+
+export function saveLogbookDraft(draft: LogbookDraft): void {
+  localStorage.setItem(`fahrme:logbook-drafts:${draft.carId}:${draft.userId}`, JSON.stringify(draft));
+}
+
+export function deleteLogbookDraft(draftId: string): boolean {
+  // Since we store drafts by carId:userId, we need to search through all possible keys
+  // This is a simplified implementation - in a real app, you'd want a better indexing system
+  const keys = Object.keys(localStorage);
+  const draftKey = keys.find(key => key.startsWith('fahrme:logbook-drafts:') && key.includes(draftId));
+  
+  if (draftKey) {
+    localStorage.removeItem(draftKey);
+    return true;
+  }
+  
+  return false;
 }
 
 // === Вспомогательные функции ===

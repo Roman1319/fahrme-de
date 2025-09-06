@@ -62,3 +62,27 @@ export interface LogbookLike {
   userEmail: string;
   likedAt: string;
 }
+
+export interface LogbookDraft {
+  id: string;
+  carId: string;
+  userId: string;
+  title: string;
+  text: string;
+  type: 'maintenance' | 'repair' | 'tuning' | 'trip' | 'event' | 'general';
+  images?: string[];
+  mileage?: number;
+  mileageUnit?: 'km' | 'miles';
+  cost?: number;
+  currency?: 'RUB' | 'UAH' | 'BYN' | 'KZT' | 'USD' | 'EUR';
+  poll?: {
+    question: string;
+    options: string[];
+  };
+  allowComments: boolean;
+  pinToCarPage: boolean;
+  publishDate: string;
+  language: string;
+  createdAt: string;
+  updatedAt: string;
+}
