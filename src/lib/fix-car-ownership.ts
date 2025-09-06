@@ -1,7 +1,7 @@
 // Утилита для исправления владения автомобилями
 // Запускается один раз для исправления существующих данных
 
-export function fixCarOwnership(userEmail: string) {
+export function fixCarOwnership(userId: string, userEmail?: string) {
   const savedCars = localStorage.getItem('fahrme:my-cars');
   if (!savedCars) return;
 
@@ -12,9 +12,15 @@ export function fixCarOwnership(userEmail: string) {
     const updatedCars = cars.map((car: any) => {
       // Если у автомобиля нет владельца, устанавливаем текущего пользователя
       if (!car.ownerId) {
-        car.ownerId = userEmail;
+        car.ownerId = userId;
         hasChanges = true;
         console.log(`Исправлен владелец для автомобиля ${car.name || car.make} ${car.model}`);
+      }
+      // Если ownerId содержит email, а не userId, обновляем его
+      else if (userEmail && car.ownerId === userEmail) {
+        car.ownerId = userId;
+        hasChanges = true;
+        console.log(`Обновлен владелец с email на userId для автомобиля ${car.name || car.make} ${car.model}`);
       }
       return car;
     });
@@ -34,6 +40,14 @@ export function fixCarOwnership(userEmail: string) {
 }
 
 // Функция для проверки, является ли пользователь владельцем автомобиля
-export function isCarOwner(car: any, userEmail: string): boolean {
-  return car && car.ownerId === userEmail;
+export function isCarOwner(car: any, userId: string, userEmail?: string): boolean {
+  if (!car || !car.ownerId) return false;
+  
+  // Проверяем по userId (новый формат)
+  if (car.ownerId === userId) return true;
+  
+  // Проверяем по email (старый формат для обратной совместимости)
+  if (userEmail && car.ownerId === userEmail) return true;
+  
+  return false;
 }

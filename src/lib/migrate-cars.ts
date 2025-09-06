@@ -16,7 +16,20 @@ export function migrateCars() {
     }
     
     // Получаем текущего пользователя
-    const currentUserEmail = localStorage.getItem('fahrme.session');
+    const session = localStorage.getItem('fahrme:session');
+    if (!session) {
+      console.log('No current user found, migration skipped');
+      return;
+    }
+    
+    let currentUserEmail: string | null = null;
+    try {
+      const sessionData = JSON.parse(session);
+      currentUserEmail = sessionData.email || sessionData;
+    } catch {
+      currentUserEmail = session;
+    }
+    
     if (!currentUserEmail) {
       console.log('No current user found, migration skipped');
       return;

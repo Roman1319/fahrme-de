@@ -21,16 +21,17 @@ export type UserProfile = {
   avatarUrl?: string | null; // dataURL
 };
 
-const KEY = 'fahrme:profile';
+// Unified LocalStorage keys
+const PROFILE_KEY = 'fahrme:profile';
 
 export function readProfile(): UserProfile | null {
   if (typeof window === 'undefined') return null;
-  try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; }
+  try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null'); } catch { return null; }
 }
 
 export function saveProfile(p: UserProfile) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(KEY, JSON.stringify(p));
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
 }
 
 export function updateProfile(patch: Partial<UserProfile>) {

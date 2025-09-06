@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Car, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
-import RequireAuth from "@/components/RequireAuth";
+import Guard from "@/components/auth/Guard";
 import ImageUpload from "@/components/ui/ImageUpload";
 import AutoCompleteInput from "@/components/ui/AutoCompleteInput";
 import EditCarModal from "@/components/EditCarModal";
@@ -49,7 +49,7 @@ export default function MyCarsPage() {
       name: carData.name || `${carData.make} ${carData.model}`, // Генерируем имя по умолчанию
       id: Date.now().toString(),
       addedDate: new Date().toISOString(),
-      ownerId: user.email, // Всегда устанавливаем email текущего пользователя как владельца
+      ownerId: user.id, // Всегда устанавливаем ID текущего пользователя как владельца
     };
     saveCars([...cars, newCar]);
     setShowAddForm(false);
@@ -81,7 +81,7 @@ export default function MyCarsPage() {
   };
 
   return (
-    <RequireAuth>
+    <Guard>
       <main className="pb-12">
         <div className="space-y-6">
           {/* Заголовок и кнопка добавления */}
@@ -238,7 +238,7 @@ export default function MyCarsPage() {
           )}
         </div>
       </main>
-    </RequireAuth>
+    </Guard>
   );
 }
 

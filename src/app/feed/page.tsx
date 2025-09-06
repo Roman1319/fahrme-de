@@ -2,7 +2,7 @@
 
 import SiteFooter from "@/components/SiteFooter";
 import CarOfTheDay from "@/components/CarOfTheDay";
-import RequireAuth from "@/components/RequireAuth";
+import Guard from "@/components/auth/Guard";
 
 // Daten für das gestrige Auto des Tages
 const yesterdayCar = {
@@ -59,7 +59,7 @@ export default function FeedPage(){
   };
 
   return (
-    <RequireAuth>
+    <Guard>
       <main className="pb-12">
         <section className="space-y-4">
           {/* Автомобиль дня - главный раздел */}
@@ -104,6 +104,6 @@ export default function FeedPage(){
           ))}
         </section>
       </main>
-    </RequireAuth>
+    </Guard>
   );
 }

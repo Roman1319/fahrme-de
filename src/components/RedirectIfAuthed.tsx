@@ -17,30 +17,29 @@ export default function RedirectIfAuthed() {
     if (mounted) {
       const checkAuth = () => {
         try {
-          // Проверяем через функцию currentUser() из auth.ts
-          const currentUser = Auth.currentUser();
-          
-          // Если пользователь авторизован (есть в localStorage), перенаправляем на /feed
-          if (currentUser) {
-            console.log('User is authenticated, redirecting to /feed');
-            router.replace("/feed");
-            return;
-          }
-          
-          // Дополнительная проверка через контекст
+          // Проверяем через контекст (более надежно)
           if (user) {
-            console.log('User found in context, redirecting to /feed');
+            console.log('[RedirectIfAuthed] User found in context, redirecting to /feed');
             router.replace("/feed");
             return;
           }
+          
+          // Дополнительная проверка через функцию currentUser() из auth.ts
+          const currentUser = Auth.currentUser();
+          if (currentUser) {
+            console.log('[RedirectIfAuthed] User found via currentUser(), redirecting to /feed');
+            router.replace("/feed");
+            return;
+          }
+          
+          console.log('[RedirectIfAuthed] No user found, staying on explore page');
         } catch (error) {
-          console.warn('Error checking authentication:', error);
+          console.warn('[RedirectIfAuthed] Error checking authentication:', error);
         }
       };
 
-      // Проверяем сразу и через небольшую задержку для надежности
-      checkAuth();
-      const timer = setTimeout(checkAuth, 100);
+      // Проверяем через небольшую задержку, чтобы дать время AuthProvider загрузиться
+      const timer = setTimeout(checkAuth, 300);
       
       return () => clearTimeout(timer);
     }

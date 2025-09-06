@@ -39,13 +39,49 @@ export interface Comment {
 
 export interface LogbookEntry {
   id: string;
-  text: string;
-  author: string;
-  authorEmail: string;
-  timestamp: string;
-  likes: number;
+  userId: string; // Primary identifier for ownership
   carId: string;
-  type: 'maintenance' | 'modification' | 'event' | 'general';
+  title: string;
+  content: string;
+  topic: 'service' | 'repair' | 'tuning' | 'trip' | 'other';
+  photos: string[]; // URLs to photos
+  mileage?: number;
+  mileageUnit?: 'km' | 'mi';
+  cost?: number;
+  currency?: string;
+  poll?: {
+    question: string;
+    options: string[];
+    votes?: Record<string, number>; // userId -> optionIndex
+  };
+  allowComments: boolean;
+  pinOnCar?: boolean;
+  language?: string;
+  status: 'draft' | 'published';
+  createdAt: string;
+  updatedAt?: string;
+  publishedAt?: string;
+  
+  // Legacy fields for backward compatibility
+  author?: string;
+  authorEmail?: string;
+  text?: string;
+  timestamp?: string;
+  likes?: number;
+  type?: 'maintenance' | 'modification' | 'event' | 'general';
+  images?: string[];
+  mileage?: number;
+  mileageUnit?: 'km' | 'miles';
+  cost?: number;
+  currency?: 'RUB' | 'UAH' | 'BYN' | 'KZT' | 'USD' | 'EUR';
+  poll?: {
+    question: string;
+    options: string[];
+  };
+  allowComments?: boolean;
+  pinToCarPage?: boolean;
+  publishDate?: string;
+  language?: string;
 }
 
 export interface CarInteraction {
@@ -59,7 +95,8 @@ export interface CarInteraction {
 
 export interface LogbookLike {
   entryId: string;
-  userEmail: string;
+  userId: string; // Primary identifier
+  userEmail?: string; // For backward compatibility
   likedAt: string;
 }
 

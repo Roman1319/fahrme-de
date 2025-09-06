@@ -4,14 +4,15 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, MessageCircle, Eye, Star, Edit, MoreVertical, Plus, Share2, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Heart, MessageCircle, Eye, Star, Edit, MoreVertical, Share2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { MyCar, Comment, LogbookEntry } from '@/lib/types';
 import EditCarModal from '@/components/EditCarModal';
 import { useAuth } from '@/components/AuthProvider';
 import AvatarButton from '@/components/ui/AvatarButton';
 import AvatarTooltip from '@/components/ui/AvatarTooltip';
 import { readProfile, readProfileByEmail } from '@/lib/profile';
-import { fixCarOwnership, isCarOwner } from '@/lib/fix-car-ownership';
+import { fixCarOwnershipOnce } from '@/lib/migrations';
+import { isCarOwnerByCar } from '@/lib/ownership';
 import { 
   getCarInteraction, 
   toggleCarFollow, 
@@ -30,6 +31,7 @@ import {
   deleteLogbookEntry
 } from '@/lib/interactions';
 import CommentsList from '@/components/ui/CommentsList';
+import LogbookCreateButton from '@/components/LogbookCreateButton';
 
 export default function CarPage() {
   const params = useParams();
@@ -53,7 +55,7 @@ export default function CarPage() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   
   // Проверяем, является ли текущий пользователь владельцем автомобиля
-  const isOwner = car && user && isCarOwner(car, user.email);
+  const isOwner = car && user && isCarOwnerByCar(car, user.id, user.email);
   
 
   useEffect(() => {
@@ -65,9 +67,9 @@ export default function CarPage() {
     loadOwnerProfile();
     setCurrentImageIndex(0); // Сбрасываем индекс изображения при загрузке нового автомобиля
     
-    // Исправляем владение автомобилями при загрузке (только один раз)
-    if (user?.email) {
-      fixCarOwnership(user.email);
+    // Выполняем миграцию владения автомобилями (только один раз)
+    if (user?.id) {
+      fixCarOwnershipOnce(user.id, user.email);
     }
   }, [carId, user]);
 
@@ -145,7 +147,19 @@ export default function CarPage() {
   };
 
   const loadLogbookEntries = () => {
-    setLogbookEntries(getLogbookEntries(carId));
+    const entries = getLogbookEntries(carId);
+    // Sort: pinned first, then by publishedAt descending
+    const sortedEntries = entries.sort((a, b) => {
+      // First sort by pinned status
+      if (a.pinOnCar && !b.pinOnCar) return -1;
+      if (!a.pinOnCar && b.pinOnCar) return 1;
+      
+      // Then by publishedAt (newest first)
+      const aDate = a.publishedAt || a.createdAt || a.timestamp || '';
+      const bDate = b.publishedAt || b.createdAt || b.timestamp || '';
+      return new Date(bDate).getTime() - new Date(aDate).getTime();
+    });
+    setLogbookEntries(sortedEntries);
   };
 
   const loadCarStats = () => {
@@ -230,7 +244,7 @@ export default function CarPage() {
   const handleToggleLogbookLike = (entryId: string) => {
     if (!user) return;
     
-    toggleLogbookEntryLike(entryId, user.email);
+    toggleLogbookEntryLike(entryId, user.id, user.email);
     loadLogbookEntries();
   };
 
@@ -635,16 +649,7 @@ export default function CarPage() {
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-sm font-bold">Logbuch</h2>
             <div className="flex gap-1.5">
-              {isOwner && (
-                <button 
-                  onClick={() => window.location.href = `/cars/${car.make.toLowerCase()}/${car.model.toLowerCase()}/${carId}/logbook/new`}
-                  className="btn-accent flex items-center gap-1 px-1.5 py-1 text-xs"
-                >
-                  <Plus size={10} />
-                  <span className="hidden sm:inline">Neuer Eintrag</span>
-                  <span className="sm:hidden">Neu</span>
-                </button>
-              )}
+              <LogbookCreateButton car={car} />
               <button 
                 onClick={() => setShowLogbook(true)}
                 className="btn-primary px-1.5 py-1 text-xs"
@@ -655,16 +660,28 @@ export default function CarPage() {
             </div>
           </div>
           {logbookEntries.length === 0 ? (
-            <p className="opacity-70 text-center py-3 text-xs">Noch keine Einträge im Logbuch</p>
+            <div className="text-center py-6">
+              <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-8 h-8 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <p className="opacity-70 text-sm mb-2">Noch keine Einträge im Logbuch</p>
+              {user ? (
+                <LogbookCreateButton car={car} className="text-xs px-3 py-1" showText={true} />
+              ) : (
+                <p className="text-xs opacity-50">Melden Sie sich an, um Einträge zu erstellen</p>
+              )}
+            </div>
           ) : (
             <div className="space-y-3">
               {logbookEntries.slice(0, 3).map((entry) => {
-                // Извлекаем первое изображение из текста
-                const firstImageMatch = entry.text.match(/!\[([^\]]*)\]\(([^)]+)\)/);
-                const firstImage = firstImageMatch ? firstImageMatch[2] : null;
-                
-                // Извлекаем заголовок (первая строка без markdown)
-                const title = entry.text.split('\n')[0].replace(/^\*\*(.*)\*\*$/, '$1').replace(/^#+\s*/, '');
+                // Use new data model fields
+                const title = entry.title || entry.text?.split('\n')[0]?.replace(/^\*\*(.*)\*\*$/, '$1')?.replace(/^#+\s*/, '') || 'Untitled';
+                const firstImage = entry.photos?.[0] || entry.images?.[0] || 
+                  (entry.text?.match(/!\[([^\]]*)\]\(([^)]+)\)/)?.[2]);
+                const topic = entry.topic || entry.type || 'general';
+                const timestamp = entry.publishedAt || entry.createdAt || entry.timestamp || '';
                 
                 return (
                   <div key={entry.id} className="bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors cursor-pointer">
@@ -690,14 +707,26 @@ export default function CarPage() {
                       
                       {/* Контент */}
                       <div className="flex-1 min-w-0">
-                        {/* Заголовок */}
-                        <h3 className="text-sm font-bold text-white/90 mb-1 truncate">
-                          {title}
-                        </h3>
+                        {/* Заголовок и pinned badge */}
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-sm font-bold text-white/90 truncate">
+                            {title}
+                          </h3>
+                          {entry.pinOnCar && (
+                            <span className="text-xs bg-accent text-black px-2 py-1 rounded-full font-medium">
+                              Angepinnt
+                            </span>
+                          )}
+                        </div>
                         
                         {/* Категория */}
                         <div className="text-xs text-white/60 mb-2">
-                          {entry.type}
+                          {topic === 'service' ? 'Wartung' :
+                           topic === 'repair' ? 'Reparatur' :
+                           topic === 'tuning' ? 'Tuning' :
+                           topic === 'trip' ? 'Fahrt' :
+                           topic === 'other' ? 'Allgemein' :
+                           topic}
                         </div>
                         
                         {/* Статистика и действия */}
@@ -712,12 +741,12 @@ export default function CarPage() {
                               <span>0</span>
                             </div>
                             <span className="text-white/50">
-                              {formatTimeAgo(entry.timestamp)}
+                              {formatTimeAgo(timestamp)}
                             </span>
                           </div>
                           
-                          {/* Кнопка удаления (только для владельца) */}
-                          {isOwner && (
+                          {/* Кнопка удаления (только для автора) */}
+                          {user && entry.userId === user.id && (
                             <button
                               onClick={() => handleDeleteLogbookEntry(entry.id)}
                               className="text-red-400 hover:text-red-300 transition-colors p-1"
@@ -819,17 +848,25 @@ export default function CarPage() {
             </div>
 
             {/* Add Logbook Entry */}
-            {isOwner && (
+            {user ? (
               <div className="mb-4">
+                <LogbookCreateButton 
+                  car={car} 
+                  className="w-full flex items-center justify-center gap-2 py-3"
+                  showText={true}
+                />
+              </div>
+            ) : (
+              <div className="mb-4 text-center">
+                <p className="text-sm opacity-70 mb-2">Melden Sie sich an, um Einträge zu erstellen</p>
                 <button
                   onClick={() => {
                     setShowLogbook(false);
-                    window.location.href = `/cars/${car.make.toLowerCase()}/${car.model.toLowerCase()}/${carId}/logbook/new`;
+                    window.location.href = '/login';
                   }}
-                  className="btn-primary w-full flex items-center justify-center gap-2 py-3"
+                  className="btn-secondary px-4 py-2"
                 >
-                  <Plus size={16} />
-                  Neuer Eintrag erstellen
+                  Anmelden
                 </button>
               </div>
             )}
@@ -837,12 +874,13 @@ export default function CarPage() {
             {/* Logbook Entries List */}
             <div className="space-y-3">
               {logbookEntries.map((entry) => {
-                // Извлекаем первое изображение из текста
-                const firstImageMatch = entry.text.match(/!\[([^\]]*)\]\(([^)]+)\)/);
-                const firstImage = firstImageMatch ? firstImageMatch[2] : null;
-                
-                // Извлекаем заголовок (первая строка без markdown)
-                const title = entry.text.split('\n')[0].replace(/^\*\*(.*)\*\*$/, '$1').replace(/^#+\s*/, '');
+                // Use new data model fields
+                const title = entry.title || entry.text?.split('\n')[0]?.replace(/^\*\*(.*)\*\*$/, '$1')?.replace(/^#+\s*/, '') || 'Untitled';
+                const firstImage = entry.photos?.[0] || entry.images?.[0] || 
+                  (entry.text?.match(/!\[([^\]]*)\]\(([^)]+)\)/)?.[2]);
+                const topic = entry.topic || entry.type || 'general';
+                const timestamp = entry.publishedAt || entry.createdAt || entry.timestamp || '';
+                const author = entry.author || 'Unknown';
                 
                 return (
                   <Link 
@@ -872,17 +910,29 @@ export default function CarPage() {
                       
                       {/* Контент */}
                       <div className="flex-1 min-w-0">
-                        {/* Заголовок */}
-                        <h3 className="text-base font-bold text-white/90 mb-1">
-                          {title}
-                        </h3>
+                        {/* Заголовок и pinned badge */}
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-base font-bold text-white/90">
+                            {title}
+                          </h3>
+                          {entry.pinOnCar && (
+                            <span className="text-xs bg-accent text-black px-2 py-1 rounded-full font-medium">
+                              Angepinnt
+                            </span>
+                          )}
+                        </div>
                         
                         {/* Автор и время */}
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm text-white/70">@{entry.author}</span>
-                          <span className="text-xs text-white/50">{formatTimeAgo(entry.timestamp)}</span>
+                          <span className="text-sm text-white/70">@{author}</span>
+                          <span className="text-xs text-white/50">{formatTimeAgo(timestamp)}</span>
                           <span className="text-xs text-white/50 bg-white/10 px-2 py-1 rounded">
-                            {entry.type}
+                            {topic === 'service' ? 'Wartung' :
+                             topic === 'repair' ? 'Reparatur' :
+                             topic === 'tuning' ? 'Tuning' :
+                             topic === 'trip' ? 'Fahrt' :
+                             topic === 'other' ? 'Allgemein' :
+                             topic}
                           </span>
                         </div>
                         
@@ -896,12 +946,12 @@ export default function CarPage() {
                                 handleToggleLogbookLike(entry.id);
                               }}
                               className={`flex items-center gap-1 transition-opacity ${
-                                hasUserLikedLogbookEntry(entry.id, user?.email || '') 
+                                hasUserLikedLogbookEntry(entry.id, user?.id || '') 
                                   ? 'opacity-100 text-accent' 
                                   : 'opacity-70 hover:opacity-100'
                               }`}
                             >
-                              <Heart className={`w-4 h-4 ${hasUserLikedLogbookEntry(entry.id, user?.email || '') ? 'fill-current' : ''}`} />
+                              <Heart className={`w-4 h-4 ${hasUserLikedLogbookEntry(entry.id, user?.id || '') ? 'fill-current' : ''}`} />
                               <span>{getLogbookEntryLikes(entry.id)}</span>
                             </button>
                             <div className="flex items-center gap-1">
@@ -910,8 +960,8 @@ export default function CarPage() {
                             </div>
                           </div>
                           
-                          {/* Кнопка удаления (только для владельца) */}
-                          {isOwner && (
+                          {/* Кнопка удаления (только для автора) */}
+                          {user && entry.userId === user.id && (
                             <button
                               onClick={(e) => {
                                 e.preventDefault();

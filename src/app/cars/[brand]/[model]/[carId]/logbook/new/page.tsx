@@ -1,18 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Save, Send, Plus, X, Trash2 } from 'lucide-react';
-import { MyCar, LogbookDraft } from '@/lib/types';
+import { MyCar, LogbookDraft, LogbookEntry } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
 import { 
   addLogbookEntry, 
   getLogbookDraft, 
   saveLogbookDraft, 
   createLogbookDraft,
-  deleteLogbookDraft 
+  deleteLogbookDraft,
+  getLogbookEntries,
+  saveLogbookEntries
 } from '@/lib/interactions';
-import { isCarOwner } from '@/lib/fix-car-ownership';
+import { isCarOwnerByCar } from '@/lib/ownership';
 import PhotoUpload from '@/components/ui/PhotoUpload';
 import RichTextEditor from '@/components/ui/RichTextEditor';
 
@@ -44,10 +46,12 @@ export default function NewLogbookEntryPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   
   const carId = params.carId as string;
   const brand = params.brand as string;
   const model = params.model as string;
+  const editEntryId = searchParams.get('edit');
   
   const [car, setCar] = useState<MyCar | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,8 +85,12 @@ export default function NewLogbookEntryPage() {
 
   useEffect(() => {
     loadCar();
-    loadDraft();
-  }, [carId, user]);
+    if (editEntryId) {
+      loadEntryForEdit();
+    } else {
+      loadDraft();
+    }
+  }, [carId, user, editEntryId]);
 
   // Auto-save draft when form data changes
   useEffect(() => {
@@ -123,9 +131,9 @@ export default function NewLogbookEntryPage() {
   };
 
   const loadDraft = () => {
-    if (!user?.email) return;
+    if (!user?.id) return;
     
-    const draft = getLogbookDraft(carId, user.email);
+    const draft = getLogbookDraft(carId, user.id);
     if (draft) {
       setDraftId(draft.id);
       setIsDraft(true);
@@ -145,6 +153,40 @@ export default function NewLogbookEntryPage() {
         publishDate: draft.publishDate.split('T')[0],
         language: draft.language
       });
+    }
+  };
+
+  const loadEntryForEdit = () => {
+    if (!editEntryId || !user?.id) return;
+    
+    const entries = getLogbookEntries(carId);
+    const entry = entries.find(e => e.id === editEntryId);
+    
+    if (entry && entry.userId === user.id) {
+      setFormData({
+        title: entry.title || '',
+        text: entry.content || entry.text || '',
+        type: entry.topic === 'service' ? 'maintenance' :
+              entry.topic === 'repair' ? 'repair' :
+              entry.topic === 'tuning' ? 'tuning' :
+              entry.topic === 'trip' ? 'trip' :
+              entry.topic === 'other' ? 'general' :
+              entry.type || 'general',
+        images: [], // Images in text will be handled by RichTextEditor
+        additionalImages: entry.photos || entry.images || [],
+        mileage: entry.mileage?.toString() || '',
+        mileageUnit: entry.mileageUnit === 'mi' ? 'miles' : 'km',
+        cost: entry.cost?.toString() || '',
+        currency: entry.currency || 'EUR',
+        poll: entry.poll || { question: '', options: [''] },
+        allowComments: entry.allowComments ?? true,
+        pinToCarPage: entry.pinOnCar ?? false,
+        publishDate: entry.publishedAt ? new Date(entry.publishedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        language: entry.language || 'Deutsch'
+      });
+    } else {
+      // Entry not found or user doesn't own it
+      router.push(`/car/${carId}`);
     }
   };
 
@@ -173,12 +215,12 @@ export default function NewLogbookEntryPage() {
   };
 
   const saveDraft = async () => {
-    if (!user?.email || !car) return;
+    if (!user?.id || !car) return;
     
     const draftData: LogbookDraft = {
       id: draftId || Date.now().toString(),
       carId,
-      userId: user.email,
+      userId: user.id,
       title: formData.title,
       text: formData.text,
       type: formData.type,
@@ -213,27 +255,113 @@ export default function NewLogbookEntryPage() {
     try {
       // Delete draft if exists
       if (draftId) {
-        deleteLogbookDraft(draftId);
+        deleteLogbookDraft(user.id, carId);
         setDraftId(null);
         setIsDraft(false);
       }
       
-      // Create new logbook entry
-      addLogbookEntry(carId, formData.title, formData.text, user.name || user.email, user.email, formData.type, {
-        images: [...formData.images, ...formData.additionalImages],
-        mileage: formData.mileage ? parseInt(formData.mileage) : undefined,
-        mileageUnit: formData.mileageUnit,
-        cost: formData.cost ? parseFloat(formData.cost) : undefined,
-        currency: formData.currency,
-        poll: formData.poll.question ? formData.poll : undefined,
-        allowComments: formData.allowComments,
-        pinToCarPage: formData.pinToCarPage,
-        publishDate: new Date(formData.publishDate).toISOString(),
-        language: formData.language
-      });
+      const now = new Date().toISOString();
+      const entries = getLogbookEntries(carId);
       
-      // Redirect to car page
-      router.push(`/car/${carId}`);
+      if (editEntryId) {
+        // Update existing entry
+        const entryIndex = entries.findIndex(e => e.id === editEntryId);
+        if (entryIndex !== -1) {
+          const updatedEntry: LogbookEntry = {
+            ...entries[entryIndex],
+            title: formData.title,
+            content: formData.text,
+            topic: formData.type === 'maintenance' ? 'service' : 
+                   formData.type === 'repair' ? 'repair' :
+                   formData.type === 'tuning' ? 'tuning' :
+                   formData.type === 'trip' ? 'trip' : 'other',
+            photos: [...formData.images, ...formData.additionalImages],
+            mileage: formData.mileage ? parseInt(formData.mileage) : undefined,
+            mileageUnit: formData.mileageUnit === 'miles' ? 'mi' : 'km',
+            cost: formData.cost ? parseFloat(formData.cost) : undefined,
+            currency: formData.currency,
+            poll: formData.poll.question ? {
+              question: formData.poll.question,
+              options: formData.poll.options.filter(opt => opt.trim())
+            } : undefined,
+            allowComments: formData.allowComments,
+            pinOnCar: formData.pinToCarPage,
+            language: formData.language,
+            updatedAt: now,
+            
+            // Legacy fields for backward compatibility
+            text: formData.text,
+            type: formData.type,
+            images: [...formData.images, ...formData.additionalImages],
+            mileageUnit: formData.mileageUnit,
+            poll: formData.poll.question ? formData.poll : undefined,
+            allowComments: formData.allowComments,
+            pinToCarPage: formData.pinToCarPage,
+            publishDate: new Date(formData.publishDate).toISOString(),
+            language: formData.language
+          };
+          
+          entries[entryIndex] = updatedEntry;
+          saveLogbookEntries(carId, entries);
+          
+          // Show success message
+          alert('Eintrag wurde aktualisiert');
+        }
+      } else {
+        // Create new logbook entry with new data model
+        const entryId = `entry_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
+        
+        const newEntry: LogbookEntry = {
+          id: entryId,
+          userId: user.id,
+          carId,
+          title: formData.title,
+          content: formData.text,
+          topic: formData.type === 'maintenance' ? 'service' : 
+                 formData.type === 'repair' ? 'repair' :
+                 formData.type === 'tuning' ? 'tuning' :
+                 formData.type === 'trip' ? 'trip' : 'other',
+          photos: [...formData.images, ...formData.additionalImages],
+          mileage: formData.mileage ? parseInt(formData.mileage) : undefined,
+          mileageUnit: formData.mileageUnit === 'miles' ? 'mi' : 'km',
+          cost: formData.cost ? parseFloat(formData.cost) : undefined,
+          currency: formData.currency,
+          poll: formData.poll.question ? {
+            question: formData.poll.question,
+            options: formData.poll.options.filter(opt => opt.trim())
+          } : undefined,
+          allowComments: formData.allowComments,
+          pinOnCar: formData.pinToCarPage,
+          language: formData.language,
+          status: 'published',
+          createdAt: now,
+          publishedAt: now,
+          
+          // Legacy fields for backward compatibility
+          author: user.name || user.email,
+          authorEmail: user.email,
+          text: formData.text,
+          timestamp: new Date().toLocaleString('de-DE'),
+          likes: 0,
+          type: formData.type,
+          images: [...formData.images, ...formData.additionalImages],
+          mileageUnit: formData.mileageUnit,
+          poll: formData.poll.question ? formData.poll : undefined,
+          allowComments: formData.allowComments,
+          pinToCarPage: formData.pinToCarPage,
+          publishDate: new Date(formData.publishDate).toISOString(),
+          language: formData.language
+        };
+        
+        entries.push(newEntry);
+        saveLogbookEntries(carId, entries);
+        
+        // Show success message
+        alert('Eintrag wurde veröffentlicht');
+      }
+      
+      // Redirect to car page with logbook anchor
+      router.push(`/car/${carId}#logbook`);
     } catch (error) {
       console.error('Error publishing logbook entry:', error);
       alert('Fehler beim Veröffentlichen des Eintrags');
@@ -287,11 +415,33 @@ export default function NewLogbookEntryPage() {
     );
   }
 
-  if (!user || !isCarOwner(car, user.email)) {
+  if (!user) {
+    return (
+      <main className="pb-12">
+        <div className="section text-center py-16">
+          <div className="text-xl mb-4">Bitte melden Sie sich an, um Logbuch-Einträge zu erstellen</div>
+          <button 
+            onClick={() => router.push('/login')}
+            className="btn-primary"
+          >
+            Anmelden
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (!isCarOwnerByCar(car, user.id, user.email)) {
     return (
       <main className="pb-12">
         <div className="section text-center py-16">
           <div className="text-xl">Nur der Besitzer kann Logbuch-Einträge erstellen</div>
+          <button 
+            onClick={() => router.push(`/car/${carId}`)}
+            className="btn-secondary mt-4"
+          >
+            Zurück zur Fahrzeugseite
+          </button>
         </div>
       </main>
     );
@@ -317,7 +467,7 @@ export default function NewLogbookEntryPage() {
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="h1">Neuer Logbuch-Eintrag</h1>
+            <h1 className="h1">{editEntryId ? 'Logbuch-Eintrag bearbeiten' : 'Neuer Logbuch-Eintrag'}</h1>
             <p className="opacity-70 text-sm">
               {car.make} {car.model} • {car.year}
             </p>
@@ -591,7 +741,7 @@ export default function NewLogbookEntryPage() {
               className="btn-primary flex items-center gap-2 px-6 py-3"
             >
               <Send size={16} />
-              {isSaving ? 'Публикую...' : 'Опубликовать'}
+              {isSaving ? (editEntryId ? 'Speichere...' : 'Veröffentliche...') : (editEntryId ? 'Speichern' : 'Veröffentlichen')}
             </button>
             
             <button

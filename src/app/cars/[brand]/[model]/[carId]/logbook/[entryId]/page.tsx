@@ -14,9 +14,10 @@ import {
   getComments,
   editComment,
   deleteComment,
-  likeComment
+  likeComment,
+  deleteLogbookEntry
 } from '@/lib/interactions';
-import { isCarOwner } from '@/lib/fix-car-ownership';
+import { isCarOwnerByCar } from '@/lib/ownership';
 import { readProfileByEmail } from '@/lib/profile';
 import CommentsList from '@/components/ui/CommentsList';
 
@@ -94,7 +95,7 @@ export default function LogbookEntryPage() {
   const handleToggleLike = () => {
     if (!user || !entry) return;
     
-    toggleLogbookEntryLike(entry.id, user.email);
+    toggleLogbookEntryLike(entry.id, user.id, user.email);
     loadEntry(); // Reload to update like count
   };
 
@@ -146,6 +147,28 @@ export default function LogbookEntryPage() {
     loadComments();
   };
 
+  const handleEditEntry = () => {
+    if (!entry) return;
+    // Redirect to edit page (for now, we'll use the new page with pre-filled data)
+    router.push(`/cars/${brand}/${model}/${carId}/logbook/new?edit=${entryId}`);
+  };
+
+  const handleDeleteEntry = () => {
+    if (!entry || !user || entry.userId !== user.id) return;
+    
+    if (confirm('Möchten Sie diesen Logbuch-Eintrag wirklich löschen?')) {
+      const success = deleteLogbookEntry(carId, entryId);
+      if (success) {
+        // Show success message
+        alert('Eintrag wurde gelöscht');
+        // Redirect to car page
+        router.push(`/car/${carId}#logbook`);
+      } else {
+        alert('Fehler beim Löschen des Eintrags');
+      }
+    }
+  };
+
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
@@ -179,7 +202,8 @@ export default function LogbookEntryPage() {
     );
   }
 
-  const isOwner = user && isCarOwner(car, user.email);
+  const isOwner = user && car && isCarOwnerByCar(car, user.id, user.email);
+  const isEntryAuthor = user && entry && entry.userId === user.id;
 
   return (
     <main className="pb-12">
@@ -207,13 +231,23 @@ export default function LogbookEntryPage() {
             >
               <Share2 size={20} />
             </button>
-            {isOwner && (
-              <button
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                title="Bearbeiten"
-              >
-                <Edit size={20} />
-              </button>
+            {isEntryAuthor && (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleEditEntry}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  title="Bearbeiten"
+                >
+                  <Edit size={20} />
+                </button>
+                <button
+                  onClick={handleDeleteEntry}
+                  className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-400"
+                  title="Löschen"
+                >
+                  <Trash2 size={20} />
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -228,13 +262,23 @@ export default function LogbookEntryPage() {
               </div>
               <span className="text-sm opacity-70">{entry.timestamp}</span>
               <span className="text-xs opacity-50 bg-white/10 px-2 py-1 rounded-full">
-                {entry.type === 'maintenance' ? 'Wartung' :
+                {entry.topic === 'service' ? 'Wartung' :
+                 entry.topic === 'repair' ? 'Reparatur' :
+                 entry.topic === 'tuning' ? 'Tuning' :
+                 entry.topic === 'trip' ? 'Fahrt' :
+                 entry.topic === 'other' ? 'Allgemein' :
+                 entry.type === 'maintenance' ? 'Wartung' :
                  entry.type === 'repair' ? 'Reparatur' :
                  entry.type === 'tuning' ? 'Tuning' :
                  entry.type === 'trip' ? 'Fahrt' :
                  entry.type === 'event' ? 'Event' :
                  'Allgemein'}
               </span>
+              {entry.pinOnCar && (
+                <span className="text-xs bg-accent text-black px-2 py-1 rounded-full font-medium">
+                  Angepinnt
+                </span>
+              )}
             </div>
           </div>
 
@@ -343,12 +387,12 @@ export default function LogbookEntryPage() {
               <button
                 onClick={handleToggleLike}
                 className={`flex items-center gap-2 transition-all hover:scale-105 ${
-                  hasUserLikedLogbookEntry(entry.id, user?.email || '') 
+                  hasUserLikedLogbookEntry(entry.id, user?.id || '') 
                     ? 'opacity-100 text-accent' 
                     : 'opacity-70 hover:opacity-100'
                 }`}
               >
-                <Heart className={`w-5 h-5 ${hasUserLikedLogbookEntry(entry.id, user?.email || '') ? 'fill-current' : ''}`} />
+                <Heart className={`w-5 h-5 ${hasUserLikedLogbookEntry(entry.id, user?.id || '') ? 'fill-current' : ''}`} />
                 <span className="font-medium">{getLogbookEntryLikes(entry.id)}</span>
               </button>
               

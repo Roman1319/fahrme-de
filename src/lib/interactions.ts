@@ -2,8 +2,10 @@
 
 import { CarInteraction, LogbookLike, Comment, LogbookEntry, LogbookDraft } from './types';
 
+// Unified LocalStorage keys
 const INTERACTIONS_KEY = 'fahrme:interactions';
 const LOGBOOK_LIKES_KEY = 'fahrme:logbook-likes';
+const LOGBOOK_DRAFT_KEY_PREFIX = 'fahrme:logbook:draft:';
 
 // === Управление подписками и лайками автомобилей ===
 
@@ -66,20 +68,21 @@ export function getCarStats(carId: string): { followers: number; likes: number }
 
 // === Управление лайками записей бортового журнала ===
 
-export function toggleLogbookEntryLike(entryId: string, userEmail: string): boolean {
+export function toggleLogbookEntryLike(entryId: string, userId: string, userEmail?: string): boolean {
   const likes = getLogbookLikes();
-  const existingLike = likes.find(l => l.entryId === entryId && l.userEmail === userEmail);
+  const existingLike = likes.find(l => l.entryId === entryId && l.userId === userId);
   
   if (existingLike) {
     // Убираем лайк
-    const updatedLikes = likes.filter(l => !(l.entryId === entryId && l.userEmail === userEmail));
+    const updatedLikes = likes.filter(l => !(l.entryId === entryId && l.userId === userId));
     saveLogbookLikes(updatedLikes);
     return false;
   } else {
     // Добавляем лайк
     likes.push({
       entryId,
-      userEmail,
+      userId,
+      userEmail, // For backward compatibility
       likedAt: new Date().toISOString()
     });
     saveLogbookLikes(likes);
@@ -92,9 +95,9 @@ export function getLogbookEntryLikes(entryId: string): number {
   return likes.filter(l => l.entryId === entryId).length;
 }
 
-export function hasUserLikedLogbookEntry(entryId: string, userEmail: string): boolean {
+export function hasUserLikedLogbookEntry(entryId: string, userId: string): boolean {
   const likes = getLogbookLikes();
-  return likes.some(l => l.entryId === entryId && l.userEmail === userEmail);
+  return likes.some(l => l.entryId === entryId && l.userId === userId);
 }
 
 // === Управление комментариями ===
@@ -278,7 +281,8 @@ export function createLogbookDraft(carId: string, userId: string): LogbookDraft 
 }
 
 export function getLogbookDraft(carId: string, userId: string): LogbookDraft | null {
-  const savedDrafts = localStorage.getItem(`fahrme:logbook-drafts:${carId}:${userId}`);
+  const draftKey = `${LOGBOOK_DRAFT_KEY_PREFIX}${userId}:${carId}`;
+  const savedDrafts = localStorage.getItem(draftKey);
   if (savedDrafts) {
     try {
       return JSON.parse(savedDrafts);
@@ -291,20 +295,17 @@ export function getLogbookDraft(carId: string, userId: string): LogbookDraft | n
 }
 
 export function saveLogbookDraft(draft: LogbookDraft): void {
-  localStorage.setItem(`fahrme:logbook-drafts:${draft.carId}:${draft.userId}`, JSON.stringify(draft));
+  const draftKey = `${LOGBOOK_DRAFT_KEY_PREFIX}${draft.userId}:${draft.carId}`;
+  localStorage.setItem(draftKey, JSON.stringify(draft));
 }
 
-export function deleteLogbookDraft(draftId: string): boolean {
-  // Since we store drafts by carId:userId, we need to search through all possible keys
-  // This is a simplified implementation - in a real app, you'd want a better indexing system
-  const keys = Object.keys(localStorage);
-  const draftKey = keys.find(key => key.startsWith('fahrme:logbook-drafts:') && key.includes(draftId));
-  
-  if (draftKey) {
+export function deleteLogbookDraft(userId: string, carId: string): boolean {
+  const draftKey = `${LOGBOOK_DRAFT_KEY_PREFIX}${userId}:${carId}`;
+  const exists = localStorage.getItem(draftKey) !== null;
+  if (exists) {
     localStorage.removeItem(draftKey);
     return true;
   }
-  
   return false;
 }
 

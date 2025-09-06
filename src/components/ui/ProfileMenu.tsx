@@ -70,8 +70,8 @@ export default function ProfileMenu() {
                 // Удаляем только ключи сессии, НЕ удаляем пользователей
                 localStorage.removeItem('fahrme:profile');
                 localStorage.removeItem('fahrme:user');
-                localStorage.removeItem('fahrme.session');
-                // НЕ удаляем 'fahrme.users' - это список всех пользователей!
+                localStorage.removeItem('fahrme:session');
+                // НЕ удаляем 'fahrme:users' - это список всех пользователей!
                 // Принудительно обновляем страницу для сброса состояния
                 window.location.href = '/';
               } catch (error) {
