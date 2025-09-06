@@ -36,9 +36,9 @@ export default function LikeButton({
   variant = 'default',
   onLikeChange
 }: LikeButtonProps) {
-  const { user, getCurrentUserId } = useAuth();
+  const { user } = useAuth();
   const { liked, likeCount, isLoading, toggle } = useLikes(
-    getCurrentUserId(),
+    user?.id || '',
     targetType,
     targetId
   );

@@ -130,7 +130,7 @@ export default function CommentBlock({
       {level > 0 && (
         <div className="flex items-center mb-2">
           <div className="w-6 h-px bg-white/20 mr-2"></div>
-          <span className="text-xs text-white/50">Antwort auf {comment.parentAuthor || 'Kommentar'}</span>
+          <span className="text-xs text-white/50">Antwort auf Kommentar</span>
         </div>
       )}
       

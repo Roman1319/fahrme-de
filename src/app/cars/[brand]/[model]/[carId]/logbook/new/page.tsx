@@ -28,19 +28,9 @@ const LOGBOOK_TYPES = [
 ] as const;
 
 const CURRENCIES = [
-  { value: 'RUB', label: '₽' },
-  { value: 'UAH', label: 'гривна' },
-  { value: 'BYN', label: 'бел. руб.' },
-  { value: 'KZT', label: '〒' },
-  { value: 'USD', label: '$' },
   { value: 'EUR', label: '€' }
 ] as const;
 
-const LANGUAGES = [
-  { value: 'Deutsch', label: 'Deutsch' },
-  { value: 'English', label: 'English' },
-  { value: 'Русский', label: 'Русский' }
-] as const;
 
 export default function NewLogbookEntryPage() {
   const params = useParams();
@@ -62,7 +52,7 @@ export default function NewLogbookEntryPage() {
   const [formData, setFormData] = useState({
     title: '',
     text: '',
-    type: 'general' as const,
+    type: 'general' as 'repair' | 'tuning' | 'trip' | 'maintenance' | 'event' | 'general',
     images: [] as string[],
     additionalImages: [] as string[],
     mileage: '',
@@ -74,9 +64,7 @@ export default function NewLogbookEntryPage() {
       options: [''] as string[]
     },
     allowComments: true,
-    pinToCarPage: false,
-    publishDate: new Date().toISOString().split('T')[0],
-    language: 'Deutsch'
+    pinToCarPage: false
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -92,28 +80,6 @@ export default function NewLogbookEntryPage() {
     }
   }, [carId, user, editEntryId]);
 
-  // Auto-save draft when form data changes
-  useEffect(() => {
-    if (formData.title || formData.text) {
-      const timeoutId = setTimeout(() => {
-        saveDraft();
-      }, 2000); // Auto-save after 2 seconds of inactivity
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [formData]);
-
-  // Save draft before page unload
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (formData.title || formData.text) {
-        saveDraft();
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [formData]);
 
   const loadCar = () => {
     const savedCars = localStorage.getItem('fahrme:my-cars');
@@ -144,14 +110,12 @@ export default function NewLogbookEntryPage() {
         images: [], // Images in text will be handled by RichTextEditor
         additionalImages: draft.images || [],
         mileage: draft.mileage?.toString() || '',
-        mileageUnit: draft.mileageUnit || 'km',
+        mileageUnit: 'km',
         cost: draft.cost?.toString() || '',
-        currency: draft.currency || 'EUR',
+        currency: 'EUR',
         poll: draft.poll || { question: '', options: [''] },
         allowComments: draft.allowComments,
-        pinToCarPage: draft.pinToCarPage,
-        publishDate: draft.publishDate.split('T')[0],
-        language: draft.language
+        pinToCarPage: draft.pinToCarPage
       });
     }
   };
@@ -166,23 +130,22 @@ export default function NewLogbookEntryPage() {
       setFormData({
         title: entry.title || '',
         text: entry.content || entry.text || '',
-        type: entry.topic === 'service' ? 'maintenance' :
+        type: entry.topic === 'maintenance' ? 'maintenance' :
               entry.topic === 'repair' ? 'repair' :
               entry.topic === 'tuning' ? 'tuning' :
               entry.topic === 'trip' ? 'trip' :
-              entry.topic === 'other' ? 'general' :
-              entry.type || 'general',
+              entry.topic === 'event' ? 'event' :
+              entry.topic === 'general' ? 'general' :
+              (entry.type === 'modification' ? 'tuning' : 'general'),
         images: [], // Images in text will be handled by RichTextEditor
         additionalImages: entry.photos || entry.images || [],
         mileage: entry.mileage?.toString() || '',
-        mileageUnit: entry.mileageUnit === 'mi' ? 'miles' : 'km',
+        mileageUnit: 'km',
         cost: entry.cost?.toString() || '',
-        currency: entry.currency || 'EUR',
+        currency: 'EUR',
         poll: entry.poll || { question: '', options: [''] },
         allowComments: entry.allowComments ?? true,
-        pinToCarPage: entry.pinOnCar ?? false,
-        publishDate: entry.publishedAt ? new Date(entry.publishedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        language: entry.language || 'Deutsch'
+        pinToCarPage: entry.pinOnCar ?? false
       });
     } else {
       // Entry not found or user doesn't own it
@@ -232,8 +195,8 @@ export default function NewLogbookEntryPage() {
       poll: formData.poll.question ? formData.poll : undefined,
       allowComments: formData.allowComments,
       pinToCarPage: formData.pinToCarPage,
-      publishDate: new Date(formData.publishDate).toISOString(),
-      language: formData.language,
+      publishDate: new Date().toISOString(),
+      language: 'Deutsch',
       createdAt: isDraft ? new Date().toISOString() : new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -245,6 +208,38 @@ export default function NewLogbookEntryPage() {
     // Show notification
     setShowDraftSaved(true);
     setTimeout(() => setShowDraftSaved(false), 3000);
+  };
+
+  const deleteDraft = () => {
+    if (!user?.id || !draftId) return;
+    
+    if (confirm('Möchten Sie den Entwurf wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+      deleteLogbookDraft(user.id, carId);
+      setDraftId(null);
+      setIsDraft(false);
+      
+      // Clear form data
+      setFormData({
+        title: '',
+        text: '',
+        type: 'general' as 'repair' | 'tuning' | 'trip' | 'maintenance' | 'event' | 'general',
+        images: [] as string[],
+        additionalImages: [] as string[],
+        mileage: '',
+        mileageUnit: 'km' as const,
+        cost: '',
+        currency: 'EUR' as const,
+        poll: {
+          question: '',
+          options: [''] as string[]
+        },
+        allowComments: true,
+        pinToCarPage: false
+      });
+      
+      // Show notification
+      alert('Entwurf wurde gelöscht');
+    }
   };
 
   const handlePublish = async () => {
@@ -271,34 +266,25 @@ export default function NewLogbookEntryPage() {
             ...entries[entryIndex],
             title: formData.title,
             content: formData.text,
-            topic: formData.type === 'maintenance' ? 'service' : 
-                   formData.type === 'repair' ? 'repair' :
-                   formData.type === 'tuning' ? 'tuning' :
-                   formData.type === 'trip' ? 'trip' : 'other',
+            topic: formData.type as 'repair' | 'tuning' | 'trip' | 'maintenance' | 'event' | 'general',
             photos: [...formData.images, ...formData.additionalImages],
             mileage: formData.mileage ? parseInt(formData.mileage) : undefined,
-            mileageUnit: formData.mileageUnit === 'miles' ? 'mi' : 'km',
+            mileageUnit: formData.mileageUnit as 'km' | 'miles',
             cost: formData.cost ? parseFloat(formData.cost) : undefined,
-            currency: formData.currency,
+            currency: formData.currency as 'RUB' | 'UAH' | 'BYN' | 'KZT' | 'USD' | 'EUR',
             poll: formData.poll.question ? {
               question: formData.poll.question,
               options: formData.poll.options.filter(opt => opt.trim())
             } : undefined,
             allowComments: formData.allowComments,
             pinOnCar: formData.pinToCarPage,
-            language: formData.language,
+            language: 'Deutsch',
             updatedAt: now,
             
             // Legacy fields for backward compatibility
             text: formData.text,
-            type: formData.type,
-            images: [...formData.images, ...formData.additionalImages],
-            mileageUnit: formData.mileageUnit,
-            poll: formData.poll.question ? formData.poll : undefined,
-            allowComments: formData.allowComments,
-            pinToCarPage: formData.pinToCarPage,
-            publishDate: new Date(formData.publishDate).toISOString(),
-            language: formData.language
+            type: formData.type as 'maintenance' | 'modification' | 'event' | 'general',
+            images: [...formData.images, ...formData.additionalImages]
           };
           
           entries[entryIndex] = updatedEntry;
@@ -317,25 +303,22 @@ export default function NewLogbookEntryPage() {
           carId,
           title: formData.title,
           content: formData.text,
-          topic: formData.type === 'maintenance' ? 'service' : 
-                 formData.type === 'repair' ? 'repair' :
-                 formData.type === 'tuning' ? 'tuning' :
-                 formData.type === 'trip' ? 'trip' : 'other',
+          topic: formData.type as 'repair' | 'tuning' | 'trip' | 'maintenance' | 'event' | 'general',
           photos: [...formData.images, ...formData.additionalImages],
           mileage: formData.mileage ? parseInt(formData.mileage) : undefined,
-          mileageUnit: formData.mileageUnit === 'miles' ? 'mi' : 'km',
+          mileageUnit: formData.mileageUnit as 'km' | 'miles',
           cost: formData.cost ? parseFloat(formData.cost) : undefined,
-          currency: formData.currency,
+          currency: formData.currency as 'RUB' | 'UAH' | 'BYN' | 'KZT' | 'USD' | 'EUR',
           poll: formData.poll.question ? {
             question: formData.poll.question,
             options: formData.poll.options.filter(opt => opt.trim())
           } : undefined,
           allowComments: formData.allowComments,
           pinOnCar: formData.pinToCarPage,
-          language: formData.language,
-          status: 'published',
-          createdAt: now,
-          publishedAt: now,
+            language: 'Deutsch',
+            status: 'published',
+            createdAt: now,
+            publishedAt: now,
           
           // Legacy fields for backward compatibility
           author: user.name || user.email,
@@ -343,14 +326,8 @@ export default function NewLogbookEntryPage() {
           text: formData.text,
           timestamp: new Date().toLocaleString('de-DE'),
           likes: 0,
-          type: formData.type,
-          images: [...formData.images, ...formData.additionalImages],
-          mileageUnit: formData.mileageUnit,
-          poll: formData.poll.question ? formData.poll : undefined,
-          allowComments: formData.allowComments,
-          pinToCarPage: formData.pinToCarPage,
-          publishDate: new Date(formData.publishDate).toISOString(),
-          language: formData.language
+          type: formData.type as 'maintenance' | 'modification' | 'event' | 'general',
+          images: [...formData.images, ...formData.additionalImages]
         };
         
         entries.push(newEntry);
@@ -475,14 +452,14 @@ export default function NewLogbookEntryPage() {
         </div>
 
         <div className="space-y-6">
-          {/* Заголовок записи */}
+          {/* Eintragstitel */}
           <div>
-            <h2 className="text-lg font-bold mb-4">Заголовок записи</h2>
+            <h2 className="text-lg font-bold mb-4">Eintragstitel</h2>
             
             {/* Title */}
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2">
-                Выберите тему записи
+                Wählen Sie das Thema des Eintrags
               </label>
               <select
                 value={formData.type}
@@ -504,28 +481,28 @@ export default function NewLogbookEntryPage() {
                 value={formData.title}
                 onChange={(e) => updateFormData('title', e.target.value)}
                 className="form-input"
-                placeholder="Введите заголовок записи..."
+                placeholder="Geben Sie den Titel des Eintrags ein..."
               />
               {errors.title && <p className="text-red-400 text-sm mt-1">{errors.title}</p>}
             </div>
           </div>
 
-          {/* Текст записи */}
+          {/* Eintragstext */}
           <div>
-            <h2 className="text-lg font-bold mb-4">Текст записи</h2>
+            <h2 className="text-lg font-bold mb-4">Eintragstext</h2>
             <RichTextEditor
               value={formData.text}
               onChange={(value) => updateFormData('text', value)}
-              placeholder="Опишите, что вы сделали..."
+              placeholder="Beschreiben Sie, was Sie gemacht haben..."
               images={formData.images}
               onImagesChange={(images) => updateFormData('images', images)}
             />
             {errors.text && <p className="text-red-400 text-sm mt-1">{errors.text}</p>}
           </div>
 
-          {/* Фотографии */}
+          {/* Fotos */}
           <div>
-            <h2 className="text-lg font-bold mb-4">Фотографии</h2>
+            <h2 className="text-lg font-bold mb-4">Fotos</h2>
             <PhotoUpload
               images={formData.additionalImages}
               onChange={(images) => updateFormData('additionalImages', images)}
@@ -533,103 +510,72 @@ export default function NewLogbookEntryPage() {
             />
           </div>
 
-          {/* Пробег и цена вопроса */}
+          {/* Kilometerstand und Kosten */}
           <div>
-            <h2 className="text-lg font-bold mb-4">Пробег и цена вопроса</h2>
+            <h2 className="text-lg font-bold mb-4">Kilometerstand und Kosten</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Пробег
+                  Kilometerstand
                 </label>
                 <div className="flex gap-2">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={formData.mileage}
                     onChange={(e) => updateFormData('mileage', e.target.value)}
                     className="form-input flex-1"
                     placeholder="123456"
                   />
-                  <div className="flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => updateFormData('mileageUnit', 'km')}
-                      className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                        formData.mileageUnit === 'km' 
-                          ? 'bg-accent text-black' 
-                          : 'bg-white/10 text-white/70 hover:bg-white/20'
-                      }`}
-                    >
-                      КМ
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateFormData('mileageUnit', 'miles')}
-                      className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                        formData.mileageUnit === 'miles' 
-                          ? 'bg-accent text-black' 
-                          : 'bg-white/10 text-white/70 hover:bg-white/20'
-                      }`}
-                    >
-                      МЛ
-                    </button>
+                  <div className="flex items-center px-3 py-2 bg-accent text-black text-sm rounded-lg font-medium">
+                    KM
                   </div>
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Цена вопроса
+                  Kosten
                 </label>
                 <div className="flex gap-2">
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
+                    pattern="[0-9]*[.,]?[0-9]*"
                     value={formData.cost}
                     onChange={(e) => updateFormData('cost', e.target.value)}
                     className="form-input flex-1"
                     placeholder="150.00"
                   />
-                  <div className="flex gap-1 flex-wrap">
-                    {CURRENCIES.map(currency => (
-                      <button
-                        key={currency.value}
-                        type="button"
-                        onClick={() => updateFormData('currency', currency.value)}
-                        className={`px-2 py-2 text-sm rounded-lg transition-colors ${
-                          formData.currency === currency.value 
-                            ? 'bg-accent text-black' 
-                            : 'bg-white/10 text-white/70 hover:bg-white/20'
-                        }`}
-                      >
-                        {currency.label}
-                      </button>
-                    ))}
+                  <div className="flex items-center px-3 py-2 bg-accent text-black text-sm rounded-lg font-medium">
+                    €
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Опрос */}
+          {/* Umfrage */}
           <div>
-            <h2 className="text-lg font-bold mb-4">Опрос</h2>
+            <h2 className="text-lg font-bold mb-4">Umfrage</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Ваш вопрос
+                  Ihre Frage
                 </label>
                 <input
                   type="text"
                   value={formData.poll.question}
                   onChange={(e) => updateFormData('poll', { ...formData.poll, question: e.target.value })}
                   className="form-input"
-                  placeholder="Введите ваш вопрос..."
+                  placeholder="Geben Sie Ihre Frage ein..."
                 />
               </div>
               
               {formData.poll.question && (
                 <div className="space-y-2">
-                  <label className="text-sm opacity-70">Варианты ответов:</label>
+                  <label className="text-sm opacity-70">Antwortoptionen:</label>
                   {formData.poll.options.map((option, index) => (
                     <div key={index} className="flex gap-2 items-center">
                       <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs font-medium">
@@ -640,7 +586,7 @@ export default function NewLogbookEntryPage() {
                         value={option}
                         onChange={(e) => updatePollOption(index, e.target.value)}
                         className="form-input flex-1"
-                        placeholder="Вариант ответа"
+                        placeholder="Antwortoption"
                       />
                       {formData.poll.options.length > 1 && (
                         <button
@@ -658,23 +604,23 @@ export default function NewLogbookEntryPage() {
                       className="flex items-center gap-2 text-sm text-accent hover:opacity-80"
                     >
                       <Plus size={16} />
-                      Добавить вариант
+                      Option hinzufügen
                     </button>
                   )}
-                  <p className="text-xs text-white/50">Максимум 10 вариантов ответа</p>
+                  <p className="text-xs text-white/50">Maximal 10 Antwortoptionen</p>
                 </div>
               )}
             </div>
             {errors.poll && <p className="text-red-400 text-sm mt-1">{errors.poll}</p>}
           </div>
 
-          {/* Настройки публикации */}
+          {/* Veröffentlichungseinstellungen */}
           <div>
-            <h2 className="text-lg font-bold mb-4">Настройки публикации</h2>
+            <h2 className="text-lg font-bold mb-4">Veröffentlichungseinstellungen</h2>
             
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Разрешить комментарии</span>
+                <span className="text-sm font-medium">Kommentare erlauben</span>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
@@ -687,7 +633,7 @@ export default function NewLogbookEntryPage() {
               </div>
               
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Закрепить на странице машины</span>
+                <span className="text-sm font-medium">Auf Fahrzeugseite anheften</span>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
@@ -699,37 +645,6 @@ export default function NewLogbookEntryPage() {
                 </label>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Дата
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.publishDate}
-                    onChange={(e) => updateFormData('publishDate', e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Язык
-                  </label>
-                  <select
-                    value={formData.language}
-                    onChange={(e) => updateFormData('language', e.target.value)}
-                    className="form-input"
-                  >
-                    {LANGUAGES.map(lang => (
-                      <option key={lang.value} value={lang.value}>
-                        {lang.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-white/50 mt-1">Укажите, на каком языке написан текст записи</p>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -749,8 +664,18 @@ export default function NewLogbookEntryPage() {
               className="btn-secondary flex items-center gap-2 px-6 py-3"
             >
               <Save size={16} />
-              {isDraft ? 'Обновить черновик' : 'Сохранить черновик'}
+              {isDraft ? 'Entwurf aktualisieren' : 'Entwurf speichern'}
             </button>
+            
+            {isDraft && (
+              <button
+                onClick={deleteDraft}
+                className="btn-secondary flex items-center gap-2 px-6 py-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 border-red-500/30"
+              >
+                <Trash2 size={16} />
+                Entwurf löschen
+              </button>
+            )}
           </div>
         </div>
         </div>

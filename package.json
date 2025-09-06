@@ -4,11 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:stable": "next dev",
     "build": "next build --turbopack",
+    "build:stable": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@next/font": "^14.2.15",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.542.0",

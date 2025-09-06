@@ -150,7 +150,7 @@ export default function LogbookEntryPage() {
   const handleEditEntry = () => {
     if (!entry) return;
     // Redirect to edit page (for now, we'll use the new page with pre-filled data)
-    router.push(`/cars/${brand}/${model}/${carId}/logbook/new?edit=${entryId}`);
+    router.push(`/logbuch/${entryId}/edit`);
   };
 
   const handleDeleteEntry = () => {
@@ -262,16 +262,15 @@ export default function LogbookEntryPage() {
               </div>
               <span className="text-sm opacity-70">{entry.timestamp}</span>
               <span className="text-xs opacity-50 bg-white/10 px-2 py-1 rounded-full">
-                {entry.topic === 'service' ? 'Wartung' :
+                {entry.topic === 'maintenance' ? 'Wartung' :
                  entry.topic === 'repair' ? 'Reparatur' :
                  entry.topic === 'tuning' ? 'Tuning' :
                  entry.topic === 'trip' ? 'Fahrt' :
-                 entry.topic === 'other' ? 'Allgemein' :
+                 entry.topic === 'event' ? 'Event' :
+                 entry.topic === 'general' ? 'Allgemein' :
                  entry.type === 'maintenance' ? 'Wartung' :
-                 entry.type === 'repair' ? 'Reparatur' :
-                 entry.type === 'tuning' ? 'Tuning' :
-                 entry.type === 'trip' ? 'Fahrt' :
                  entry.type === 'event' ? 'Event' :
+                 entry.type === 'general' ? 'Allgemein' :
                  'Allgemein'}
               </span>
               {entry.pinOnCar && (
@@ -335,7 +334,7 @@ export default function LogbookEntryPage() {
 
           {/* Text Content */}
           <div className="prose prose-sm max-w-none dark:prose-invert mb-6">
-            {entry.text.split('\n').map((line, index) => {
+            {(entry.text || entry.content || '').split('\n').map((line, index) => {
               // Simple markdown parsing
               if (line.startsWith('![') && line.includes('](') && line.includes(')')) {
                 const match = line.match(/!\[([^\]]*)\]\(([^)]+)\)/);
@@ -405,7 +404,7 @@ export default function LogbookEntryPage() {
             </div>
             
             <div className="text-sm opacity-50">
-              {entry.language} • {entry.publishDate}
+              {entry.language} • {entry.publishedAt ? new Date(entry.publishedAt).toLocaleDateString('de-DE') : 'Unbekannt'}
             </div>
           </div>
         </div>

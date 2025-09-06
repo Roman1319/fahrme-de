@@ -21,21 +21,32 @@ export default function RichTextEditor({
   onImagesChange
 }: RichTextEditorProps) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [dragPosition, setDragPosition] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Extract images from text when component mounts or value changes
   React.useEffect(() => {
     if (value && onImagesChange) {
-      const imageRegex = /!\[[^\]]*\]\(([^)]+)\)/g;
-      const foundImages: string[] = [];
+      // Look for image references like ![foto1], ![foto2], etc.
+      const imageRegex = /!\[foto(\d+)\]/g;
+      const foundReferences: string[] = [];
       let match;
       
       while ((match = imageRegex.exec(value)) !== null) {
-        if (!foundImages.includes(match[1])) {
-          foundImages.push(match[1]);
+        const reference = `foto${match[1]}`;
+        if (!foundReferences.includes(reference)) {
+          foundReferences.push(reference);
         }
       }
+      
+      // Map references to actual image URLs from the images array
+      const foundImages: string[] = [];
+      foundReferences.forEach((ref, index) => {
+        if (images[index]) {
+          foundImages.push(images[index]);
+        }
+      });
       
       // Only update if there are new images
       if (foundImages.length > 0 && JSON.stringify(foundImages) !== JSON.stringify(images)) {
@@ -62,9 +73,30 @@ export default function RichTextEditor({
     }, 0);
   };
 
-  const insertImage = (imageUrl: string) => {
-    const imageMarkdown = `![Bild](${imageUrl})\n`;
-    insertText(imageMarkdown);
+  const insertImage = (imageUrl: string, position?: number) => {
+    // Generate a simple reference like "foto1", "foto2", etc.
+    const imageIndex = images.length + 1;
+    const imageReference = `foto${imageIndex}`;
+    // Only insert the reference, not the full base64 URL
+    const imageMarkdown = `![${imageReference}]\n`;
+    
+    if (position !== undefined) {
+      // Insert at specific position
+      const newText = value.substring(0, position) + imageMarkdown + value.substring(position);
+      onChange(newText);
+      
+      // Set cursor position after inserted image
+      setTimeout(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+          textarea.focus();
+          textarea.setSelectionRange(position + imageMarkdown.length, position + imageMarkdown.length);
+        }
+      }, 0);
+    } else {
+      // Use normal insertText behavior
+      insertText(imageMarkdown);
+    }
     
     // Add to images array if not already present
     if (onImagesChange && !images.includes(imageUrl)) {
@@ -85,20 +117,48 @@ export default function RichTextEditor({
             if (onImagesChange) {
               onImagesChange([...images, result]);
             }
-            // Insert into text
-            insertImage(result);
+            // Insert into text at drag position or current cursor position
+            const position = dragPosition !== null ? dragPosition : textareaRef.current?.selectionStart || 0;
+            insertImage(result, position);
+            setDragPosition(null); // Reset drag position
           }
         };
         reader.readAsDataURL(file);
       }
     });
-  }, [images, onImagesChange]);
+  }, [images, onImagesChange, dragPosition]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
+    
+    // Get cursor position at drop point
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const rect = textarea.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // Calculate approximate cursor position based on drop coordinates
+      const lineHeight = 20; // Approximate line height
+      const charWidth = 8; // Approximate character width
+      const lines = Math.floor(y / lineHeight);
+      const chars = Math.floor(x / charWidth);
+      
+      // Get current text lines
+      const textLines = value.split('\n');
+      let position = 0;
+      
+      for (let i = 0; i < Math.min(lines, textLines.length); i++) {
+        position += textLines[i].length + 1; // +1 for newline
+      }
+      
+      position += Math.min(chars, textLines[Math.min(lines, textLines.length - 1)]?.length || 0);
+      setDragPosition(position);
+    }
+    
     handleFileSelect(e.dataTransfer.files);
-  }, [handleFileSelect]);
+  }, [handleFileSelect, value]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -186,6 +246,7 @@ export default function RichTextEditor({
             <div className="text-center">
               <ImageIcon size={32} className="mx-auto mb-2 text-accent" />
               <p className="text-accent font-medium">Fotos hier ablegen</p>
+              <p className="text-accent/70 text-sm mt-1">Bild wird an der Cursor-Position eingefügt</p>
             </div>
           </div>
         )}
@@ -210,9 +271,12 @@ export default function RichTextEditor({
               <div key={index} className="relative aspect-square bg-white/5 rounded-lg overflow-hidden group">
                 <img 
                   src={image} 
-                  alt={`Upload ${index + 1}`} 
+                  alt={`foto${index + 1}`} 
                   className="w-full h-full object-cover" 
                 />
+                <div className="absolute top-1 left-1 px-2 py-1 bg-black/50 text-white text-xs rounded">
+                  foto{index + 1}
+                </div>
                 <button
                   type="button"
                   onClick={() => {
@@ -226,7 +290,10 @@ export default function RichTextEditor({
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertImage(image)}
+                  onClick={() => {
+                    const position = textareaRef.current?.selectionStart || 0;
+                    insertImage(image, position);
+                  }}
                   className="absolute bottom-1 left-1 px-2 py-1 bg-accent text-black text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   Einfügen

@@ -43,12 +43,12 @@ export interface LogbookEntry {
   carId: string;
   title: string;
   content: string;
-  topic: 'service' | 'repair' | 'tuning' | 'trip' | 'other';
+  topic: 'repair' | 'tuning' | 'trip' | 'maintenance' | 'event' | 'general';
   photos: string[]; // URLs to photos
   mileage?: number;
-  mileageUnit?: 'km' | 'mi';
+  mileageUnit?: 'km' | 'miles';
   cost?: number;
-  currency?: string;
+  currency?: 'RUB' | 'UAH' | 'BYN' | 'KZT' | 'USD' | 'EUR';
   poll?: {
     question: string;
     options: string[];
@@ -70,18 +70,6 @@ export interface LogbookEntry {
   likes?: number;
   type?: 'maintenance' | 'modification' | 'event' | 'general';
   images?: string[];
-  mileage?: number;
-  mileageUnit?: 'km' | 'miles';
-  cost?: number;
-  currency?: 'RUB' | 'UAH' | 'BYN' | 'KZT' | 'USD' | 'EUR';
-  poll?: {
-    question: string;
-    options: string[];
-  };
-  allowComments?: boolean;
-  pinToCarPage?: boolean;
-  publishDate?: string;
-  language?: string;
 }
 
 export interface CarInteraction {
@@ -106,7 +94,7 @@ export interface LogbookDraft {
   userId: string;
   title: string;
   text: string;
-  type: 'maintenance' | 'repair' | 'tuning' | 'trip' | 'event' | 'general';
+  type: 'repair' | 'tuning' | 'trip' | 'maintenance' | 'event' | 'general';
   images?: string[];
   mileage?: number;
   mileageUnit?: 'km' | 'miles';

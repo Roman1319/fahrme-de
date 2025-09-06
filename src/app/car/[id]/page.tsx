@@ -721,11 +721,12 @@ export default function CarPage() {
                         
                         {/* Категория */}
                         <div className="text-xs text-white/60 mb-2">
-                          {topic === 'service' ? 'Wartung' :
+                          {topic === 'maintenance' ? 'Wartung' :
                            topic === 'repair' ? 'Reparatur' :
                            topic === 'tuning' ? 'Tuning' :
                            topic === 'trip' ? 'Fahrt' :
-                           topic === 'other' ? 'Allgemein' :
+                           topic === 'event' ? 'Event' :
+                           topic === 'general' ? 'Allgemein' :
                            topic}
                         </div>
                         
@@ -885,7 +886,7 @@ export default function CarPage() {
                 return (
                   <Link 
                     key={entry.id} 
-                    href={`/cars/${car.make.toLowerCase()}/${car.model.toLowerCase()}/${carId}/logbook/${entry.id}`}
+                    href={`/logbuch/${entry.id}`}
                     className="block bg-white/5 rounded-lg p-3 hover:bg-white/10 transition-colors cursor-pointer"
                   >
                     <div className="flex gap-3">
@@ -927,11 +928,12 @@ export default function CarPage() {
                           <span className="text-sm text-white/70">@{author}</span>
                           <span className="text-xs text-white/50">{formatTimeAgo(timestamp)}</span>
                           <span className="text-xs text-white/50 bg-white/10 px-2 py-1 rounded">
-                            {topic === 'service' ? 'Wartung' :
+                            {topic === 'maintenance' ? 'Wartung' :
                              topic === 'repair' ? 'Reparatur' :
                              topic === 'tuning' ? 'Tuning' :
                              topic === 'trip' ? 'Fahrt' :
-                             topic === 'other' ? 'Allgemein' :
+                             topic === 'event' ? 'Event' :
+                             topic === 'general' ? 'Allgemein' :
                              topic}
                           </span>
                         </div>

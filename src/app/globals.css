@@ -5,6 +5,14 @@
   --radius-xl: 1rem;
   --radius-2xl: 1.25rem;
   --radius-3xl: 1.75rem;
+  
+  /* Шрифты */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+/* Глобальные стили */
+body {
+  font-family: var(--font-sans);
 }
 
 /* официальная палитра fahrme.de */

@@ -219,6 +219,7 @@ export default function MyCarsPage() {
           {/* Форма добавления машины */}
           {showAddForm && (
             <AddCarForm
+              user={user}
               onAdd={(carData) => {
                 addCar(carData);
                 setShowAddForm(false);
@@ -244,9 +245,11 @@ export default function MyCarsPage() {
 
 // Компонент формы добавления машины
 function AddCarForm({ 
+  user,
   onAdd, 
   onCancel 
 }: { 
+  user: any;
   onAdd: (car: Omit<MyCar, 'id' | 'addedDate'>) => void;
   onCancel: () => void;
 }) {
@@ -267,7 +270,8 @@ function AddCarForm({
     volume: '',
     gearbox: '',
     drive: '',
-    power: 0
+    power: 0,
+    ownerId: '' // Будет установлен при отправке
   });
 
   // Безопасное обновление доступных моделей при изменении марки
@@ -296,8 +300,11 @@ function AddCarForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (formData.name && formData.make && formData.model && formData.year > 0) {
-      onAdd(formData);
+    if (formData.name && formData.make && formData.model && formData.year > 0 && user) {
+      onAdd({
+        ...formData,
+        ownerId: user.id
+      });
     }
   };
 
