@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useMemo } from "react";
 import { getAuthService, type User } from "@/services/auth";
 import { STORAGE_KEYS } from "@/lib/keys";
 import { useRouter } from "next/navigation";
@@ -13,6 +13,7 @@ type Ctx = {
   isAuthenticated: () => boolean;
   isGuest: () => boolean;
   isLoading: boolean;
+  authReady: boolean;
 };
 const AuthCtx = createContext<Ctx | null>(null);
 
@@ -26,12 +27,14 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [user, setUser] = useState<User | null>(null);
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const auth = getAuthService();
+  const [authReady, setAuthReady] = useState(false);
+  const auth = useMemo(() => getAuthService(), []); // Memoize auth service to prevent recreation
   const router = useRouter();
 
   useEffect(() => { 
     setMounted(true); 
     setIsLoading(true);
+    setAuthReady(false);
     console.info('[auth] Initializing auth provider...');
     
     // For Supabase, we need to check session asynchronously
@@ -44,21 +47,63 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         if (currentUser) {
           setUser(currentUser);
           console.info('[auth] User loaded:', currentUser.email, 'ID:', currentUser.id);
+          setAuthReady(true);
+          console.info('[auth] AuthReady set to true (user found)');
         } else {
-          // For Supabase, we rely on onAuthStateChanged for user state
-          console.info('[auth] No user session found, waiting for onAuthStateChanged...');
+          // For Supabase, we need to check if there's already a session
+          // This handles the case where the user is already signed in but we missed the initial event
+          if (typeof window !== 'undefined' && window.authStateChangeCallbacks) {
+            console.info('[auth] Checking for existing Supabase session...');
+            // Try to get the current session from Supabase directly
+            import('@/lib/supabaseClient').then(({ supabase }) => {
+              supabase.auth.getSession().then(({ data: { session }, error }) => {
+                if (error) {
+                  console.error('[auth] Error getting session:', error);
+                } else if (session?.user) {
+                  console.info('[auth] Found existing Supabase session:', session.user.email);
+                  // Manually trigger the auth state change immediately
+                  if (window.authStateChangeCallbacks) {
+                    window.authStateChangeCallbacks.forEach(callback => {
+                      try {
+                        callback(session.user);
+                      } catch (error) {
+                        console.error('[auth] Error in manual auth callback:', error);
+                      }
+                    });
+                  }
+                } else {
+                  console.info('[auth] No existing Supabase session found');
+                }
+              });
+            });
+            
+            // Set fallback timer
+            setTimeout(() => {
+              console.info('[auth] Fallback timer: marking auth as ready');
+              setAuthReady(true);
+              console.info('[auth] AuthReady set to true (fallback timer)');
+            }, 300);
+          } else {
+            // For local auth, set fallback timer
+            setTimeout(() => {
+              console.info('[auth] Fallback timer: marking auth as ready');
+              setAuthReady(true);
+              console.info('[auth] AuthReady set to true (fallback timer)');
+            }, 300);
+          }
         }
       } catch (error) {
         console.error('[auth] Error initializing auth:', error);
+        setAuthReady(true);
       } finally {
         setIsLoading(false);
       }
     };
     
     initializeAuth();
-  }, [auth]);
+  }, [auth]); // Removed authReady from dependencies to prevent infinite loop
   
-  const refresh = () => setUser(auth.getCurrentUser());
+  const refresh = useMemo(() => () => setUser(auth.getCurrentUser()), [auth]);
   
   // Listen to auth state changes (works for both local and Supabase)
   useEffect(() => {
@@ -69,6 +114,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       console.info('[auth] Auth state changed:', user ? `User: ${user.email}` : 'No user');
       setUser(user);
       setIsLoading(false);
+      setAuthReady(true);
+      console.info('[auth] AuthReady set to true (auth state changed)');
       
       // Don't redirect here - let Guard handle it
       // This prevents race conditions between AuthProvider and Guard
@@ -90,10 +137,10 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         const newUser = auth.getCurrentUser();
         setUser(newUser);
         
-        // Если сессия была очищена в другой вкладке, редиректим на explore
+        // Если сессия была очищена в другой вкладке, редиректим на главную
         if (!newUser && e.newValue === null) {
-          console.info('[auth] Session cleared in another tab, redirecting to explore');
-          router.replace('/explore');
+          console.info('[auth] Session cleared in another tab, redirecting to home');
+          router.replace('/');
         }
       }
     };
@@ -109,6 +156,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       isAuthenticated: () => !!user,
       isGuest: () => !user,
       isLoading: isLoading,
+      authReady: mounted ? authReady : false,
       login: async (e,p)=>{ 
         try {
           console.info('[auth] Attempting login for:', e);
@@ -152,7 +200,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           console.error('[auth] Logout error:', error);
           // Force clear and redirect
           setUser(null);
-          router.replace('/explore');
+          router.replace('/');
         }
       }
     }}>

@@ -1,4 +1,45 @@
+"use client";
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/AuthProvider';
+
 export default function ExplorePage() {
+  const { user, authReady } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    // If user is authenticated, redirect to /feed
+    if (authReady && user) {
+      console.info('[explore] User is authenticated, redirecting to /feed');
+      router.replace('/feed');
+    }
+  }, [user, authReady, router]);
+
+  // Show loading while checking auth
+  if (!authReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-xl mb-4">Loading...</div>
+          <div className="text-sm opacity-70">Please wait while we check your authentication.</div>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is authenticated, show loading (redirect is in progress)
+  if (user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-xl mb-4">Redirecting...</div>
+          <div className="text-sm opacity-70">Please wait while we redirect you to your feed.</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-4xl mx-auto px-4 py-8">

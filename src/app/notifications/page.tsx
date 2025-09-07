@@ -2,12 +2,13 @@
 import SiteFooter from "@/components/SiteFooter";
 import * as N from "@/lib/notifications";
 import { useEffect, useState } from "react";
+import Guard from "@/components/auth/Guard";
 
 export default function NotificationsPage(){
   const [items, setItems] = useState(N.all());
   useEffect(()=>{ setItems(N.all()); },[]);
   return (
-    <>
+    <Guard>
       <main className="container pb-12">
         <div className="section mt-6">
           <div className="flex items-center justify-between mb-3">
@@ -31,6 +32,6 @@ export default function NotificationsPage(){
         </div>
       </main>
       <SiteFooter/>
-    </>
+    </Guard>
   );
 }

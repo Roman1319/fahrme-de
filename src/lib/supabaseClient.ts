@@ -57,9 +57,11 @@ if (typeof window !== 'undefined') {
   
   supabase.auth.onAuthStateChange(async (event, session) => {
     console.log('[supabase] Global auth state changed:', event, session?.user?.id);
+    console.log('[supabase] Callbacks registered:', window.authStateChangeCallbacks?.size || 0);
     
     // Notify all auth services about the change
     if (window.authStateChangeCallbacks) {
+      console.log('[supabase] Notifying', window.authStateChangeCallbacks.size, 'callbacks');
       window.authStateChangeCallbacks.forEach(callback => {
         try {
           // For Supabase, we need to pass the session user directly
@@ -69,6 +71,8 @@ if (typeof window !== 'undefined') {
           console.error('[supabase] Error in auth callback:', error);
         }
       });
+    } else {
+      console.warn('[supabase] No auth callbacks registered yet');
     }
   });
 }

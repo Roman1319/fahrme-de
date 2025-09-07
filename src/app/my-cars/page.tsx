@@ -18,30 +18,98 @@ export default function MyCarsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingCar, setEditingCar] = useState<MyCar | null>(null);
 
-  // Загружаем машины из localStorage
+  // Загружаем машины из localStorage, фильтруя по владельцу
   useEffect(() => {
+    console.log('[MyCars] Loading cars for user:', user);
+    
+    if (!user) {
+      console.log('[MyCars] No user, skipping car load');
+      return;
+    }
+    
     const savedCars = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
+    console.log('[MyCars] Raw saved cars from localStorage:', savedCars);
+    
     if (savedCars) {
       try {
-        setCars(JSON.parse(savedCars));
+        const allCars = JSON.parse(savedCars);
+        console.log('[MyCars] Parsed all cars:', allCars);
+        
+        // Фильтруем только автомобили текущего пользователя
+        const userCars = allCars.filter((car: MyCar) => car.ownerId === user.id);
+        console.log('[MyCars] Filtered user cars:', userCars);
+        
+        setCars(userCars);
+        console.log('[MyCars] Cars loaded successfully, count:', userCars.length);
       } catch (error) {
-        console.error('Error loading cars:', error);
+        console.error('[MyCars] Error loading cars:', error);
       }
+    } else {
+      console.log('[MyCars] No saved cars found in localStorage');
     }
-  }, []);
+  }, [user]);
 
   // Сохраняем машины в localStorage
   const saveCars = (newCars: MyCar[]) => {
+    console.log('[MyCars] saveCars called with:', newCars);
+    console.log('[MyCars] Current user:', user);
+    
+    if (!user) {
+      console.error('[MyCars] No user, cannot save cars');
+      return;
+    }
+    
     setCars(newCars);
-    localStorage.setItem(STORAGE_KEYS.MY_CARS_KEY, JSON.stringify(newCars));
+    console.log('[MyCars] State updated with new cars');
+    
+    // Загружаем все автомобили из localStorage
+    const savedCars = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
+    let allCars: MyCar[] = [];
+    
+    console.log('[MyCars] Saved cars from localStorage:', savedCars);
+    
+    if (savedCars) {
+      try {
+        allCars = JSON.parse(savedCars);
+        console.log('[MyCars] Parsed all cars:', allCars);
+      } catch (error) {
+        console.error('[MyCars] Error loading all cars:', error);
+        allCars = [];
+      }
+    }
+    
+    // Удаляем старые автомобили текущего пользователя
+    const beforeFilter = allCars.length;
+    allCars = allCars.filter(car => car.ownerId !== user.id);
+    console.log('[MyCars] Filtered out user cars. Before:', beforeFilter, 'After:', allCars.length);
+    
+    // Добавляем новые автомобили текущего пользователя
+    allCars = [...allCars, ...newCars];
+    console.log('[MyCars] Added new cars. Total cars now:', allCars.length);
+    
+    // Сохраняем обновленный список
+    const carsToSave = JSON.stringify(allCars);
+    console.log('[MyCars] Saving to localStorage:', carsToSave);
+    localStorage.setItem(STORAGE_KEYS.MY_CARS_KEY, carsToSave);
+    
+    // Проверяем что сохранилось
+    const verifySave = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
+    console.log('[MyCars] Verification - saved cars:', verifySave);
+    
     // Отправляем событие об изменении основного автомобиля
     window.dispatchEvent(new CustomEvent('mainVehicleChanged'));
+    console.log('[MyCars] saveCars completed successfully');
   };
 
   // Добавляем новую машину
   const addCar = (carData: Omit<MyCar, 'id' | 'addedDate' | 'ownerId'>) => {
+    console.log('[MyCars] addCar called with data:', carData);
+    console.log('[MyCars] Current user:', user);
+    console.log('[MyCars] Current cars count:', cars.length);
+    
     if (!user) {
-      console.error('Пользователь не авторизован');
+      console.error('[MyCars] Пользователь не авторизован');
+      alert('Ошибка: Пользователь не авторизован');
       return;
     }
     
@@ -52,8 +120,17 @@ export default function MyCarsPage() {
       addedDate: new Date().toISOString(),
       ownerId: user.id, // Всегда устанавливаем ID текущего пользователя как владельца
     };
-    saveCars([...cars, newCar]);
+    
+    console.log('[MyCars] Created new car:', newCar);
+    console.log('[MyCars] Cars before save:', cars);
+    
+    const updatedCars = [...cars, newCar];
+    console.log('[MyCars] Updated cars array:', updatedCars);
+    
+    saveCars(updatedCars);
     setShowAddForm(false);
+    
+    console.log('[MyCars] Car added successfully');
   };
 
   // Удаляем машину
@@ -301,11 +378,25 @@ function AddCarForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('[AddCarForm] Form submitted with data:', formData);
+    console.log('[AddCarForm] User:', user);
+    console.log('[AddCarForm] Validation check:', {
+      name: !!formData.name,
+      make: !!formData.make,
+      model: !!formData.model,
+      year: formData.year > 0,
+      user: !!user
+    });
+    
     if (formData.name && formData.make && formData.model && formData.year > 0 && user) {
+      console.log('[AddCarForm] Validation passed, calling onAdd');
       onAdd({
         ...formData,
         ownerId: user.id
       });
+    } else {
+      console.error('[AddCarForm] Validation failed');
+      alert('Bitte füllen Sie alle Pflichtfelder aus (Name, Marke, Modell, Baujahr)');
     }
   };
 

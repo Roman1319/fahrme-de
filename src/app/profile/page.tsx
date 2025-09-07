@@ -5,6 +5,7 @@ import { readProfile, updateProfile, UserProfile } from '@/lib/profile';
 import DropzoneAvatar from '@/components/ui/DropzoneAvatar';
 import { PillToggleGroup } from '@/components/ui/PillToggle';
 import { useAuth } from '@/components/AuthProvider';
+import Guard from '@/components/auth/Guard';
 
 type Errors = Partial<Record<
   'phone'|'email'|'displayName'|'firstName'|'lastName',
@@ -133,7 +134,8 @@ export default function ProfilePage() {
   if (!p) return null;
 
   return (
-    <main className="container grid gap-3 pb-6">
+    <Guard>
+      <main className="container grid gap-3 pb-6">
       <section className="space-y-3">
         <div className="section">
           <h1 className="h1">Mein Profil</h1>
@@ -335,6 +337,7 @@ export default function ProfilePage() {
         </div>
       </section>
     </main>
+    </Guard>
   );
 }
 

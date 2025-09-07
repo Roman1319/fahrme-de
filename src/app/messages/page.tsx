@@ -3,6 +3,7 @@ import * as M from "@/lib/messages";
 import { useEffect, useState } from "react";
 import AvatarButton from "@/components/ui/AvatarButton";
 import AvatarTooltip from "@/components/ui/AvatarTooltip";
+import Guard from "@/components/auth/Guard";
 
 export default function MessagesPage(){
   const [threads, setThreads] = useState<M.Thread[]>([]);
@@ -23,7 +24,7 @@ export default function MessagesPage(){
   };
 
   return (
-    <>
+    <Guard>
       <main className="container grid md:grid-cols-[280px_1fr] gap-4 pb-12">
         <aside className="section">
           <div className="font-semibold mb-2">Chats</div>
@@ -78,6 +79,6 @@ export default function MessagesPage(){
           )}
         </section>
       </main>
-    </>
+    </Guard>
   );
 }

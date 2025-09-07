@@ -15,7 +15,7 @@ type Props = {
 };
 
 export default function Header({ variant="default", showAuth=true }: Props) {
-  const { user } = useAuth();
+  const { user, authReady } = useAuth();
   const homeHref = user ? "/feed" : "/";
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -23,6 +23,9 @@ export default function Header({ variant="default", showAuth=true }: Props) {
   // Debug: log user state
   console.log('[header] User state:', user ? `${user.email} (${user.id})` : 'null');
   console.log('[header] Home href:', homeHref);
+  console.log('[header] AuthReady:', authReady);
+  console.log('[header] ShowAuth:', showAuth);
+  console.log('[header] Should show auth buttons:', !user && showAuth && authReady);
 
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,11 +33,17 @@ export default function Header({ variant="default", showAuth=true }: Props) {
     if (query) router.push(`/search?q=${encodeURIComponent(query)}`);
   };
 
+  const onLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    console.log('[header] Logo clicked, navigating to:', homeHref);
+    router.push(homeHref);
+  };
+
   return (
     <header className="header-blur">
       <div className="max-w-5xl mx-auto w-full flex items-center justify-between gap-3 py-3 px-4">
         {/* Logo */}
-        <a href={homeHref} className="flex items-center gap-2 shrink-0">
+        <a href={homeHref} onClick={onLogoClick} className="flex items-center gap-2 shrink-0 cursor-pointer">
           <img src="/logo.png" alt="fahrme.de" className="h-6 w-auto rounded-md" />
           <span className="font-extrabold text-lg">fahrme.de</span>
         </a>
@@ -55,13 +64,6 @@ export default function Header({ variant="default", showAuth=true }: Props) {
 
         {/* Rechter Cluster */}
         <div className="flex items-center gap-2">
-          {/* Explore link - only for guests */}
-          {!user && (
-            <a href="/explore" className="btn-ghost">
-              Explore
-            </a>
-          )}
-          
           <button className="icon-btn icon-btn--tight" title="Theme">
             <ThemeToggle/>
           </button>

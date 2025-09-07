@@ -3,6 +3,7 @@ import SiteFooter from "@/components/SiteFooter";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import RedirectIfAuthed from "@/components/RedirectIfAuthed";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -19,7 +20,7 @@ export default function LoginPage() {
     try {
       const error = await login(email.trim(), pwd);
       if (error) setErr(error);
-      else router.push("/feed"); // после входа
+      // Navigation will be handled by AuthProvider/Guard
     } finally {
       setIsLoading(false);
     }
@@ -27,6 +28,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <RedirectIfAuthed />
       <main className="container pb-16 flex-1 flex items-center justify-center">
         <form onSubmit={onSubmit} className="form-card mt-6 space-y-4">
           <div>

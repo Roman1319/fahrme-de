@@ -3,6 +3,7 @@ import SiteFooter from "@/components/SiteFooter";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import RedirectIfAuthed from "@/components/RedirectIfAuthed";
 
 function isEmail(x:string){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x); }
 
@@ -26,7 +27,8 @@ export default function RegisterPage() {
     setIsLoading(true);
     try {
       const error = await register(name.trim() || "User", email.trim(), pwd);
-      if (error) setErr(error); else router.push("/feed");
+      if (error) setErr(error);
+      // Navigation will be handled by AuthProvider/Guard
     } finally {
       setIsLoading(false);
     }
@@ -34,6 +36,7 @@ export default function RegisterPage() {
 
   return (
     <>
+      <RedirectIfAuthed />
       <main className="container pb-16">
         <form onSubmit={onSubmit} className="form-card mt-8 space-y-5">
           <div>
