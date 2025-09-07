@@ -15,7 +15,7 @@ export default function ExplorePage() {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [brands, setBrands] = useState<string[]>([]);
-  // const [models, setModels] = useState<string[]>([]); // TODO: Use models if needed
+  const [models, setModels] = useState<string[]>([]);
   const [yearRange, setYearRange] = useState({ min: 1900, max: new Date().getFullYear() });
 
   useEffect(() => {

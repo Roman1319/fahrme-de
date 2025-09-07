@@ -7,8 +7,8 @@ import { useAuth } from './AuthProvider';
 
 export default function ClientHeader() {
   const { user: _user } = useAuth();
-  const [mounted: _mounted, setMounted] = useState(false);
-  const pathname: _pathname = usePathname();
+  const [_mounted, setMounted] = useState(false);
+  const _pathname = usePathname();
 
   useEffect(() => {
     setMounted(true);

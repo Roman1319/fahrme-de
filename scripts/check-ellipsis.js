@@ -14,6 +14,12 @@ const suspiciousPatterns = [
   /…\s*$/,  // многоточие в конце строки
 ];
 
+// Проверяем незакрытые конструкции
+const unclosedPatterns = [
+  /^\.\.\.$/,  // строка состоит только из ...
+  /^…$/,  // строка состоит только из …
+];
+
 // Исключаем валидные случаи
 const validPatterns = [
   /\.\.\.\s*\/\//,  // комментарии
@@ -42,6 +48,7 @@ function checkFile(filePath) {
     const issues = [];
     
     lines.forEach((line, index) => {
+      // Проверяем подозрительные ellipsis
       suspiciousPatterns.forEach(pattern => {
         if (pattern.test(line)) {
           // Проверяем, что это не валидный случай
@@ -50,12 +57,53 @@ function checkFile(filePath) {
             issues.push({
               line: index + 1,
               content: line.trim(),
-              pattern: pattern.toString()
+              pattern: pattern.toString(),
+              type: 'suspicious_ellipsis'
             });
           }
         }
       });
+      
+      // Проверяем незакрытые конструкции (критические ошибки)
+      unclosedPatterns.forEach(pattern => {
+        if (pattern.test(line.trim())) {
+          issues.push({
+            line: index + 1,
+            content: line.trim(),
+            pattern: pattern.toString(),
+            type: 'unclosed_construction'
+          });
+        }
+      });
     });
+    
+    // Проверяем незакрытые JSX-теги и фигурные скобки в конце файла
+    const trimmedContent = content.trim();
+    if (trimmedContent) {
+      // Проверяем незакрытые фигурные скобки в конце файла
+      const openBraces = (trimmedContent.match(/\{/g) || []).length;
+      const closeBraces = (trimmedContent.match(/\}/g) || []).length;
+      if (openBraces > closeBraces) {
+        issues.push({
+          line: lines.length,
+          content: 'Unclosed braces detected',
+          type: 'unclosed_braces'
+        });
+      }
+      
+      // Проверяем только явно незакрытые JSX-теги в конце файла
+      if (filePath.endsWith('.tsx') || filePath.endsWith('.jsx')) {
+        const lastLine = lines[lines.length - 1]?.trim();
+        // Ищем открытый тег без закрывающего в последней строке
+        if (lastLine && /<[A-Za-z][A-Za-z0-9]*[^>]*>[^<]*$/.test(lastLine) && !lastLine.includes('</')) {
+          issues.push({
+            line: lines.length,
+            content: 'Unclosed JSX tag at end of file',
+            type: 'unclosed_jsx'
+          });
+        }
+      }
+    }
     
     return issues;
   } catch (error) {
@@ -111,19 +159,21 @@ rootFiles.forEach(file => {
 });
 
 if (issues.length > 0) {
-  console.error('❌ Найдены подозрительные ellipsis:');
+  console.error('❌ Найдены проблемы:');
   issues.forEach(({ file, issues: fileIssues }) => {
     console.error(`\n📁 ${file}:`);
     fileIssues.forEach(issue => {
       if (issue.error) {
         console.error(`  ❌ Ошибка: ${issue.error}`);
       } else {
-        console.error(`  ⚠️  Строка ${issue.line}: ${issue.content}`);
+        const icon = issue.type === 'unclosed_construction' || issue.type === 'unclosed_braces' || issue.type === 'unclosed_jsx' 
+          ? '🚨' : '⚠️';
+        console.error(`  ${icon} Строка ${issue.line}: ${issue.content} (${issue.type})`);
       }
     });
   });
   process.exit(1);
 } else {
-  console.log('✅ Подозрительных ellipsis не найдено');
+  console.log('✅ Проблем не найдено');
   process.exit(0);
 }
