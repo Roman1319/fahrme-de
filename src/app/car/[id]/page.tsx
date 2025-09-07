@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, MessageCircle, Edit, MoreVertical, Share2, ChevronLeft, ChevronRight, X, Loader2, Plus } from 'lucide-react';
+import { Heart, MessageCircle, ChevronLeft, ChevronRight, X, Loader2, Plus } from 'lucide-react';
 import { Car, LogbookEntry, Comment } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
 import { getCar, getCarPhotos, getCarPhotoUrl } from '@/lib/cars';

@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Heart, MessageCircle, Calendar, User, Car, Edit, Trash2, MoreVertical, Image as ImageIcon, Upload } from 'lucide-react';
+import { Heart, MessageCircle, User, Trash2, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { 
   getLogbookEntry, 
-  updateLogbookEntry, 
   deleteLogbookEntry, 
   listMedia, 
   addMedia, 
@@ -20,9 +19,7 @@ import {
   unlikePost,
   hasLikedPost,
   countPostLikes,
-  hasLikedComment,
-  countCommentLikes,
-  toggleCommentLike
+  // toggleCommentLike // TODO: Use toggleCommentLike if needed
 } from '@/lib/logbook';
 import { getCar } from '@/lib/cars';
 import { getProfile } from '@/lib/profiles';
@@ -169,16 +166,16 @@ export default function PostPage() {
     }
   };
 
-  const handleLikeComment = async (commentId: string) => {
-    if (!user) return;
+  // const handleLikeComment = async (commentId: string) => {
+  //   if (!user) return;
 
-    try {
-      await toggleCommentLike(commentId, user.id);
-      // Refresh comment likes - in a real app you'd want to track this per comment
-    } catch (error) {
-      console.error('Error toggling comment like:', error);
-    }
-  };
+  //   try {
+  //     await toggleCommentLike(commentId, user.id);
+  //     // Refresh comment likes - in a real app you'd want to track this per comment
+  //   } catch (error) {
+  //     console.error('Error toggling comment like:', error);
+  //   }
+  // }; // TODO: Use handleLikeComment if needed
 
   const handleMediaUpload = async (files: FileList) => {
     if (!user || !entry || uploadingMedia) return;

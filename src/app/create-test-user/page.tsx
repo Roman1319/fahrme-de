@@ -16,7 +16,7 @@ export default function CreateTestUserPage() {
       };
 
       const users = JSON.parse(localStorage.getItem('fahrme:users') || '[]');
-      const existingUser = users.find((u: any) => u.email === testUser.email);
+      const existingUser = users.find((u: { email: string }) => u.email === testUser.email);
       
       if (!existingUser) {
         users.push(testUser);

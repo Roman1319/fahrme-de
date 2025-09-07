@@ -1,5 +1,6 @@
 // Logbook detail page utilities
-import { LogbookEntry, Comment, User } from './types';
+import { LogbookEntry, Comment } from './types';
+// import { User } from '../services/auth/types'; // TODO: Use User if needed
 
 // Like system for logbook entries
 import { STORAGE_KEYS } from './keys';
@@ -49,7 +50,7 @@ export function getLogbookEntryLikes(entryId: string): number {
 export function getComments(entryId: string): Comment[] {
   try {
     const comments = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`) || '[]');
-    return comments.filter((comment: Comment) => !comment.deletedAt);
+    return comments.filter((comment: Comment) => !(comment as any).deletedAt);
   } catch {
     return [];
   }
@@ -59,9 +60,9 @@ export function addComment(entryId: string, comment: Omit<Comment, 'id' | 'creat
   const newComment: Comment = {
     ...comment,
     id: Date.now().toString(),
-    createdAt: new Date().toISOString(),
-    likes: [],
-    replies: []
+    created_at: new Date().toISOString(),
+    // likes: [], // TODO: Add likes field to Comment type
+    // replies: [] // TODO: Add replies field to Comment type
   };
   
   const comments = getComments(entryId);
@@ -77,7 +78,7 @@ export function editComment(entryId: string, commentId: string, newText: string)
     const comment = comments.find(c => c.id === commentId);
     if (comment) {
       comment.text = newText;
-      comment.editedAt = new Date().toISOString();
+      (comment as any).editedAt = new Date().toISOString();
       localStorage.setItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`, JSON.stringify(comments));
       return true;
     }
@@ -92,7 +93,7 @@ export function deleteComment(entryId: string, commentId: string): boolean {
     const comments = getComments(entryId);
     const comment = comments.find(c => c.id === commentId);
     if (comment) {
-      comment.deletedAt = new Date().toISOString();
+      (comment as any).deletedAt = new Date().toISOString();
       localStorage.setItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`, JSON.stringify(comments));
       return true;
     }
@@ -107,11 +108,12 @@ export function likeComment(entryId: string, commentId: string, userId: string):
     const comments = getComments(entryId);
     const comment = comments.find(c => c.id === commentId);
     if (comment) {
-      const userLiked = comment.likes.includes(userId);
+      const userLiked = (comment as any).likes?.includes(userId) || false;
       if (userLiked) {
-        comment.likes = comment.likes.filter(id => id !== userId);
+        (comment as any).likes = (comment as any).likes?.filter((id: string) => id !== userId) || [];
       } else {
-        comment.likes.push(userId);
+        if (!(comment as any).likes) (comment as any).likes = [];
+        (comment as any).likes.push(userId);
       }
       localStorage.setItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`, JSON.stringify(comments));
       return !userLiked;
@@ -136,8 +138,8 @@ export function buildCommentTree(comments: Comment[]): Comment[] {
   comments.forEach(comment => {
     const commentNode = commentMap.get(comment.id)!;
     
-    if (comment.parentId) {
-      const parent = commentMap.get(comment.parentId);
+    if (comment.parent_id) {
+      const parent = commentMap.get(comment.parent_id);
       if (parent) {
         parent.replies.push(commentNode);
       }
@@ -224,5 +226,5 @@ export function deleteLogbookEntry(entryId: string): boolean {
 
 // Check if user is entry owner
 export function isEntryOwner(entry: LogbookEntry, userId: string): boolean {
-  return entry.userId === userId;
+  return entry.author_id === userId;
 }

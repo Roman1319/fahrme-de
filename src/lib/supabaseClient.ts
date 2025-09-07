@@ -80,7 +80,7 @@ if (typeof window !== 'undefined') {
 // Global callback system for auth state changes
 declare global {
   interface Window {
-    authStateChangeCallbacks: Set<(user: any) => void>;
+    authStateChangeCallbacks: Set<(user: { id: string; email?: string; user_metadata?: { name?: string; handle?: string } } | null) => void>;
   }
 }
 

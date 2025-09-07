@@ -61,7 +61,7 @@ export default function AuthModal({
         password: signUpForm.password
       };
 
-      const error = await register(credentials);
+      const error = await register(credentials.name, credentials.email, credentials.password);
       
       if (!error) {
         onSuccess?.();
@@ -87,7 +87,7 @@ export default function AuthModal({
         password: signInForm.password
       };
 
-      const error = await login(credentials);
+      const error = await login(credentials.email, credentials.password);
       
       if (!error) {
         onSuccess?.();

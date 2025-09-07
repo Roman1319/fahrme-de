@@ -4,7 +4,7 @@ import { useAuth } from "./AuthProvider";
 import { User, LogOut, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { readProfile } from "@/lib/profile";
-import AvatarButton from "./ui/AvatarButton";
+// import AvatarButton from "./ui/AvatarButton"; // TODO: Use AvatarButton if needed
 import AvatarTooltip from "./ui/AvatarTooltip";
 
 export default function UserMenu(){

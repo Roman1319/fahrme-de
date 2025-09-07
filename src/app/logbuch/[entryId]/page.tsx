@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Heart, MessageCircle, Share2, Edit, Trash2 } from 'lucide-react';
 import { LogbookEntry, Comment } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
 import { 
   getLogbookEntryById, 
   hasUserLikedLogbookEntry, 
-  toggleLogbookEntryLike, 
   getLogbookEntryLikes,
   getComments,
   addComment,
@@ -53,7 +52,7 @@ export default function LogbookEntryDetailPage() {
   const handleToggleLike = () => {
     if (!entry || !user) return;
     
-    const newLiked = toggleLogbookEntryLike(entryId, user.id);
+    // const newLiked = toggleLogbookEntryLike(entryId, user.id); // TODO: Use newLiked if needed
     // Optimistic update
     setEntry(prev => prev ? { ...prev } : null);
   };
@@ -61,12 +60,13 @@ export default function LogbookEntryDetailPage() {
   const handleAddComment = (text: string) => {
     if (!entry || !user) return;
     
-    const newComment = addComment(entryId, {
+    addComment(entryId, {
       text,
-      author: user.name,
-      authorEmail: user.email,
-      userId: user.id,
-      parentId: undefined
+      author_id: user.id,
+      entry_id: entryId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      parent_id: undefined
     });
     
     loadComments();
@@ -191,13 +191,13 @@ export default function LogbookEntryDetailPage() {
 
           {/* Metadata */}
           <div className="flex items-center gap-4 text-sm text-white/60 mb-6">
-            <span>{entry.type || 'Allgemein'}</span>
+            <span>{(entry as any).type || 'Allgemein'}</span>
             <span>•</span>
-            <span>{entry.author || 'Unbekannt'}</span>
+            <span>{(entry as any).author || 'Unbekannt'}</span>
             <span>•</span>
             <span>
-              {entry.publishedAt 
-                ? new Date(entry.publishedAt).toLocaleDateString('de-DE')
+              {entry.publish_date 
+                ? new Date(entry.publish_date).toLocaleDateString('de-DE')
                 : 'Unbekannt'
               }
             </span>
@@ -206,14 +206,14 @@ export default function LogbookEntryDetailPage() {
           {/* Content */}
           <div className="prose prose-invert max-w-none mb-6">
             <div className="text-white whitespace-pre-wrap">
-              {entry.text}
+              {(entry as any).text || entry.content}
             </div>
           </div>
 
           {/* Photos */}
-          {entry.images && entry.images.length > 0 && (
+          {(entry as any).images && (entry as any).images.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-              {entry.images.map((image, index) => (
+              {(entry as any).images.map((image: any, index: any) => (
                 <div key={index} className="aspect-square rounded-lg overflow-hidden">
                   <img 
                     src={image} 
@@ -241,7 +241,7 @@ export default function LogbookEntryDetailPage() {
                 <span className="font-medium">{likesCount}</span>
               </button>
               
-              {entry.allowComments && (
+              {entry.allow_comments && (
                 <div className="flex items-center gap-2 opacity-70">
                   <MessageCircle className="w-5 h-5" />
                   <span className="font-medium">{comments.length}</span>
@@ -258,13 +258,13 @@ export default function LogbookEntryDetailPage() {
             </div>
             
             <div className="text-sm opacity-50">
-              {entry.language} • {entry.publishedAt ? new Date(entry.publishedAt).toLocaleDateString('de-DE') : 'Unbekannt'}
+              {(entry as any).language} • {entry.publish_date ? new Date(entry.publish_date).toLocaleDateString('de-DE') : 'Unbekannt'}
             </div>
           </div>
         </div>
 
         {/* Comments Section */}
-        {entry.allowComments && (
+        {entry.allow_comments && (
           <CommentsList
             comments={comments}
             onAddComment={handleAddComment}

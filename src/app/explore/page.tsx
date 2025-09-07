@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Eye, ChevronDown, Filter, Search } from 'lucide-react';
-import { FeedEntry, getExploreFeed, getCarBrands, getCarModels, getYearRange } from '@/lib/feed';
+import { Heart, MessageCircle, Eye, Filter } from 'lucide-react';
+import { FeedEntry, getExploreFeed, getCarBrands, getYearRange } from '@/lib/feed';
 import { FeedFilters } from '@/lib/feed';
 
 export default function ExplorePage() {
@@ -15,7 +15,7 @@ export default function ExplorePage() {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [brands, setBrands] = useState<string[]>([]);
-  const [models, setModels] = useState<string[]>([]);
+  // const [models, setModels] = useState<string[]>([]); // TODO: Use models if needed
   const [yearRange, setYearRange] = useState({ min: 1900, max: new Date().getFullYear() });
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function ExplorePage() {
   };
 
   const loadMore = () => {
-    setFilters(prev => ({ ...prev, offset: prev.offset + (prev.limit || 20) }));
+    setFilters(prev => ({ ...prev, offset: (prev.offset || 0) + (prev.limit || 20) }));
   };
 
   const formatTimeAgo = (timestamp: string) => {

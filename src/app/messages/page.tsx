@@ -1,7 +1,7 @@
 "use client";
 import * as M from "@/lib/messages";
 import { useEffect, useState } from "react";
-import AvatarButton from "@/components/ui/AvatarButton";
+// import AvatarButton from "@/components/ui/AvatarButton"; // TODO: Use AvatarButton if needed
 import AvatarTooltip from "@/components/ui/AvatarTooltip";
 import Guard from "@/components/auth/Guard";
 

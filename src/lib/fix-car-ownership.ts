@@ -11,7 +11,7 @@ export function fixCarOwnership(userId: string, userEmail?: string) {
     const cars = JSON.parse(savedCars);
     let hasChanges = false;
 
-    const updatedCars = cars.map((car: any) => {
+    const updatedCars = cars.map((car: { [key: string]: any; ownerId?: string; name?: string; make?: string; model?: string }) => {
       // Если у автомобиля нет владельца, устанавливаем текущего пользователя
       if (!car.ownerId) {
         car.ownerId = userId;
@@ -42,7 +42,7 @@ export function fixCarOwnership(userId: string, userEmail?: string) {
 }
 
 // Функция для проверки, является ли пользователь владельцем автомобиля
-export function isCarOwner(car: any, userId: string, userEmail?: string): boolean {
+export function isCarOwner(car: { ownerId?: string }, userId: string, userEmail?: string): boolean {
   if (!car || !car.ownerId) return false;
   
   // Проверяем по userId (новый формат)

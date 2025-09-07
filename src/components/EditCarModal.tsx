@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { X } from 'lucide-react';
 import { MyCar } from '@/lib/types';
 import ImageUpload from '@/components/ui/ImageUpload';
 import AutoCompleteInput from '@/components/ui/AutoCompleteInput';
@@ -15,7 +15,7 @@ interface EditCarModalProps {
 }
 
 export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarModalProps) {
-  const { makes, getModels, isLoading } = useCarData();
+  const { makes, getModels } = useCarData();
   const [formData, setFormData] = useState({
     name: car.name || '',
     make: car.make || '',

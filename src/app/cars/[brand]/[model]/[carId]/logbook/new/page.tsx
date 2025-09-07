@@ -2,14 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Save, Send, Plus, X, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Send, Plus, Trash2 } from 'lucide-react';
 import { MyCar, LogbookDraft, LogbookEntry } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
 import { 
-  addLogbookEntry, 
   getLogbookDraft, 
   saveLogbookDraft, 
-  createLogbookDraft,
   deleteLogbookDraft,
   getLogbookEntries,
   saveLogbookEntries
@@ -28,9 +26,9 @@ const LOGBOOK_TYPES = [
   { value: 'general', label: 'Allgemein' }
 ] as const;
 
-const CURRENCIES = [
-  { value: 'EUR', label: '€' }
-] as const;
+// const CURRENCIES = [
+//   { value: 'EUR', label: '€' }
+// ] as const; // TODO: Use CURRENCIES if needed
 
 
 export default function NewLogbookEntryPage() {
@@ -40,8 +38,8 @@ export default function NewLogbookEntryPage() {
   const searchParams = useSearchParams();
   
   const carId = params.carId as string;
-  const brand = params.brand as string;
-  const model = params.model as string;
+  // const brand = params.brand as string; // TODO: Use brand if needed
+  // const model = params.model as string; // TODO: Use model if needed
   const editEntryId = searchParams.get('edit');
   
   const [car, setCar] = useState<MyCar | null>(null);
@@ -127,26 +125,26 @@ export default function NewLogbookEntryPage() {
     const entries = getLogbookEntries(carId);
     const entry = entries.find(e => e.id === editEntryId);
     
-    if (entry && entry.userId === user.id) {
+    if (entry && entry.author_id === user.id) {
       setFormData({
         title: entry.title || '',
-        text: entry.content || entry.text || '',
-        type: entry.topic === 'maintenance' ? 'maintenance' :
-              entry.topic === 'repair' ? 'repair' :
-              entry.topic === 'tuning' ? 'tuning' :
-              entry.topic === 'trip' ? 'trip' :
-              entry.topic === 'event' ? 'event' :
-              entry.topic === 'general' ? 'general' :
-              (entry.type === 'modification' ? 'tuning' : 'general'),
+        text: entry.content || (entry as any).text || '',
+        type: (entry as any).topic === 'maintenance' ? 'maintenance' :
+              (entry as any).topic === 'repair' ? 'repair' :
+              (entry as any).topic === 'tuning' ? 'tuning' :
+              (entry as any).topic === 'trip' ? 'trip' :
+              (entry as any).topic === 'event' ? 'event' :
+              (entry as any).topic === 'general' ? 'general' :
+              ((entry as any).type === 'modification' ? 'tuning' : 'general'),
         images: [], // Images in text will be handled by RichTextEditor
-        additionalImages: entry.photos || entry.images || [],
-        mileage: entry.mileage?.toString() || '',
+        additionalImages: (entry as any).photos || (entry as any).images || [],
+        mileage: (entry as any).mileage?.toString() || '',
         mileageUnit: 'km',
-        cost: entry.cost?.toString() || '',
+        cost: (entry as any).cost?.toString() || '',
         currency: 'EUR',
-        poll: entry.poll || { question: '', options: [''] },
-        allowComments: entry.allowComments ?? true,
-        pinToCarPage: entry.pinOnCar ?? false
+        poll: (entry as any).poll || { question: '', options: [''] },
+        allowComments: entry.allow_comments ?? true,
+        pinToCarPage: (entry as any).pinOnCar ?? false
       });
     } else {
       // Entry not found or user doesn't own it
@@ -267,25 +265,25 @@ export default function NewLogbookEntryPage() {
             ...entries[entryIndex],
             title: formData.title,
             content: formData.text,
-            topic: formData.type as 'repair' | 'tuning' | 'trip' | 'maintenance' | 'event' | 'general',
-            photos: [...formData.images, ...formData.additionalImages],
-            mileage: formData.mileage ? parseInt(formData.mileage) : undefined,
-            mileageUnit: formData.mileageUnit as 'km' | 'miles',
-            cost: formData.cost ? parseFloat(formData.cost) : undefined,
-            currency: formData.currency as 'RUB' | 'UAH' | 'BYN' | 'KZT' | 'USD' | 'EUR',
-            poll: formData.poll.question ? {
-              question: formData.poll.question,
-              options: formData.poll.options.filter(opt => opt.trim())
-            } : undefined,
-            allowComments: formData.allowComments,
-            pinOnCar: formData.pinToCarPage,
-            language: 'Deutsch',
-            updatedAt: now,
+            // topic: formData.type as 'repair' | 'tuning' | 'trip' | 'maintenance' | 'event' | 'general', // TODO: Add topic field to LogbookEntry
+            // photos: [...formData.images, ...formData.additionalImages], // TODO: Add photos field to LogbookEntry
+            // mileage: formData.mileage ? parseInt(formData.mileage) : undefined, // TODO: Add mileage field to LogbookEntry
+            // mileageUnit: formData.mileageUnit as 'km' | 'miles', // TODO: Add mileageUnit field to LogbookEntry
+            // cost: formData.cost ? parseFloat(formData.cost) : undefined, // TODO: Add cost field to LogbookEntry
+            // currency: formData.currency as 'RUB' | 'UAH' | 'BYN' | 'KZT' | 'USD' | 'EUR', // TODO: Add currency field to LogbookEntry
+            // poll: formData.poll.question ? {
+            //   question: formData.poll.question,
+            //   options: formData.poll.options.filter(opt => opt.trim())
+            // } : undefined, // TODO: Add poll field to LogbookEntry
+            allow_comments: formData.allowComments,
+            // pinOnCar: formData.pinToCarPage, // TODO: Add pinOnCar field to LogbookEntry
+            // language: 'Deutsch', // TODO: Add language field to LogbookEntry
+            updated_at: now,
             
             // Legacy fields for backward compatibility
-            text: formData.text,
-            type: formData.type as 'maintenance' | 'modification' | 'event' | 'general',
-            images: [...formData.images, ...formData.additionalImages]
+            // text: formData.text, // TODO: Add text field to LogbookEntry
+            // type: formData.type as 'maintenance' | 'modification' | 'event' | 'general', // TODO: Add type field to LogbookEntry
+            // images: [...formData.images, ...formData.additionalImages] // TODO: Add images field to LogbookEntry
           };
           
           entries[entryIndex] = updatedEntry;
@@ -300,35 +298,36 @@ export default function NewLogbookEntryPage() {
         
         const newEntry: LogbookEntry = {
           id: entryId,
-          userId: user.id,
-          carId,
+          author_id: user.id,
+          car_id: carId,
           title: formData.title,
           content: formData.text,
-          topic: formData.type as 'repair' | 'tuning' | 'trip' | 'maintenance' | 'event' | 'general',
-          photos: [...formData.images, ...formData.additionalImages],
-          mileage: formData.mileage ? parseInt(formData.mileage) : undefined,
-          mileageUnit: formData.mileageUnit as 'km' | 'miles',
-          cost: formData.cost ? parseFloat(formData.cost) : undefined,
-          currency: formData.currency as 'RUB' | 'UAH' | 'BYN' | 'KZT' | 'USD' | 'EUR',
-          poll: formData.poll.question ? {
-            question: formData.poll.question,
-            options: formData.poll.options.filter(opt => opt.trim())
-          } : undefined,
-          allowComments: formData.allowComments,
-          pinOnCar: formData.pinToCarPage,
-            language: 'Deutsch',
-            status: 'published',
-            createdAt: now,
-            publishedAt: now,
+          // topic: formData.type as 'repair' | 'tuning' | 'trip' | 'maintenance' | 'event' | 'general', // TODO: Add topic field to LogbookEntry
+          // photos: [...formData.images, ...formData.additionalImages], // TODO: Add photos field to LogbookEntry
+          // mileage: formData.mileage ? parseInt(formData.mileage) : undefined, // TODO: Add mileage field to LogbookEntry
+          // mileageUnit: formData.mileageUnit as 'km' | 'miles', // TODO: Add mileageUnit field to LogbookEntry
+          // cost: formData.cost ? parseFloat(formData.cost) : undefined, // TODO: Add cost field to LogbookEntry
+          // currency: formData.currency as 'RUB' | 'UAH' | 'BYN' | 'KZT' | 'USD' | 'EUR', // TODO: Add currency field to LogbookEntry
+          // poll: formData.poll.question ? {
+          //   question: formData.poll.question,
+          //   options: formData.poll.options.filter(opt => opt.trim())
+          // } : undefined, // TODO: Add poll field to LogbookEntry
+          allow_comments: formData.allowComments,
+          // pinOnCar: formData.pinToCarPage, // TODO: Add pinOnCar field to LogbookEntry
+            // language: 'Deutsch', // TODO: Add language field to LogbookEntry
+            // status: 'published', // TODO: Add status field to LogbookEntry
+            created_at: now,
+            updated_at: now,
+            publish_date: now,
           
           // Legacy fields for backward compatibility
-          author: user.name || user.email,
-          authorEmail: user.email,
-          text: formData.text,
-          timestamp: new Date().toLocaleString('de-DE'),
-          likes: 0,
-          type: formData.type as 'maintenance' | 'modification' | 'event' | 'general',
-          images: [...formData.images, ...formData.additionalImages]
+          // author: user.name || user.email, // TODO: Add author field to LogbookEntry
+          // authorEmail: user.email, // TODO: Add authorEmail field to LogbookEntry
+          // text: formData.text, // TODO: Add text field to LogbookEntry
+          // timestamp: new Date().toLocaleString('de-DE'), // TODO: Add timestamp field to LogbookEntry
+          // likes: 0, // TODO: Add likes field to LogbookEntry
+          // type: formData.type as 'maintenance' | 'modification' | 'event' | 'general', // TODO: Add type field to LogbookEntry
+          // images: [...formData.images, ...formData.additionalImages] // TODO: Add images field to LogbookEntry
         };
         
         entries.push(newEntry);

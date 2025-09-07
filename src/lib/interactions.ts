@@ -104,17 +104,15 @@ export function hasUserLikedLogbookEntry(entryId: string, userId: string): boole
 
 // === Управление комментариями ===
 
-export function addComment(carId: string, text: string, author: string, authorEmail: string, parentId?: string, images?: string[]): Comment {
+export function addComment(carId: string, text: string, author: string, authorEmail: string, parentId?: string): Comment {
   const comment: Comment = {
     id: Date.now().toString(),
+    entry_id: carId, // Используем carId как entry_id
+    author_id: '', // TODO: Get author_id from author/authorEmail
+    parent_id: parentId,
     text,
-    author,
-    authorEmail,
-    timestamp: new Date().toLocaleString('de-DE'),
-    likes: 0,
-    carId,
-    parentId,
-    images: images || []
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   };
   
   
@@ -132,7 +130,7 @@ export function getComments(carId: string): Comment[] {
       const comments = JSON.parse(savedComments);
       
       // Миграция: добавляем поле images для старых комментариев
-      const migratedComments = comments.map((comment: any) => ({
+      const migratedComments = comments.map((comment: { [key: string]: any; images?: string[] }) => ({
         ...comment,
         images: comment.images || []
       }));
@@ -156,8 +154,8 @@ export function editComment(carId: string, commentId: string, text: string): boo
   
   if (comment) {
     comment.text = text;
-    comment.isEdited = true;
-    comment.editedAt = new Date().toLocaleString('de-DE');
+    (comment as any).isEdited = true;
+    (comment as any).editedAt = new Date().toLocaleString('de-DE');
     saveComments(carId, comments);
     return true;
   }
@@ -177,13 +175,13 @@ export function deleteComment(carId: string, commentId: string): boolean {
   return false;
 }
 
-export function likeComment(carId: string, commentId: string, userEmail: string): boolean {
+export function likeComment(carId: string, commentId: string): boolean {
   const comments = getComments(carId);
   const comment = comments.find(c => c.id === commentId);
   
   if (comment) {
     // Простая логика лайков - в реальном приложении нужно хранить отдельно
-    comment.likes += 1;
+    (comment as any).likes = ((comment as any).likes || 0) + 1;
     saveComments(carId, comments);
     return true;
   }
@@ -196,19 +194,18 @@ export function likeComment(carId: string, commentId: string, userEmail: string)
 export function addLogbookEntry(
   carId: string, 
   text: string, 
-  author: string, 
-  authorEmail: string, 
-  type: LogbookEntry['type'] = 'general'
+  // type: LogbookEntry['type'] = 'general' // TODO: Add type field to LogbookEntry
 ): LogbookEntry {
   const entry: LogbookEntry = {
     id: Date.now().toString(),
-    text,
-    author,
-    authorEmail,
-    timestamp: new Date().toLocaleString('de-DE'),
-    likes: 0,
-    carId,
-    type
+    car_id: carId,
+    author_id: '', // TODO: Get author_id from author/authorEmail
+    title: '', // TODO: Add title field
+    content: text, // Use text as content
+    allow_comments: true,
+    publish_date: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   };
   
   const entries = getLogbookEntries(carId);

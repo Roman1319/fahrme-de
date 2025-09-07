@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+// import { useEffect } from 'react'; // TODO: Use useEffect if needed
 import { useAuth } from '@/components/AuthProvider';
 import CommentBlock from './CommentBlock';
 import CommentForm from './CommentForm';
@@ -38,13 +38,13 @@ export default function CommentsList({
   const { user } = useAuth();
 
   // Группируем комментарии: основные и ответы
-  const mainComments = comments.filter(comment => !comment.parentId);
-  const replies = comments.filter(comment => comment.parentId);
+  const mainComments = comments.filter(comment => !comment.parent_id);
+  const replies = comments.filter(comment => comment.parent_id);
 
   // Добавляем ответы к основным комментариям
   const commentsWithReplies = mainComments.map(comment => ({
     ...comment,
-    replies: replies.filter(reply => reply.parentId === comment.id)
+    replies: replies.filter(reply => reply.parent_id === comment.id)
   }));
 
   const handleAddComment = (text: string, images?: string[]) => {

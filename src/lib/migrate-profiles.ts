@@ -38,7 +38,7 @@ export function migrateProfiles() {
     }
     
     // Парсим старый профиль
-    const profileData = JSON.parse(oldProfile);
+    // const profileData = JSON.parse(oldProfile); // TODO: Use profileData if needed
     
     // Создаем новый ключ для текущего пользователя
     const newKey = `${NEW_PROFILE_KEY_PREFIX}${currentUserEmail}`;

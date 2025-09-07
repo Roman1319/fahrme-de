@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Profile, getProfile, updateProfile, uploadAvatar, checkHandleAvailability } from '@/lib/profiles';
 import DropzoneAvatar from '@/components/ui/DropzoneAvatar';
-import { PillToggleGroup } from '@/components/ui/PillToggle';
+// import { PillToggleGroup } from '@/components/ui/PillToggle'; // TODO: Use PillToggleGroup if needed
 import { useAuth } from '@/components/AuthProvider';
 import Guard from '@/components/auth/Guard';
 import { Loader2 } from 'lucide-react';
@@ -66,7 +66,7 @@ export default function ProfilePage() {
   }, [profile, errors]);
 
   function set<K extends keyof Profile>(key: K, val: Profile[K]) {
-    setProfile(prev => prev ? ({ ...prev, [key]: val }) as Profile : prev);
+    setProfile(prev => prev ? ({ ...prev, [key]: val }) as any : prev);
   }
 
   // === Validation helpers ===
@@ -136,7 +136,7 @@ export default function ProfilePage() {
       });
       
       setProfile(updatedProfile);
-      setAvatar(avatarUrl);
+      setAvatar(avatarUrl || null);
       
       alert('Profil erfolgreich gespeichert!');
     } catch (error) {

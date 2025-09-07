@@ -76,7 +76,7 @@ export default function TestSupabasePage() {
   const testRegister = async () => {
     try {
       setStatus("Testing registration...");
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: "test@example.com",
         password: "123456"
       });

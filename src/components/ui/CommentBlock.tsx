@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Heart, Reply, MoreVertical, Edit, Trash2, X } from 'lucide-react';
+import { Heart, MoreVertical, Edit, Trash2, X } from 'lucide-react';
 import { Comment } from '@/lib/types';
 import AvatarTooltip from './AvatarTooltip';
 import Image from 'next/image';
@@ -41,7 +41,7 @@ export default function CommentBlock({
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  const isOwner = currentUserEmail === comment.authorEmail;
+  const isOwner = currentUserEmail === (comment as any).authorEmail;
   const isMainComment = level === 0;
   const maxLevel = 3; // Максимальная глубина вложенности
 
@@ -50,7 +50,7 @@ export default function CommentBlock({
       onLike(comment.id);
     } else if (onLikeReply) {
       // Для ответов нужно передать parentId
-      onLikeReply(comment.parentId || '', comment.id);
+      onLikeReply(comment.parent_id || '', comment.id);
     }
     setIsLiked(!isLiked);
   };
@@ -68,7 +68,7 @@ export default function CommentBlock({
       if (isMainComment) {
         onEdit(comment.id, editText.trim());
       } else if (onEditReply) {
-        onEditReply(comment.parentId || '', comment.id, editText.trim());
+        onEditReply(comment.parent_id || '', comment.id, editText.trim());
       }
       setIsEditing(false);
     }
@@ -78,7 +78,7 @@ export default function CommentBlock({
     if (isMainComment) {
       onDelete(comment.id);
     } else if (onDeleteReply) {
-      onDeleteReply(comment.parentId || '', comment.id);
+      onDeleteReply(comment.parent_id || '', comment.id);
     }
     setShowMenu(false);
   };
@@ -100,14 +100,14 @@ export default function CommentBlock({
   };
 
   const nextImage = () => {
-    if (comment.images && Array.isArray(comment.images) && comment.images.length > 0) {
-      setSelectedImageIndex((prev) => (prev + 1) % comment.images!.length);
+    if ((comment as any).images && Array.isArray((comment as any).images) && (comment as any).images.length > 0) {
+      setSelectedImageIndex((prev) => (prev + 1) % (comment as any).images!.length);
     }
   };
 
   const prevImage = () => {
-    if (comment.images && Array.isArray(comment.images) && comment.images.length > 0) {
-      setSelectedImageIndex((prev) => (prev - 1 + comment.images!.length) % comment.images!.length);
+    if ((comment as any).images && Array.isArray((comment as any).images) && (comment as any).images.length > 0) {
+      setSelectedImageIndex((prev) => (prev - 1 + (comment as any).images!.length) % (comment as any).images!.length);
     }
   };
 
@@ -140,11 +140,11 @@ export default function CommentBlock({
         <div className="flex-shrink-0">
           <AvatarTooltip
             src={null}
-            name={comment.author}
+            name={(comment as any).author}
             size={32}
             userInfo={{
-              displayName: comment.author,
-              fullName: comment.author,
+              displayName: (comment as any).author,
+              fullName: (comment as any).author,
               city: 'Мюнхен', // TODO: Получать из профиля
               about: 'Пользователь'
             }}
@@ -156,7 +156,7 @@ export default function CommentBlock({
         <div className="flex-1 min-w-0">
           {/* Информация о пользователе и автомобиле */}
           <div className="mb-1">
-            <span className="font-semibold text-sm text-white/90">{comment.author}</span>
+            <span className="font-semibold text-sm text-white/90">{(comment as any).author}</span>
             <span className="text-xs text-white/60 ml-2">
               Ich fahre BMW 3 Series (G20) {/* TODO: Получать из профиля пользователя */}
             </span>
@@ -193,14 +193,14 @@ export default function CommentBlock({
           ) : (
             <div className="mb-2">
               <p className="text-sm text-white/80 leading-relaxed">{comment.text}</p>
-              {comment.isEdited && (
+              {(comment as any).isEdited && (
                 <span className="text-xs text-white/50">(bearbeitet)</span>
               )}
               
               {/* Изображения комментария */}
-              {comment.images && Array.isArray(comment.images) && comment.images.length > 0 && (
+              {(comment as any).images && Array.isArray((comment as any).images) && (comment as any).images.length > 0 && (
                 <div className="mt-3 grid grid-cols-2 gap-2 max-w-sm">
-                  {comment.images.map((image, index) => (
+                  {(comment as any).images.map((image: any, index: any) => (
                     <div
                       key={index}
                       className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group max-h-32"
@@ -238,7 +238,7 @@ export default function CommentBlock({
                 }`}
               >
                 <Heart size={14} className={isLiked ? 'fill-current' : ''} />
-                <span>{comment.likes}</span>
+                <span>{(comment as any).likes || 0}</span>
               </button>
 
               {/* Ответ */}
@@ -247,13 +247,13 @@ export default function CommentBlock({
                   onClick={() => setIsReplying(true)}
                   className="text-white/60 hover:text-white/80 transition-colors"
                 >
-                  {level === 0 ? 'Antworten' : 'Antworten auf ' + comment.author}
+                  {level === 0 ? 'Antworten' : 'Antworten auf ' + (comment as any).author}
                 </button>
               )}
 
               {/* Время */}
               <span className="text-white/50">
-                {formatTimeAgo(comment.timestamp)}
+                {formatTimeAgo((comment as any).timestamp || comment.created_at)}
               </span>
 
               {/* Меню действий (только для владельца) */}
@@ -326,13 +326,13 @@ export default function CommentBlock({
       </div>
 
       {/* Вложенные комментарии */}
-      {comment.replies && comment.replies.length > 0 && (
+      {(comment as any).replies && (comment as any).replies.length > 0 && (
         <div className="mt-3 relative">
           {/* Вертикальная линия для соединения ответов */}
           <div className="absolute left-4 top-0 bottom-0 w-px bg-white/10"></div>
           
           <div className="space-y-2">
-            {comment.replies.map((reply, index) => (
+            {(comment as any).replies.map((reply: any) => (
               <div key={reply.id} className="relative">
                 {/* Горизонтальная линия к ответу */}
                 <div className="absolute left-4 top-6 w-4 h-px bg-white/10"></div>
@@ -355,7 +355,7 @@ export default function CommentBlock({
       )}
 
       {/* Модальное окно для просмотра изображений */}
-      {showImageModal && comment.images && Array.isArray(comment.images) && comment.images.length > 0 && (
+      {showImageModal && (comment as any).images && Array.isArray((comment as any).images) && (comment as any).images.length > 0 && (
         <div 
           className={`fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-300 ${
             isAnimating ? 'opacity-100' : 'opacity-0'
@@ -378,7 +378,7 @@ export default function CommentBlock({
               }`}
             >
               <Image
-                src={comment.images[selectedImageIndex]}
+                src={(comment as any).images[selectedImageIndex]}
                 alt={`Комментарий ${selectedImageIndex + 1}`}
                 width={800}
                 height={600}
@@ -390,7 +390,7 @@ export default function CommentBlock({
             </div>
 
             {/* Навигация */}
-            {comment.images.length > 1 && (
+            {(comment as any).images.length > 1 && (
               <>
                 <button
                   onClick={(e) => {
@@ -417,7 +417,7 @@ export default function CommentBlock({
             <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/10 px-3 py-1 rounded-full text-sm text-white transition-opacity duration-300 ${
               isAnimating ? 'opacity-100' : 'opacity-0'
             }`}>
-              {selectedImageIndex + 1} / {comment.images.length}
+              {selectedImageIndex + 1} / {(comment as any).images.length}
             </div>
 
             {/* Подсказка для закрытия */}

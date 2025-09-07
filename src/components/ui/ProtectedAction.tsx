@@ -15,7 +15,7 @@ interface ProtectedActionProps {
 export default function ProtectedAction({ 
   children, 
   action, 
-  fallback,
+  // fallback, // TODO: Use fallback if needed
   className = '',
   disabled = false
 }: ProtectedActionProps) {

@@ -53,7 +53,7 @@ export default function Sidebar() {
     { icon: Settings, label: "Einstellungen", href: "/settings" },
   ];
 
-  const renderItem = (item: any, isSubItem = false, showCarImage = false) => {
+  const renderItem = (item: { href: string; label: string; icon?: any; image?: string }, isSubItem = false, showCarImage = false) => {
     const isActive = pathname === item.href || (item.href === "/feed" && pathname === "/");
     return (
       <a 
@@ -61,7 +61,7 @@ export default function Sidebar() {
         href={item.href}
         data-href={item.href}
         data-label={item.label}
-        onClick={(e) => {
+        onClick={() => {
           console.log('[sidebar] Clicked:', item.label, 'href:', item.href);
           console.log('[sidebar] User state at click:', user ? 'logged in' : 'not logged in');
         }}

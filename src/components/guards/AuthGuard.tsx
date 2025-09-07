@@ -27,7 +27,7 @@ export default function AuthGuard({
   useEffect(() => {
     if (isLoading) return;
 
-    if (requireAuth && isGuest) {
+    if (requireAuth && isGuest()) {
       if (showModal) {
         setShowAuthModal(true);
       } else {
@@ -50,7 +50,7 @@ export default function AuthGuard({
   }
 
   // Если требуется авторизация и пользователь гость
-  if (requireAuth && isGuest) {
+  if (requireAuth && isGuest()) {
     if (fallback) {
       return <>{fallback}</>;
     }
@@ -81,7 +81,7 @@ export function useRequireAuth() {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const requireAuth = (callback?: () => void) => {
-    if (isGuest) {
+    if (isGuest()) {
       setShowAuthModal(true);
       return false;
     }

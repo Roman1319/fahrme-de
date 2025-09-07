@@ -1,13 +1,13 @@
 "use client";
 import SiteFooter from "@/components/SiteFooter";
 import { useAuth } from "@/components/AuthProvider";
-import { useRouter } from "next/navigation";
+// import { useRouter } from "next/navigation"; // TODO: Use useRouter if needed
 import { useState } from "react";
 import RedirectIfAuthed from "@/components/RedirectIfAuthed";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const router = useRouter();
+  // const router = useRouter(); // TODO: Use router if needed
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
   const [err, setErr] = useState<string | null>(null);

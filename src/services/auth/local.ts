@@ -166,7 +166,11 @@ export class LocalAuthService implements AuthService {
 
   // Session management
   getSession(): Session | null {
-    return this.readJSON<{ userId?: string; email?: string } | null>(STORAGE_KEYS.SESSION_KEY, null);
+    const session = this.readJSON<{ userId?: string; email?: string } | null>(STORAGE_KEYS.SESSION_KEY, null);
+    if (session && session.userId && session.email) {
+      return { userId: session.userId, email: session.email };
+    }
+    return null;
   }
 
   setSession(session: Session): void {

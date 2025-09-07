@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 
 export default function RedirectIfAuthed() {
-  const { user, authReady } = useAuth();
+  const { user, authReady: _authReady } = useAuth();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 

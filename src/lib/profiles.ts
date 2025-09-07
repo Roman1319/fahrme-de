@@ -1,6 +1,8 @@
 import { supabase } from './supabaseClient';
 import { Profile } from './types';
 
+export type { Profile };
+
 export interface UpdateProfileData {
   name?: string;
   handle?: string;

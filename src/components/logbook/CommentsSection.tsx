@@ -72,11 +72,11 @@ export default function CommentsSection({
   };
 
   const canEdit = (comment: Comment) => {
-    return user && (comment.userId === user.id || user.email === comment.authorEmail);
+    return user && ((comment as any).userId === user.id || user.email === (comment as any).authorEmail);
   };
 
   const canDelete = (comment: Comment) => {
-    return user && (comment.userId === user.id || user.email === comment.authorEmail);
+    return user && ((comment as any).userId === user.id || user.email === (comment as any).authorEmail);
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -135,18 +135,18 @@ export default function CommentsSection({
         {comments.map((comment) => (
           <div key={comment.id} className="flex gap-3">
             <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-white font-semibold">
-              {comment.author.charAt(0).toUpperCase()}
+              {(comment as any).author?.charAt(0).toUpperCase() || 'U'}
             </div>
             
             <div className="flex-1">
               <div className="bg-white/5 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-white">{comment.author}</span>
+                    <span className="font-semibold text-white">{(comment as any).author || 'Unknown'}</span>
                     <span className="text-white/50 text-sm">
-                      {formatTimeAgo(comment.createdAt)}
+                      {formatTimeAgo(comment.created_at)}
                     </span>
-                    {comment.editedAt && (
+                    {(comment as any).editedAt && (
                       <span className="text-white/30 text-xs">(bearbeitet)</span>
                     )}
                   </div>
@@ -205,13 +205,13 @@ export default function CommentsSection({
                     onClick={() => onLikeComment(comment.id)}
                     disabled={!user}
                     className={`flex items-center gap-1 text-sm transition-colors ${
-                      comment.likes.includes(user?.id || '')
+                      (comment as any).likes?.includes(user?.id || '')
                         ? 'text-accent'
                         : 'text-white/50 hover:text-white'
                     }`}
                   >
-                    <Heart className={`w-4 h-4 ${comment.likes.includes(user?.id || '') ? 'fill-current' : ''}`} />
-                    {comment.likes.length}
+                    <Heart className={`w-4 h-4 ${(comment as any).likes?.includes(user?.id || '') ? 'fill-current' : ''}`} />
+                    {(comment as any).likes?.length || 0}
                   </button>
                   
                   {user && (
@@ -261,9 +261,9 @@ export default function CommentsSection({
               )}
 
               {/* Replies */}
-              {comment.replies && comment.replies.length > 0 && (
+              {(comment as any).replies && (comment as any).replies.length > 0 && (
                 <div className="mt-4 space-y-3">
-                  {comment.replies.map((reply) => (
+                  {(comment as any).replies.map((reply: any) => (
                     <div key={reply.id} className="flex gap-3 ml-4">
                       <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white font-semibold text-sm">
                         {reply.author.charAt(0).toUpperCase()}

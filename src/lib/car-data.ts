@@ -62,7 +62,7 @@ class CarDatabase {
   private parseCSV(csvText: string, year: number): CarData[] {
     const lines = csvText.split('\n');
     const data: CarData[] = [];
-    let validLines = 0;
+    // let validLines = 0; // TODO: Use validLines if needed
     let invalidLines = 0;
 
     for (let i = 1; i < lines.length; i++) { // Пропускаем заголовок
@@ -77,7 +77,7 @@ class CarDatabase {
           model: columns[2].trim(),
           bodyStyles: columns[3]?.trim() || ''
         });
-        validLines++;
+        // validLines++; // TODO: Use validLines if needed
       } else {
         invalidLines++;
       }

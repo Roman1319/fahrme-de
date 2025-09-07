@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { carDatabase, CarMake, CarData } from '@/lib/car-data';
+import { carDatabase, CarMake } from '@/lib/car-data';
 
 export function useCarData() {
   const [isLoading, setIsLoading] = useState(true);

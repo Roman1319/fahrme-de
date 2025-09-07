@@ -29,7 +29,7 @@ export function getUsers() {
   return auth.getUsers();
 }
 
-export function saveUsers(users: any[]) {
+export function saveUsers(users: { id: string; email: string; name: string; password: string; createdAt: number }[]) {
   auth.saveUsers(users);
 }
 
@@ -37,8 +37,12 @@ export function getSession() {
   return auth.getSession();
 }
 
-export function setSession(session: any) {
-  auth.setSession(session);
+export function setSession(session: { userId: string; email: string } | null) {
+  if (session) {
+    auth.setSession(session);
+  } else {
+    auth.clearSession();
+  }
 }
 
 export function clearSession() {

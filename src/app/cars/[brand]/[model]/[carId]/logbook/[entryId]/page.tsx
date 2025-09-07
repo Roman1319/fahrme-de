@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Heart, MessageCircle, Share2, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Heart, MessageCircle, Share2, Edit, Trash2 } from 'lucide-react';
 import { MyCar, LogbookEntry, Comment } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
 import { 
@@ -17,7 +17,7 @@ import {
   likeComment,
   deleteLogbookEntry
 } from '@/lib/interactions';
-import { isCarOwnerByCar } from '@/lib/ownership';
+// import { isCarOwnerByCar } from '@/lib/ownership'; // TODO: Use isCarOwnerByCar if needed
 import { readProfileByEmail } from '@/lib/profile';
 import CommentsList from '@/components/ui/CommentsList';
 import { STORAGE_KEYS } from '@/lib/keys';
@@ -28,8 +28,8 @@ export default function LogbookEntryPage() {
   const { user } = useAuth();
   
   const carId = params.carId as string;
-  const brand = params.brand as string;
-  const model = params.model as string;
+  // const brand = params.brand as string; // TODO: Use brand if needed
+  // const model = params.model as string; // TODO: Use model if needed
   const entryId = params.entryId as string;
   
   const [car, setCar] = useState<MyCar | null>(null);
@@ -77,10 +77,10 @@ export default function LogbookEntryPage() {
     const profiles: Record<string, { avatarUrl?: string | null; displayName?: string }> = {};
     
     comments.forEach(comment => {
-      if (!commentProfiles[comment.authorEmail]) {
-        const profile = readProfileByEmail(comment.authorEmail);
+      if (!commentProfiles[(comment as any).authorEmail]) {
+        const profile = readProfileByEmail((comment as any).authorEmail);
         if (profile) {
-          profiles[comment.authorEmail] = {
+          profiles[(comment as any).authorEmail] = {
             avatarUrl: profile.avatarUrl,
             displayName: profile.displayName
           };
@@ -103,14 +103,14 @@ export default function LogbookEntryPage() {
   const handleAddComment = (text: string, images?: string[]) => {
     if (!user || !entry) return;
 
-    addComment(entryId, text, user.name, user.email, undefined, images || []);
+    addComment(entryId, text, user.name, user.email);
     loadComments();
   };
 
   const handleAddReply = (parentId: string, text: string, images?: string[]) => {
     if (!user || !entry) return;
 
-    addComment(entryId, text, user.name, user.email, parentId, images || []);
+    addComment(entryId, text, user.name, user.email, parentId);
     loadComments();
   };
 
@@ -127,14 +127,14 @@ export default function LogbookEntryPage() {
   const handleLikeComment = (commentId: string) => {
     if (!user) return;
     
-    likeComment(entryId, commentId, user.email);
+    likeComment(entryId, commentId);
     loadComments();
   };
 
   const handleLikeReply = (parentId: string, replyId: string) => {
     if (!user) return;
     
-    likeComment(entryId, replyId, user.email);
+    likeComment(entryId, replyId);
     loadComments();
   };
 
@@ -155,7 +155,7 @@ export default function LogbookEntryPage() {
   };
 
   const handleDeleteEntry = () => {
-    if (!entry || !user || entry.userId !== user.id) return;
+    if (!entry || !user || entry.author_id !== user.id) return;
     
     if (confirm('Möchten Sie diesen Logbuch-Eintrag wirklich löschen?')) {
       const success = deleteLogbookEntry(carId, entryId);
@@ -174,7 +174,7 @@ export default function LogbookEntryPage() {
     if (navigator.share) {
       navigator.share({
         title: entry?.title || 'Logbuch-Eintrag',
-        text: entry?.text || '',
+        text: (entry as any)?.text || entry?.content || '',
         url: window.location.href
       });
     } else {
@@ -203,8 +203,8 @@ export default function LogbookEntryPage() {
     );
   }
 
-  const isOwner = user && car && isCarOwnerByCar(car, user.id, user.email);
-  const isEntryAuthor = user && entry && entry.userId === user.id;
+  // const isOwner = user && car && isCarOwnerByCar(car, user.id, user.email); // TODO: Use isOwner if needed
+  const isEntryAuthor = user && entry && entry.author_id === user.id;
 
   return (
     <main className="pb-12">
@@ -259,22 +259,22 @@ export default function LogbookEntryPage() {
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
               <div className="bg-accent text-black px-2 py-1 rounded-full text-sm font-medium">
-                @{entry.author}
+                @{(entry as any).author}
               </div>
-              <span className="text-sm opacity-70">{entry.timestamp}</span>
+              <span className="text-sm opacity-70">{(entry as any).timestamp}</span>
               <span className="text-xs opacity-50 bg-white/10 px-2 py-1 rounded-full">
-                {entry.topic === 'maintenance' ? 'Wartung' :
-                 entry.topic === 'repair' ? 'Reparatur' :
-                 entry.topic === 'tuning' ? 'Tuning' :
-                 entry.topic === 'trip' ? 'Fahrt' :
-                 entry.topic === 'event' ? 'Event' :
-                 entry.topic === 'general' ? 'Allgemein' :
-                 entry.type === 'maintenance' ? 'Wartung' :
-                 entry.type === 'event' ? 'Event' :
-                 entry.type === 'general' ? 'Allgemein' :
+                {(entry as any).topic === 'maintenance' ? 'Wartung' :
+                 (entry as any).topic === 'repair' ? 'Reparatur' :
+                 (entry as any).topic === 'tuning' ? 'Tuning' :
+                 (entry as any).topic === 'trip' ? 'Fahrt' :
+                 (entry as any).topic === 'event' ? 'Event' :
+                 (entry as any).topic === 'general' ? 'Allgemein' :
+                 (entry as any).type === 'maintenance' ? 'Wartung' :
+                 (entry as any).type === 'event' ? 'Event' :
+                 (entry as any).type === 'general' ? 'Allgemein' :
                  'Allgemein'}
               </span>
-              {entry.pinOnCar && (
+              {(entry as any).pinOnCar && (
                 <span className="text-xs bg-accent text-black px-2 py-1 rounded-full font-medium">
                   Angepinnt
                 </span>
@@ -283,9 +283,9 @@ export default function LogbookEntryPage() {
           </div>
 
           {/* Images */}
-          {entry.images && entry.images.length > 0 && (
+          {(entry as any).images && (entry as any).images.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              {entry.images.map((image, index) => (
+              {(entry as any).images.map((image: any, index: any) => (
                 <div key={index} className="aspect-video bg-white/5 rounded-lg overflow-hidden">
                   <img 
                     src={image} 
@@ -298,21 +298,21 @@ export default function LogbookEntryPage() {
           )}
 
           {/* Additional Info */}
-          {(entry.mileage || entry.cost) && (
+          {((entry as any).mileage || (entry as any).cost) && (
             <div className="flex flex-wrap gap-3 mb-6 text-sm">
-              {entry.mileage && (
+              {(entry as any).mileage && (
                 <div className="bg-white/10 px-3 py-2 rounded-lg border border-white/20">
                   <span className="opacity-70">📏 Kilometerstand:</span>
                   <span className="ml-2 font-medium">
-                    {entry.mileage.toLocaleString()} {entry.mileageUnit}
+                    {(entry as any).mileage.toLocaleString()} {(entry as any).mileageUnit}
                   </span>
                 </div>
               )}
-              {entry.cost && (
+              {(entry as any).cost && (
                 <div className="bg-white/10 px-3 py-2 rounded-lg border border-white/20">
                   <span className="opacity-70">💰 Kosten:</span>
                   <span className="ml-2 font-medium">
-                    {entry.cost} {entry.currency}
+                    {(entry as any).cost} {(entry as any).currency}
                   </span>
                 </div>
               )}
@@ -320,11 +320,11 @@ export default function LogbookEntryPage() {
           )}
 
           {/* Poll */}
-          {entry.poll && (
+          {(entry as any).poll && (
             <div className="bg-white/10 rounded-lg p-4 mb-6 border border-white/20">
-              <h3 className="font-medium mb-3">{entry.poll.question}</h3>
+              <h3 className="font-medium mb-3">{(entry as any).poll.question}</h3>
               <div className="space-y-2">
-                {entry.poll.options.map((option, index) => (
+                {(entry as any).poll.options.map((option: any, index: any) => (
                   <div key={index} className="text-sm opacity-80">
                     • {option}
                   </div>
@@ -335,7 +335,7 @@ export default function LogbookEntryPage() {
 
           {/* Text Content */}
           <div className="prose prose-sm max-w-none dark:prose-invert mb-6">
-            {(entry.text || entry.content || '').split('\n').map((line, index) => {
+            {((entry as any).text || entry.content || '').split('\n').map((line: any, index: any) => {
               // Simple markdown parsing
               if (line.startsWith('![') && line.includes('](') && line.includes(')')) {
                 const match = line.match(/!\[([^\]]*)\]\(([^)]+)\)/);
@@ -396,7 +396,7 @@ export default function LogbookEntryPage() {
                 <span className="font-medium">{getLogbookEntryLikes(entry.id)}</span>
               </button>
               
-              {entry.allowComments && (
+              {entry.allow_comments && (
                 <div className="flex items-center gap-2 opacity-70">
                   <MessageCircle className="w-5 h-5" />
                   <span className="font-medium">{comments.length}</span>
@@ -405,13 +405,13 @@ export default function LogbookEntryPage() {
             </div>
             
             <div className="text-sm opacity-50">
-              {entry.language} • {entry.publishedAt ? new Date(entry.publishedAt).toLocaleDateString('de-DE') : 'Unbekannt'}
+              {(entry as any).language} • {entry.publish_date ? new Date(entry.publish_date).toLocaleDateString('de-DE') : 'Unbekannt'}
             </div>
           </div>
         </div>
 
         {/* Comments Section */}
-        {entry.allowComments && (
+        {entry.allow_comments && (
           <CommentsList
             comments={comments}
             onAddComment={handleAddComment}

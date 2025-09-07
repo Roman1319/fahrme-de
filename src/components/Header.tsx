@@ -3,7 +3,7 @@ import ThemeToggle from "./ThemeToggle";
 import { useAuth } from "./AuthProvider";
 import NotificationsButton from "./NotificationsButton";
 import MessagesButton from "./MessagesButton";
-import UserMenu from "./UserMenu";
+// import UserMenu from "./UserMenu"; // TODO: Use UserMenu if needed
 import ProfileMenu from "./ui/ProfileMenu";
 import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -14,7 +14,7 @@ type Props = {
   showAuth?: boolean;
 };
 
-export default function Header({ variant="default", showAuth=true }: Props) {
+export default function Header({ showAuth=true }: Props) {
   const { user, authReady } = useAuth();
   const homeHref = user ? "/feed" : "/";
   const router = useRouter();

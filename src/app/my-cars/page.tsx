@@ -1,16 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Car as CarIcon, Edit, Trash2, Loader2 } from "lucide-react";
+import { Plus, Car as CarIcon, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Guard from "@/components/auth/Guard";
-import ImageUpload from "@/components/ui/ImageUpload";
+// import ImageUpload from "@/components/ui/ImageUpload"; // TODO: Use ImageUpload if needed
 import AutoCompleteInput from "@/components/ui/AutoCompleteInput";
 import EditCarModal from "@/components/EditCarModal";
 import { useCarData } from "@/hooks/useCarData";
 import { Car, MyCar } from "@/lib/types";
 import { useAuth } from "@/components/AuthProvider";
-import { getCars, createCar, updateCar, deleteCar, getCarPhotos, uploadCarPhoto, deleteCarPhoto, getCarPhotoUrl } from "@/lib/cars";
+import { getCars, createCar, updateCar, deleteCar, getCarPhotos, getCarPhotoUrl } from "@/lib/cars";
 import { CreateCarData } from "@/lib/cars";
 
 export default function MyCarsPage() {
@@ -84,11 +84,23 @@ export default function MyCarsPage() {
   };
 
   // Update car
-  const handleUpdateCar = async (carData: CreateCarData & { id: string }) => {
+  const handleUpdateCar = async (updatedCar: MyCar) => {
     try {
       setLoading(true);
-      const updatedCar = await updateCar(carData);
-      setCars(prev => prev.map(car => car.id === updatedCar.id ? updatedCar : car));
+      const carData: CreateCarData & { id: string } = {
+        id: updatedCar.id,
+        brand: updatedCar.make,
+        model: updatedCar.model,
+        year: updatedCar.year,
+        name: updatedCar.name,
+        color: updatedCar.color,
+        is_main_vehicle: updatedCar.isMainVehicle,
+        is_former: updatedCar.isFormerCar,
+        description: updatedCar.description,
+        story: updatedCar.story
+      };
+      const updatedCarResult = await updateCar(carData);
+      setCars(prev => prev.map(car => car.id === updatedCarResult.id ? updatedCarResult : car));
       setEditingCar(null);
     } catch (err) {
       console.error('[MyCars] Error updating car:', err);
@@ -201,7 +213,7 @@ export default function MyCarsPage() {
           {/* Форма добавления машины */}
           {showAddForm && (
             <AddCarForm
-              user={user}
+              user={user || { id: '', email: '', name: '' }}
               onAdd={handleAddCar}
               onCancel={() => setShowAddForm(false)}
             />
@@ -210,7 +222,21 @@ export default function MyCarsPage() {
           {/* Edit Car Modal */}
           {editingCar && (
             <EditCarModal
-              car={editingCar}
+              car={{
+                id: editingCar.id,
+                name: editingCar.name || '',
+                make: editingCar.brand,
+                model: editingCar.model,
+                year: editingCar.year,
+                color: editingCar.color || '',
+                images: [],
+                description: editingCar.description,
+                story: editingCar.story,
+                isFormerCar: editingCar.is_former,
+                isMainVehicle: editingCar.is_main_vehicle,
+                addedDate: editingCar.created_at,
+                ownerId: editingCar.owner_id
+              }}
               isOpen={!!editingCar}
               onClose={() => setEditingCar(null)}
               onSave={handleUpdateCar}
@@ -355,7 +381,7 @@ function AddCarForm({
   onAdd, 
   onCancel 
 }: { 
-  user: any;
+  user: { id: string; email: string; name?: string };
   onAdd: (car: CreateCarData) => void;
   onCancel: () => void;
 }) {

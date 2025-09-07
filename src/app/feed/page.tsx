@@ -1,6 +1,6 @@
 "use client";
 
-import SiteFooter from "@/components/SiteFooter";
+// import SiteFooter from "@/components/SiteFooter"; // TODO: Use SiteFooter if needed
 import CarOfTheDay from "@/components/CarOfTheDay";
 import Guard from "@/components/auth/Guard";
 

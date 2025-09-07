@@ -50,7 +50,7 @@ export function migrateCars() {
     }
     
     // Обновляем ownerId для всех автомобилей
-    const migratedCars = carsData.map((car: any) => ({
+    const migratedCars = carsData.map((car: { [key: string]: any }) => ({
       ...car,
       ownerId: currentUserEmail
     }));

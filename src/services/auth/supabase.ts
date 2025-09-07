@@ -10,7 +10,7 @@ import {
   AuthStateChangeCallback 
 } from './types';
 import { supabase } from '@/lib/supabaseClient';
-import { readProfile } from '@/lib/profile';
+// import { readProfile } from '@/lib/profile'; // TODO: Use readProfile if needed
 
 // AuthUser type for Supabase integration
 export type AuthUser = {
@@ -35,7 +35,7 @@ export class SupabaseAuthService implements AuthService {
     console.log('[supabase-auth] Auth listener setup skipped - using global listener');
   }
 
-  private async createProfileIfNotExists(userId: string, email: string, name?: string, handle?: string): Promise<AuthUser> {
+  private async createProfileIfNotExists(userId: string, email: string): Promise<AuthUser> {
     try {
       // Try to get existing profile
       const { data: profile, error } = await supabase
@@ -65,8 +65,8 @@ export class SupabaseAuthService implements AuthService {
         .insert({
           id: userId,
           email: email,
-          name: name || email.split('@')[0],
-          handle: handle || email.split('@')[0]
+          name: email.split('@')[0],
+          handle: email.split('@')[0]
         })
         .select()
         .single();
@@ -89,14 +89,14 @@ export class SupabaseAuthService implements AuthService {
       return {
         id: userId,
         email: email,
-        handle: handle || email.split('@')[0],
-        name: name || email.split('@')[0],
+        handle: email.split('@')[0],
+        name: email.split('@')[0],
         avatarUrl: undefined
       };
     }
   }
 
-  private async migrateLocalProfileIfNeeded(userId: string, supabaseProfile: { name?: string; avatar_url?: string }): Promise<void> {
+  private async migrateLocalProfileIfNeeded(): Promise<void> {
     // Skip migration for now to avoid RLS issues
     // This will be re-enabled once we set up the profiles table properly
     console.info('[supabase-auth] Profile migration skipped - profiles table not set up yet');
@@ -224,7 +224,7 @@ export class SupabaseAuthService implements AuthService {
     return null;
   }
 
-  setSession(session: Session): void {
+  setSession(): void {
     // Supabase manages sessions automatically
     console.warn('[supabase-auth] setSession not supported in Supabase mode');
   }
@@ -241,7 +241,7 @@ export class SupabaseAuthService implements AuthService {
     return [];
   }
 
-  saveUsers(_users: User[]): void {
+  saveUsers(): void {
     // Supabase manages users on server
     console.warn('[supabase-auth] saveUsers not supported in Supabase mode');
   }
@@ -252,15 +252,13 @@ export class SupabaseAuthService implements AuthService {
     
     // Also add to global callback system with conversion
     if (typeof window !== 'undefined' && window.authStateChangeCallbacks) {
-      const convertedCallback = async (supabaseUser: any) => {
+      const convertedCallback = async (supabaseUser: { id: string; email?: string; user_metadata?: { name?: string; handle?: string } } | null) => {
         if (supabaseUser) {
           try {
             // Convert Supabase user to our User format
             const authUser = await this.createProfileIfNotExists(
               supabaseUser.id, 
-              supabaseUser.email || '', 
-              supabaseUser.user_metadata?.name,
-              supabaseUser.user_metadata?.handle
+              supabaseUser.email || ''
             );
             const user = this.convertAuthUserToUser(authUser);
             callback(user);

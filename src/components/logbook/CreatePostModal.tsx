@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Image as ImageIcon, Upload } from 'lucide-react';
+import { X } from 'lucide-react';
 import { createLogbookEntry, addMedia } from '@/lib/logbook';
 import { CreateLogbookEntryData } from '@/lib/logbook';
 
@@ -53,9 +53,9 @@ export default function CreatePostModal({
 
       onPostCreated(entry.id);
       handleClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating post:', err);
-      if (err.code === '42501') {
+      if (err && typeof err === 'object' && 'code' in err && err.code === '42501') {
         setError('Sie können nur Posts für Ihre eigenen Autos erstellen.');
       } else {
         setError('Fehler beim Erstellen des Posts. Bitte versuchen Sie es erneut.');
