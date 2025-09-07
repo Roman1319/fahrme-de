@@ -1,127 +1,143 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { readProfile, updateProfile, UserProfile } from '@/lib/profile';
+import { Profile, getProfile, updateProfile, uploadAvatar, checkHandleAvailability } from '@/lib/profiles';
 import DropzoneAvatar from '@/components/ui/DropzoneAvatar';
 import { PillToggleGroup } from '@/components/ui/PillToggle';
 import { useAuth } from '@/components/AuthProvider';
 import Guard from '@/components/auth/Guard';
+import { Loader2 } from 'lucide-react';
 
 type Errors = Partial<Record<
-  'phone'|'email'|'displayName'|'firstName'|'lastName',
+  'handle'|'name'|'about',
   string
 >>;
 
-const MAX_NICK = 30;
+const MAX_HANDLE = 30;
 const MAX_NAME = 40;
 
 export default function ProfilePage() {
   const { user } = useAuth();
-  const [p, setP] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [errors, setErrors] = useState<Errors>({});
 
   useEffect(() => {
-    const data = readProfile();
-    const init: UserProfile = data || { 
-      id: 'local', 
-      displayName: '', 
-      otherLanguages: [],
-      email: user?.email || null // Автоматически заполняем email из системы авторизации
-    };
-    
-    // Если у пользователя есть email, но в профиле его нет - обновляем
-    if (user?.email && init.email !== user.email) {
-      init.email = user.email;
-    }
-    
-    setP(init);
-    setAvatar(init.avatarUrl ?? null);
-    // Валидируем начальные данные
-    validate(init);
+    loadProfile();
   }, [user]);
 
-  const canSave = useMemo(() => {
-    const hasProfile = !!p;
-    const noErrors = !Object.values(errors).some(Boolean);
-    const hasDisplayName = (p?.displayName?.trim().length ?? 0) > 0;
+  const loadProfile = async () => {
+    if (!user) return;
     
-    console.log('CanSave check:', {
-      hasProfile,
-      noErrors,
-      hasDisplayName,
-      displayName: p?.displayName,
-      errors: Object.keys(errors).filter(k => errors[k as keyof Errors])
-    });
-    
-    return hasProfile && noErrors && hasDisplayName;
-  }, [p, errors]);
+    try {
+      setLoading(true);
+      const profileData = await getProfile(user.id);
+      if (profileData) {
+        setProfile(profileData);
+        setAvatar(profileData.avatar_url || null);
+      } else {
+        // Create a basic profile if none exists
+        const basicProfile: Profile = {
+          id: user.id,
+          email: user.email,
+          name: user.name || '',
+          handle: user.email?.split('@')[0] || '',
+          about: '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        setProfile(basicProfile);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  function set<K extends keyof UserProfile>(key: K, val: UserProfile[K]) {
-    setP(prev => prev ? ({ ...prev, [key]: val }) as UserProfile : prev);
+  const canSave = useMemo(() => {
+    const hasProfile = !!profile;
+    const noErrors = !Object.values(errors).some(Boolean);
+    const hasName = (profile?.name?.trim().length ?? 0) > 0;
+    
+    return hasProfile && noErrors && hasName;
+  }, [profile, errors]);
+
+  function set<K extends keyof Profile>(key: K, val: Profile[K]) {
+    setProfile(prev => prev ? ({ ...prev, [key]: val }) as Profile : prev);
   }
 
   // === Validation helpers ===
-  function sanitizePhone(input: string) {
-    // только + и цифры, плюс только в начале; E.164 до 15 цифр
-    let v = input.replace(/[^\d+]/g, '');
-    if (v.includes('+')) v = '+' + v.replace(/\+/g, '');
-    const digits = v.replace(/\D/g, '').slice(0, 15);
-    return v.startsWith('+') ? `+${digits}` : digits;
-  }
-  const emailValid = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
-  const latinOnly = (v: string) => /^[A-Za-z0-9 ._\-]+$/.test(v); // ник: латиница, цифры, пробел, ._-
+  const latinOnly = (v: string) => /^[A-Za-z0-9._\-]+$/.test(v); // handle: латиница, цифры, ._-
 
-  function validate(next: Partial<UserProfile>) {
+  function validate(next: Partial<Profile>) {
     const e: Errors = {};
-    const phone = next.phone ?? p?.phone ?? '';
-    const email = next.email ?? p?.email ?? '';
-    const nick = next.displayName ?? p?.displayName ?? '';
-    const fn = next.firstName ?? p?.firstName ?? '';
-    const ln = next.lastName ?? p?.lastName ?? '';
+    const handle = next.handle ?? profile?.handle ?? '';
+    const name = next.name ?? profile?.name ?? '';
+    const about = next.about ?? profile?.about ?? '';
 
-    if (phone && !/^\+?\d{1,15}$/.test(phone)) e.phone = 'Nur Ziffern und + (max 15).';
-    if (email && !emailValid(email)) e.email = 'Ungültige E-Mail.';
-    if (nick.length > MAX_NICK) e.displayName = `Max. ${MAX_NICK} Zeichen.`;
-    if (nick && !latinOnly(nick)) e.displayName = 'Nur lateinische Zeichen, Ziffern und .-_';
-    if (fn && fn.length > MAX_NAME) e.firstName = `Max. ${MAX_NAME} Zeichen.`;
-    if (ln && ln.length > MAX_NAME) e.lastName = `Max. ${MAX_NAME} Zeichen.`;
+    if (handle.length > MAX_HANDLE) e.handle = `Max. ${MAX_HANDLE} Zeichen.`;
+    if (handle && !latinOnly(handle)) e.handle = 'Nur lateinische Zeichen, Ziffern und .-_';
+    if (name.length > MAX_NAME) e.name = `Max. ${MAX_NAME} Zeichen.`;
+    if (about && about.length > 1000) e.about = `Max. 1000 Zeichen.`;
 
     setErrors(e);
   }
 
-  async function onSave() {
-    console.log('=== SAVE BUTTON CLICKED ===');
-    console.log('Profile data (p):', p);
-    console.log('Avatar:', avatar);
-    console.log('Can save:', canSave);
-    console.log('Errors:', errors);
+  const checkHandle = async (handle: string) => {
+    if (!handle || !profile) return;
     
-    if (!p) {
-      console.log('No profile data to save');
-      alert('Нет данных профиля для сохранения');
+    try {
+      const isAvailable = await checkHandleAvailability(handle, profile.id);
+      if (!isAvailable) {
+        setErrors(prev => ({ ...prev, handle: 'Dieser Handle ist bereits vergeben' }));
+      } else {
+        setErrors(prev => ({ ...prev, handle: undefined }));
+      }
+    } catch (error) {
+      console.error('Error checking handle availability:', error);
+    }
+  };
+
+  async function onSave() {
+    if (!profile || !user) {
+      alert('Keine Profildaten zum Speichern');
       return;
     }
     
     if (!canSave) {
-      console.log('Cannot save - validation failed');
-      alert('Нельзя сохранить - заполните обязательные поля');
+      alert('Bitte füllen Sie alle Pflichtfelder aus');
       return;
     }
     
-    console.log('Saving profile:', { ...p, avatarUrl: avatar ?? null });
     setSaving(true);
     
     try {
-      const updated = updateProfile({ ...p, avatarUrl: avatar ?? null });
-      console.log('Profile saved successfully:', updated);
+      let avatarUrl = profile.avatar_url;
       
-      // Проверяем, что данные действительно сохранились
-      const saved = readProfile();
-      console.log('Verification - saved data:', saved);
+      // Upload avatar if changed
+      if (avatar && avatar !== profile.avatar_url) {
+        // Convert data URL to File
+        const response = await fetch(avatar);
+        const blob = await response.blob();
+        const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+        
+        avatarUrl = await uploadAvatar(user.id, file);
+      }
       
-      // Показываем уведомление об успешном сохранении
+      // Update profile
+      const updatedProfile = await updateProfile(user.id, {
+        name: profile.name,
+        handle: profile.handle,
+        about: profile.about,
+        avatar_url: avatarUrl
+      });
+      
+      setProfile(updatedProfile);
+      setAvatar(avatarUrl);
+      
       alert('Profil erfolgreich gespeichert!');
     } catch (error) {
       console.error('Error saving profile:', error);
@@ -131,63 +147,38 @@ export default function ProfilePage() {
     }
   }
 
-  if (!p) return null;
+  if (loading) {
+    return (
+      <Guard>
+        <main className="pb-12">
+          <div className="section text-center py-16">
+            <Loader2 size={32} className="mx-auto mb-4 animate-spin" />
+            <div className="text-xl">Lade Profil...</div>
+          </div>
+        </main>
+      </Guard>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <Guard>
+        <main className="pb-12">
+          <div className="section text-center py-16">
+            <div className="text-xl">Profil nicht gefunden</div>
+          </div>
+        </main>
+      </Guard>
+    );
+  }
 
   return (
     <Guard>
-      <main className="container grid gap-3 pb-6">
-      <section className="space-y-3">
-        <div className="section">
-          <h1 className="h1">Mein Profil</h1>
-        </div>
-
-        {/* Sicherheit & Anmeldung */}
-        <section className="section">
-          <header className="mb-3">
-            <h2 className="h2">Sicherheit & Anmeldung</h2>
-            <p className="opacity-70 mt-1 text-xs">Diese Daten sind nur für dich sichtbar.</p>
-          </header>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Mobiltelefon</span>
-              <input
-                inputMode="tel"
-                pattern="^\+?\d{1,15}$"
-                className="form-input"
-                placeholder="+49 ..."
-                value={p.phone ?? ''}
-                onChange={(e) => { const v = sanitizePhone(e.target.value); set('phone', v); validate({ phone: v }); }}
-              />
-              {errors.phone && <span className="form-error">{errors.phone}</span>}
-            </label>
-
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">E-Mail-Adresse</span>
-              <input
-                type="email"
-                className="form-input bg-white/5 cursor-not-allowed"
-                placeholder="dein.name@mail.de"
-                value={p.email ?? ''}
-                readOnly
-                title="Email адрес нельзя изменить - это ваш адрес для входа в систему"
-              />
-              <p className="opacity-70 text-xs">Email адрес нельзя изменить - это ваш адрес для входа в систему</p>
-            </label>
-
-            <label className="sm:col-span-2 flex flex-col gap-1">
-              <span className="text-sm font-medium">Passwort</span>
-              <div className="flex gap-2">
-                <input type="password" className="form-input flex-1" placeholder="Neues Passwort" />
-                <button type="button" className="btn-secondary"
-                        onClick={() => alert('Demo: Passwort ändern ohne Backend')}>
-                  Ändern
-                </button>
-              </div>
-              <p className="opacity-70 text-sm">Demo: ohne Backend – Button nur zur Ansicht.</p>
-            </label>
+      <main className="pb-12">
+        <div className="space-y-6">
+          <div className="section">
+            <h1 className="h1">Mein Profil</h1>
           </div>
-        </section>
 
         {/* Persönliche Informationen */}
         <section className="section">
@@ -198,115 +189,61 @@ export default function ProfilePage() {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Spitzname</span>
+              <span className="text-sm font-medium">E-Mail-Adresse</span>
               <input
-                className="form-input"
-                maxLength={MAX_NICK}
-                placeholder="z. B. ehal77"
-                value={p.displayName}
-                onChange={(e) => { set('displayName', e.target.value); validate({ displayName: e.target.value }); }}
+                type="email"
+                className="form-input bg-white/5 cursor-not-allowed"
+                placeholder="dein.name@mail.de"
+                value={profile.email}
+                readOnly
+                title="E-Mail-Adresse kann nicht geändert werden"
               />
-              {errors.displayName && <span className="form-error">{errors.displayName}</span>}
-            </label>
-
-            <div className="sm:col-span-2 grid gap-4 sm:grid-cols-2">
-              <label className="flex flex-col gap-1">
-                <span className="text-sm font-medium">Vorname</span>
-                <input
-                  className="form-input"
-                  maxLength={MAX_NAME}
-                  value={p.firstName ?? ''}
-                  onChange={(e) => { set('firstName', e.target.value); validate({ firstName: e.target.value }); }}
-                />
-                {errors.firstName && <span className="form-error">{errors.firstName}</span>}
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-sm font-medium">Nachname</span>
-                <input
-                  className="form-input"
-                  maxLength={MAX_NAME}
-                  value={p.lastName ?? ''}
-                  onChange={(e) => { set('lastName', e.target.value); validate({ lastName: e.target.value }); }}
-                />
-                {errors.lastName && <span className="form-error">{errors.lastName}</span>}
-              </label>
-            </div>
-
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Geschlecht</span>
-              <PillToggleGroup
-                value={p.gender ?? null}
-                onChange={(v) => set('gender', v)}
-                options={[
-                  { label: 'männlich', value: 'm' as const },
-                  { label: 'weiblich', value: 'w' as const },
-                  { label: 'divers', value: 'x' as const },
-                ]}
-              />
+              <p className="opacity-70 text-xs">E-Mail-Adresse kann nicht geändert werden</p>
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Geburtstag</span>
+              <span className="text-sm font-medium">Handle *</span>
               <input
-                type="date"
                 className="form-input"
-                value={p.birthDate ?? ''}
-                onChange={(e) => set('birthDate', e.target.value)}
+                maxLength={MAX_HANDLE}
+                placeholder="z.B. ehal77"
+                value={profile.handle || ''}
+                onChange={(e) => { 
+                  set('handle', e.target.value); 
+                  validate({ handle: e.target.value });
+                  // Check availability after a delay
+                  setTimeout(() => checkHandle(e.target.value), 500);
+                }}
               />
+              {errors.handle && <span className="form-error">{errors.handle}</span>}
+            </label>
+
+            <label className="sm:col-span-2 flex flex-col gap-1">
+              <span className="text-sm font-medium">Name *</span>
+              <input
+                className="form-input"
+                maxLength={MAX_NAME}
+                placeholder="Ihr vollständiger Name"
+                value={profile.name || ''}
+                onChange={(e) => { set('name', e.target.value); validate({ name: e.target.value }); }}
+              />
+              {errors.name && <span className="form-error">{errors.name}</span>}
             </label>
 
             <label className="sm:col-span-2 flex flex-col gap-1">
               <span className="text-sm font-medium">Über mich</span>
               <textarea
                 className="form-input min-h-[120px] resize-y"
-                maxLength={25000}
-                value={p.about ?? ''}
-                onChange={(e) => set('about', e.target.value)}
+                maxLength={1000}
+                placeholder="Erzählen Sie etwas über sich..."
+                value={profile.about || ''}
+                onChange={(e) => { set('about', e.target.value); validate({ about: e.target.value }); }}
               />
-            </label>
-
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Hauptsprache</span>
-              <select
-                className="form-input"
-                value={p.primaryLanguage ?? 'Deutsch'}
-                onChange={(e) => set('primaryLanguage', e.target.value)}
-              >
-                {['Deutsch','Englisch','Russisch','Polnisch','Ukrainisch','Französisch','Spanisch'].map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Ich kann lesen auf diesen Sprachen</span>
-              <TagInput
-                value={p.otherLanguages ?? []}
-                placeholder="z. B. Englisch"
-                onChange={arr => set('otherLanguages', arr)}
-              />
-            </label>
-
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Land</span>
-              <input
-                className="form-input"
-                placeholder="Deutschland"
-                value={p.country ?? ''}
-                onChange={(e) => set('country', e.target.value)}
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Stadt</span>
-              <input
-                className="form-input"
-                placeholder="z. B. München"
-                value={p.city ?? ''}
-                onChange={(e) => set('city', e.target.value)}
-              />
+              {errors.about && <span className="form-error">{errors.about}</span>}
             </label>
           </div>
         </section>
+
 
         {/* Avatar */}
         <section className="section">
@@ -322,52 +259,21 @@ export default function ProfilePage() {
           />
         </section>
 
-        {/* Кнопка сохранения */}
+        {/* Save Button */}
         <div className="section">
           <div className="flex justify-end">
             <button 
               className="btn-primary" 
               disabled={!canSave || saving} 
               onClick={onSave}
-              title={!canSave ? 'Bitte füllen Sie das Pflichtfeld "Spitzname" aus' : 'Profil speichern'}
+              title={!canSave ? 'Bitte füllen Sie das Pflichtfeld "Name" aus' : 'Profil speichern'}
             >
               {saving ? 'Speichern…' : 'Speichern'}
             </button>
           </div>
         </div>
-      </section>
-    </main>
+        </div>
+      </main>
     </Guard>
-  );
-}
-
-/* === TagInput (без изменений по сути) === */
-function TagInput({
-  value, onChange, placeholder,
-}:{ value: string[]; onChange: (v: string[]) => void; placeholder?: string; }) {
-  const [text, setText] = useState('');
-  function add(v: string) {
-    const t = v.trim(); if (!t) return;
-    if (value.includes(t)) return;
-    onChange([...value, t]); setText('');
-  }
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {value.map(tag => (
-        <span key={tag} className="rounded-full bg-black/5 px-2.5 py-1 text-xs dark:bg-white/10">
-          {tag}
-          <button className="ml-1 text-neutral-500 hover:text-neutral-700 dark:hover:text-white"
-                  onClick={() => onChange(value.filter(v => v !== tag))}>×</button>
-        </span>
-      ))}
-      <input
-        className="form-input min-w-[160px] flex-1"
-        placeholder={placeholder}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter') add(text); }}
-        onBlur={() => add(text)}
-      />
-    </div>
   );
 }

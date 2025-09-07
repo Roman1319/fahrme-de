@@ -36,15 +36,64 @@ export class SupabaseAuthService implements AuthService {
   }
 
   private async createProfileIfNotExists(userId: string, email: string, name?: string, handle?: string): Promise<AuthUser> {
-    // For now, just return basic user info without creating profile
-    // This avoids RLS issues until we set up the profiles table properly
-    return {
-      id: userId,
-      email: email,
-      handle: handle || email.split('@')[0],
-      name: name || email.split('@')[0],
-      avatarUrl: undefined
-    };
+    try {
+      // Try to get existing profile
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('[supabase-auth] Error fetching profile:', error);
+        throw error;
+      }
+
+      if (profile) {
+        return {
+          id: profile.id,
+          email: profile.email,
+          handle: profile.handle,
+          name: profile.name,
+          avatarUrl: profile.avatar_url
+        };
+      }
+
+      // Profile doesn't exist, create it
+      const { data: newProfile, error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: email,
+          name: name || email.split('@')[0],
+          handle: handle || email.split('@')[0]
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('[supabase-auth] Error creating profile:', insertError);
+        throw insertError;
+      }
+
+      return {
+        id: newProfile.id,
+        email: newProfile.email,
+        handle: newProfile.handle,
+        name: newProfile.name,
+        avatarUrl: newProfile.avatar_url
+      };
+    } catch (error) {
+      console.error('[supabase-auth] Error in createProfileIfNotExists:', error);
+      // Fallback to basic user info
+      return {
+        id: userId,
+        email: email,
+        handle: handle || email.split('@')[0],
+        name: name || email.split('@')[0],
+        avatarUrl: undefined
+      };
+    }
   }
 
   private async migrateLocalProfileIfNeeded(userId: string, supabaseProfile: { name?: string; avatar_url?: string }): Promise<void> {

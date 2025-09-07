@@ -1,161 +1,129 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Car, Edit, Trash2 } from "lucide-react";
+import { Plus, Car, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Guard from "@/components/auth/Guard";
 import ImageUpload from "@/components/ui/ImageUpload";
 import AutoCompleteInput from "@/components/ui/AutoCompleteInput";
 import EditCarModal from "@/components/EditCarModal";
 import { useCarData } from "@/hooks/useCarData";
-import { MyCar } from "@/lib/types";
+import { Car, MyCar } from "@/lib/types";
 import { useAuth } from "@/components/AuthProvider";
-import { STORAGE_KEYS } from "@/lib/keys";
+import { getCars, createCar, updateCar, deleteCar, getCarPhotos, uploadCarPhoto, deleteCarPhoto, getCarPhotoUrl } from "@/lib/cars";
+import { CreateCarData } from "@/lib/cars";
 
 export default function MyCarsPage() {
   const { user } = useAuth();
-  const [cars, setCars] = useState<MyCar[]>([]);
+  const [cars, setCars] = useState<Car[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingCar, setEditingCar] = useState<MyCar | null>(null);
+  const [editingCar, setEditingCar] = useState<Car | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Загружаем машины из localStorage, фильтруя по владельцу
+  // Load cars from Supabase
   useEffect(() => {
-    console.log('[MyCars] Loading cars for user:', user);
-    
-    if (!user) {
-      console.log('[MyCars] No user, skipping car load');
-      return;
-    }
-    
-    const savedCars = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
-    console.log('[MyCars] Raw saved cars from localStorage:', savedCars);
-    
-    if (savedCars) {
-      try {
-        const allCars = JSON.parse(savedCars);
-        console.log('[MyCars] Parsed all cars:', allCars);
-        
-        // Фильтруем только автомобили текущего пользователя
-        const userCars = allCars.filter((car: MyCar) => car.ownerId === user.id);
-        console.log('[MyCars] Filtered user cars:', userCars);
-        
-        setCars(userCars);
-        console.log('[MyCars] Cars loaded successfully, count:', userCars.length);
-      } catch (error) {
-        console.error('[MyCars] Error loading cars:', error);
+    const loadCars = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
       }
-    } else {
-      console.log('[MyCars] No saved cars found in localStorage');
-    }
+
+      try {
+        setLoading(true);
+        setError(null);
+        const userCars = await getCars(user.id);
+        setCars(userCars);
+      } catch (err) {
+        console.error('[MyCars] Error loading cars:', err);
+        setError('Fehler beim Laden der Autos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCars();
   }, [user]);
 
-  // Сохраняем машины в localStorage
-  const saveCars = (newCars: MyCar[]) => {
-    console.log('[MyCars] saveCars called with:', newCars);
-    console.log('[MyCars] Current user:', user);
-    
+  // Add new car
+  const handleAddCar = async (carData: CreateCarData) => {
     if (!user) {
-      console.error('[MyCars] No user, cannot save cars');
+      alert('Fehler: Benutzer nicht angemeldet');
       return;
     }
-    
-    setCars(newCars);
-    console.log('[MyCars] State updated with new cars');
-    
-    // Загружаем все автомобили из localStorage
-    const savedCars = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
-    let allCars: MyCar[] = [];
-    
-    console.log('[MyCars] Saved cars from localStorage:', savedCars);
-    
-    if (savedCars) {
-      try {
-        allCars = JSON.parse(savedCars);
-        console.log('[MyCars] Parsed all cars:', allCars);
-      } catch (error) {
-        console.error('[MyCars] Error loading all cars:', error);
-        allCars = [];
+
+    try {
+      setLoading(true);
+      const newCar = await createCar(carData, user.id);
+      setCars(prev => [newCar, ...prev]);
+      setShowAddForm(false);
+    } catch (err) {
+      console.error('[MyCars] Error adding car:', err);
+      alert('Fehler beim Hinzufügen des Autos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete car
+  const handleDeleteCar = async (id: string) => {
+    if (!confirm('Möchten Sie dieses Auto wirklich löschen?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await deleteCar(id);
+      setCars(prev => prev.filter(car => car.id !== id));
+    } catch (err) {
+      console.error('[MyCars] Error deleting car:', err);
+      alert('Fehler beim Löschen des Autos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update car
+  const handleUpdateCar = async (carData: CreateCarData & { id: string }) => {
+    try {
+      setLoading(true);
+      const updatedCar = await updateCar(carData);
+      setCars(prev => prev.map(car => car.id === updatedCar.id ? updatedCar : car));
+      setEditingCar(null);
+    } catch (err) {
+      console.error('[MyCars] Error updating car:', err);
+      alert('Fehler beim Aktualisieren des Autos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Set main vehicle
+  const handleSetMainVehicle = async (id: string) => {
+    try {
+      setLoading(true);
+      // First, unset all other main vehicles
+      const otherCars = cars.filter(car => car.id !== id);
+      for (const car of otherCars) {
+        if (car.is_main_vehicle) {
+          await updateCar({ id: car.id, is_main_vehicle: false });
+        }
       }
+      
+      // Set the selected car as main vehicle
+      await updateCar({ id, is_main_vehicle: true });
+      
+      // Update local state
+      setCars(prev => prev.map(car => ({
+        ...car,
+        is_main_vehicle: car.id === id
+      })));
+    } catch (err) {
+      console.error('[MyCars] Error setting main vehicle:', err);
+      alert('Fehler beim Setzen des Hauptfahrzeugs');
+    } finally {
+      setLoading(false);
     }
-    
-    // Удаляем старые автомобили текущего пользователя
-    const beforeFilter = allCars.length;
-    allCars = allCars.filter(car => car.ownerId !== user.id);
-    console.log('[MyCars] Filtered out user cars. Before:', beforeFilter, 'After:', allCars.length);
-    
-    // Добавляем новые автомобили текущего пользователя
-    allCars = [...allCars, ...newCars];
-    console.log('[MyCars] Added new cars. Total cars now:', allCars.length);
-    
-    // Сохраняем обновленный список
-    const carsToSave = JSON.stringify(allCars);
-    console.log('[MyCars] Saving to localStorage:', carsToSave);
-    localStorage.setItem(STORAGE_KEYS.MY_CARS_KEY, carsToSave);
-    
-    // Проверяем что сохранилось
-    const verifySave = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
-    console.log('[MyCars] Verification - saved cars:', verifySave);
-    
-    // Отправляем событие об изменении основного автомобиля
-    window.dispatchEvent(new CustomEvent('mainVehicleChanged'));
-    console.log('[MyCars] saveCars completed successfully');
-  };
-
-  // Добавляем новую машину
-  const addCar = (carData: Omit<MyCar, 'id' | 'addedDate' | 'ownerId'>) => {
-    console.log('[MyCars] addCar called with data:', carData);
-    console.log('[MyCars] Current user:', user);
-    console.log('[MyCars] Current cars count:', cars.length);
-    
-    if (!user) {
-      console.error('[MyCars] Пользователь не авторизован');
-      alert('Ошибка: Пользователь не авторизован');
-      return;
-    }
-    
-    const newCar: MyCar = {
-      ...carData,
-      name: carData.name || `${carData.make} ${carData.model}`, // Генерируем имя по умолчанию
-      id: Date.now().toString(),
-      addedDate: new Date().toISOString(),
-      ownerId: user.id, // Всегда устанавливаем ID текущего пользователя как владельца
-    };
-    
-    console.log('[MyCars] Created new car:', newCar);
-    console.log('[MyCars] Cars before save:', cars);
-    
-    const updatedCars = [...cars, newCar];
-    console.log('[MyCars] Updated cars array:', updatedCars);
-    
-    saveCars(updatedCars);
-    setShowAddForm(false);
-    
-    console.log('[MyCars] Car added successfully');
-  };
-
-  // Удаляем машину
-  const deleteCar = (id: string) => {
-    if (confirm('Möchten Sie dieses Auto wirklich löschen?')) {
-      saveCars(cars.filter(car => car.id !== id));
-    }
-  };
-
-  // Устанавливаем главный автомобиль
-  const setMainVehicle = (id: string) => {
-    const updatedCars = cars.map(car => ({
-      ...car,
-      isMainVehicle: car.id === id
-    }));
-    saveCars(updatedCars);
-  };
-
-  // Сохраняем отредактированную машину
-  const handleSaveEditedCar = (updatedCar: MyCar) => {
-    const updatedCars = cars.map(car => 
-      car.id === updatedCar.id ? updatedCar : car
-    );
-    saveCars(updatedCars);
-    setEditingCar(null);
   };
 
   return (
@@ -179,8 +147,29 @@ export default function MyCarsPage() {
             </button>
           </div>
 
+          {/* Loading state */}
+          {loading && (
+            <div className="section text-center py-16">
+              <Loader2 size={32} className="mx-auto mb-4 animate-spin" />
+              <p className="opacity-70">Lade Autos...</p>
+            </div>
+          )}
+
+          {/* Error state */}
+          {error && (
+            <div className="section text-center py-16">
+              <p className="text-red-500 mb-4">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-[#6A3FFB] hover:bg-[#3F297A] text-white px-4 py-2 rounded-full"
+              >
+                Erneut versuchen
+              </button>
+            </div>
+          )}
+
           {/* Список машин */}
-          {cars.length === 0 ? (
+          {!loading && !error && cars.length === 0 ? (
             <div className="section text-center py-16">
               <Car size={64} className="mx-auto mb-6 opacity-50" />
               <h3 className="text-xl font-semibold mb-3">Noch keine Autos hinzugefügt</h3>
@@ -194,102 +183,17 @@ export default function MyCarsPage() {
                 Erstes Auto hinzufügen
               </button>
             </div>
-          ) : (
+          ) : !loading && !error && (
             <div className="grid gap-2.5 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2">
               {cars.map((car) => (
-                <div key={car.id} className="section p-2 group">
-                  <Link href={`/car/${car.id}`} className="block">
-                    <div className="aspect-square rounded-lg overflow-hidden mb-2 bg-neutral-100 dark:bg-neutral-800 cursor-pointer">
-                      {car.images && car.images.length > 0 ? (
-                        <img
-                          src={car.images[0]}
-                          alt={car.name || `${car.make} ${car.model}`}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Car size={20} className="opacity-50" />
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-                  
-                  <div className="space-y-1">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold text-xs leading-tight">
-                          {car.name || `${car.make} ${car.model}`}
-                        </h3>
-                        <p className="text-xs opacity-70">
-                          {car.make} {car.model} • {car.year}
-                        </p>
-                      </div>
-                      {car.isFormerCar && (
-                        <span className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 px-1 py-0.5 rounded-full">
-                          Ehemalig
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-0.5 text-xs opacity-70">
-                      {car.color && <p className="truncate">Farbe: {car.color}</p>}
-                      {car.engine && <p className="truncate">Motor: {car.engine}</p>}
-                      {car.power && <p className="truncate">Leistung: {car.power} PS</p>}
-                    </div>
-
-                    {car.images && car.images.length > 1 && (
-                      <p className="text-xs opacity-60">
-                        +{car.images.length - 1} weitere Fotos
-                      </p>
-                    )}
-                    
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-xs opacity-60">
-                        {new Date(car.addedDate).toLocaleDateString('de-DE')}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Кнопки действий одинакового размера */}
-                  <div className="flex gap-1 mt-2">
-                    <button 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setEditingCar(car);
-                      }}
-                      className="flex-1 px-2 py-1 text-xs text-white border border-[#868E96] rounded-full hover:bg-[#343A40] transition-colors"
-                    >
-                      Bearbeiten
-                    </button>
-                    {!car.isMainVehicle ? (
-                      <button 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setMainVehicle(car.id);
-                        }}
-                        className="flex-1 px-2 py-1 text-xs text-white border border-[#868E96] rounded-full hover:bg-[#343A40] transition-colors"
-                      >
-                        Hauptauto
-                      </button>
-                    ) : (
-                      <button 
-                        className="flex-1 px-2 py-1 text-xs text-black bg-[#33D49D] rounded-full"
-                        disabled
-                      >
-                        Hauptauto
-                      </button>
-                    )}
-                    <button 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        deleteCar(car.id);
-                      }}
-                      className="flex-1 px-2 py-1 text-xs text-[#6A3FFB] border border-[#6A3FFB] rounded-full hover:bg-[#343A40] transition-colors"
-                    >
-                      Löschen
-                    </button>
-                  </div>
-                </div>
+                <CarCard
+                  key={car.id}
+                  car={car}
+                  onEdit={() => setEditingCar(car)}
+                  onDelete={() => handleDeleteCar(car.id)}
+                  onSetMain={() => handleSetMainVehicle(car.id)}
+                  loading={loading}
+                />
               ))}
             </div>
           )}
@@ -298,10 +202,7 @@ export default function MyCarsPage() {
           {showAddForm && (
             <AddCarForm
               user={user}
-              onAdd={(carData) => {
-                addCar(carData);
-                setShowAddForm(false);
-              }}
+              onAdd={handleAddCar}
               onCancel={() => setShowAddForm(false)}
             />
           )}
@@ -312,12 +213,139 @@ export default function MyCarsPage() {
               car={editingCar}
               isOpen={!!editingCar}
               onClose={() => setEditingCar(null)}
-              onSave={handleSaveEditedCar}
+              onSave={handleUpdateCar}
             />
           )}
         </div>
       </main>
     </Guard>
+  );
+}
+
+// Car Card Component
+function CarCard({ 
+  car, 
+  onEdit, 
+  onDelete, 
+  onSetMain, 
+  loading 
+}: { 
+  car: Car; 
+  onEdit: () => void; 
+  onDelete: () => void; 
+  onSetMain: () => void; 
+  loading: boolean;
+}) {
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [photosLoading, setPhotosLoading] = useState(true);
+
+  useEffect(() => {
+    const loadPhotos = async () => {
+      try {
+        setPhotosLoading(true);
+        const carPhotos = await getCarPhotos(car.id);
+        const photoUrls = carPhotos.map(photo => getCarPhotoUrl(photo.storage_path));
+        setPhotos(photoUrls);
+      } catch (error) {
+        console.error('Error loading car photos:', error);
+      } finally {
+        setPhotosLoading(false);
+      }
+    };
+
+    loadPhotos();
+  }, [car.id]);
+
+  return (
+    <div className="section p-2 group">
+      <Link href={`/car/${car.id}`} className="block">
+        <div className="aspect-square rounded-lg overflow-hidden mb-2 bg-neutral-100 dark:bg-neutral-800 cursor-pointer">
+          {photosLoading ? (
+            <div className="w-full h-full flex items-center justify-center">
+              <Loader2 size={20} className="opacity-50 animate-spin" />
+            </div>
+          ) : photos.length > 0 ? (
+            <img
+              src={photos[0]}
+              alt={car.name || `${car.brand} ${car.model}`}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Car size={20} className="opacity-50" />
+            </div>
+          )}
+        </div>
+      </Link>
+      
+      <div className="space-y-1">
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="font-semibold text-xs leading-tight">
+              {car.name || `${car.brand} ${car.model}`}
+            </h3>
+            <p className="text-xs opacity-70">
+              {car.brand} {car.model} • {car.year}
+            </p>
+          </div>
+          {car.is_former && (
+            <span className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 px-1 py-0.5 rounded-full">
+              Ehemalig
+            </span>
+          )}
+        </div>
+        
+        <div className="space-y-0.5 text-xs opacity-70">
+          {car.color && <p className="truncate">Farbe: {car.color}</p>}
+        </div>
+
+        {photos.length > 1 && (
+          <p className="text-xs opacity-60">
+            +{photos.length - 1} weitere Fotos
+          </p>
+        )}
+        
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-xs opacity-60">
+            {new Date(car.created_at).toLocaleDateString('de-DE')}
+          </span>
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex gap-1 mt-2">
+        <button 
+          onClick={onEdit}
+          disabled={loading}
+          className="flex-1 px-2 py-1 text-xs text-white border border-[#868E96] rounded-full hover:bg-[#343A40] transition-colors disabled:opacity-50"
+        >
+          Bearbeiten
+        </button>
+        {!car.is_main_vehicle ? (
+          <button 
+            onClick={onSetMain}
+            disabled={loading}
+            className="flex-1 px-2 py-1 text-xs text-white border border-[#868E96] rounded-full hover:bg-[#343A40] transition-colors disabled:opacity-50"
+          >
+            Hauptauto
+          </button>
+        ) : (
+          <button 
+            className="flex-1 px-2 py-1 text-xs text-black bg-[#33D49D] rounded-full"
+            disabled
+          >
+            Hauptauto
+          </button>
+        )}
+        <button 
+          onClick={onDelete}
+          disabled={loading}
+          className="flex-1 px-2 py-1 text-xs text-[#6A3FFB] border border-[#6A3FFB] rounded-full hover:bg-[#343A40] transition-colors disabled:opacity-50"
+        >
+          Löschen
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -328,35 +356,28 @@ function AddCarForm({
   onCancel 
 }: { 
   user: any;
-  onAdd: (car: Omit<MyCar, 'id' | 'addedDate'>) => void;
+  onAdd: (car: CreateCarData) => void;
   onCancel: () => void;
 }) {
   const { makes, getModels, isLoading: carDataLoading } = useCarData();
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [formData, setFormData] = useState({
-    name: '', // Имя машины
-    make: '',
+    brand: '',
     model: '',
-    year: 0, // Пустое значение для года
+    year: 0,
+    name: '',
     color: '',
     description: '',
     story: '',
-    images: [] as string[],
-    isFormerCar: false,
-    isMainVehicle: false,
-    engine: '',
-    volume: '',
-    gearbox: '',
-    drive: '',
-    power: 0,
-    ownerId: '' // Будет установлен при отправке
+    is_main_vehicle: false,
+    is_former: false
   });
 
   // Безопасное обновление доступных моделей при изменении марки
   useEffect(() => {
     try {
-      if (formData.make && makes.length > 0) {
-        const models = getModels(formData.make);
+      if (formData.brand && makes.length > 0) {
+        const models = getModels(formData.brand);
         setAvailableModels(models);
         
         // Сбрасываем модель, если она не доступна для выбранной марки
@@ -365,7 +386,7 @@ function AddCarForm({
         }
       } else {
         setAvailableModels([]);
-        if (!formData.make) {
+        if (!formData.brand) {
           setFormData(prev => ({ ...prev, model: '' }));
         }
       }
@@ -373,7 +394,7 @@ function AddCarForm({
       console.warn('Error updating models:', error);
       setAvailableModels([]);
     }
-  }, [formData.make, getModels, makes.length]);
+  }, [formData.brand, getModels, makes.length]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -381,28 +402,24 @@ function AddCarForm({
     console.log('[AddCarForm] Form submitted with data:', formData);
     console.log('[AddCarForm] User:', user);
     console.log('[AddCarForm] Validation check:', {
-      name: !!formData.name,
-      make: !!formData.make,
+      brand: !!formData.brand,
       model: !!formData.model,
       year: formData.year > 0,
       user: !!user
     });
     
-    if (formData.name && formData.make && formData.model && formData.year > 0 && user) {
+    if (formData.brand && formData.model && formData.year > 0 && user) {
       console.log('[AddCarForm] Validation passed, calling onAdd');
-      onAdd({
-        ...formData,
-        ownerId: user.id
-      });
+      onAdd(formData);
     } else {
       console.error('[AddCarForm] Validation failed');
-      alert('Bitte füllen Sie alle Pflichtfelder aus (Name, Marke, Modell, Baujahr)');
+      alert('Bitte füllen Sie alle Pflichtfelder aus (Marke, Modell, Baujahr)');
     }
   };
 
   // Обработчик выбора марки
-  const handleMakeSelect = (make: string) => {
-    setFormData(prev => ({ ...prev, make, model: '' }));
+  const handleBrandSelect = (brand: string) => {
+    setFormData(prev => ({ ...prev, brand, model: '' }));
   };
 
   // Обработчик выбора модели
@@ -432,9 +449,9 @@ function AddCarForm({
               <div>
                 <label className="form-label">Marke *</label>
                 <AutoCompleteInput
-                  value={formData.make}
-                  onChange={(value) => setFormData({...formData, make: value})}
-                  onSelect={handleMakeSelect}
+                  value={formData.brand}
+                  onChange={(value) => setFormData({...formData, brand: value})}
+                  onSelect={handleBrandSelect}
                   placeholder="z.B. BMW"
                   options={makes.map(make => make.name)}
                   maxSuggestions={66}
@@ -453,9 +470,9 @@ function AddCarForm({
                   placeholder="z.B. 3er"
                   options={availableModels}
                   maxSuggestions={20}
-                  disabled={!formData.make || carDataLoading}
+                  disabled={!formData.brand || carDataLoading}
                 />
-                {!formData.make && (
+                {!formData.brand && (
                   <p className="text-xs text-neutral-500 mt-1">Wählen Sie zuerst eine Marke</p>
                 )}
               </div>
@@ -511,8 +528,8 @@ function AddCarForm({
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={formData.isFormerCar}
-                    onChange={(e) => setFormData({...formData, isFormerCar: e.target.checked})}
+                    checked={formData.is_former}
+                    onChange={(e) => setFormData({...formData, is_former: e.target.checked})}
                     className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary"
                   />
                   <span className="text-sm font-medium">Das ist mein ehemaliges Auto</span>
@@ -526,8 +543,8 @@ function AddCarForm({
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={formData.isMainVehicle}
-                    onChange={(e) => setFormData({...formData, isMainVehicle: e.target.checked})}
+                    checked={formData.is_main_vehicle}
+                    onChange={(e) => setFormData({...formData, is_main_vehicle: e.target.checked})}
                     className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary"
                   />
                   <span className="text-sm font-medium">Als Hauptfahrzeug setzen</span>
@@ -539,24 +556,14 @@ function AddCarForm({
             </div>
           </div>
 
-          {/* Fotos */}
+          {/* Note about photos */}
           <div className="space-y-4">
             <div>
               <h3 className="text-lg font-semibold mb-2">Fotos</h3>
               <p className="text-sm opacity-70 mb-4">
-                Wir zuschneiden im 16:9 Format. Format — JPEG. Mindestgröße — 480×270 Pixel.
+                Fotos können nach dem Erstellen des Autos hinzugefügt werden.
               </p>
             </div>
-
-            <ImageUpload
-              images={formData.images}
-              onImagesChange={(images) => setFormData({...formData, images})}
-              maxImages={10}
-              maxSize={5}
-              minWidth={480}
-              minHeight={270}
-            />
-
           </div>
 
           {/* Geschichte des Autos */}
@@ -598,98 +605,6 @@ function AddCarForm({
             </div>
           </div>
 
-          {/* Eigenschaften */}
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Eigenschaften</h3>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="form-label">Motor</label>
-                <select
-                  className="form-input"
-                  value={formData.engine}
-                  onChange={(e) => setFormData({...formData, engine: e.target.value})}
-                >
-                  <option value="">Auswählen</option>
-                  <option value="Benzin">Benzin</option>
-                  <option value="Diesel">Diesel</option>
-                  <option value="Hybrid">Hybrid</option>
-                  <option value="Elektro">Elektro</option>
-                  <option value="Gas">Gas</option>
-                </select>
-              </div>
-              <div>
-                <label className="form-label">Hubraum</label>
-                <select
-                  className="form-input"
-                  value={formData.volume}
-                  onChange={(e) => setFormData({...formData, volume: e.target.value})}
-                >
-                  <option value="">Auswählen</option>
-                  <option value="1.0L">1.0L</option>
-                  <option value="1.2L">1.2L</option>
-                  <option value="1.4L">1.4L</option>
-                  <option value="1.6L">1.6L</option>
-                  <option value="1.8L">1.8L</option>
-                  <option value="2.0L">2.0L</option>
-                  <option value="2.5L">2.5L</option>
-                  <option value="3.0L">3.0L</option>
-                  <option value="3.5L">3.5L</option>
-                  <option value="4.0L+">4.0L+</option>
-                </select>
-              </div>
-              <div>
-                <label className="form-label">Getriebe</label>
-                <select
-                  className="form-input"
-                  value={formData.gearbox}
-                  onChange={(e) => setFormData({...formData, gearbox: e.target.value})}
-                >
-                  <option value="">Auswählen</option>
-                  <option value="Schaltgetriebe">Schaltgetriebe</option>
-                  <option value="Automatik">Automatik</option>
-                  <option value="CVT">CVT</option>
-                  <option value="DSG">DSG</option>
-                  <option value="Tiptronic">Tiptronic</option>
-                </select>
-              </div>
-              <div>
-                <label className="form-label">Antrieb</label>
-                <select
-                  className="form-input"
-                  value={formData.drive}
-                  onChange={(e) => setFormData({...formData, drive: e.target.value})}
-                >
-                  <option value="">Auswählen</option>
-                  <option value="Vorderradantrieb">Vorderradantrieb</option>
-                  <option value="Hinterradantrieb">Hinterradantrieb</option>
-                  <option value="Allradantrieb">Allradantrieb</option>
-                </select>
-              </div>
-              <div>
-                <label className="form-label">Leistung (PS)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={formData.power === 0 ? '' : formData.power.toString()}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === '') {
-                      setFormData({...formData, power: 0});
-                    } else {
-                      const numValue = parseInt(value);
-                      if (!isNaN(numValue) && numValue >= 0 && numValue <= 9999) {
-                        setFormData({...formData, power: numValue});
-                      }
-                    }
-                  }}
-                  placeholder="z.B. 150"
-                />
-              </div>
-            </div>
-          </div>
 
           <div className="flex gap-2 justify-end pt-4">
             <button type="button" className="bg-[#868E96] hover:bg-[#343A40] text-white px-4 py-2 rounded-full transition-colors" onClick={onCancel}>

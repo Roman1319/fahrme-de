@@ -1,3 +1,39 @@
+export interface Car {
+  id: string;
+  owner_id: string;
+  brand: string;
+  model: string;
+  year: number;
+  name?: string;
+  color?: string;
+  is_main_vehicle: boolean;
+  is_former: boolean;
+  description?: string;
+  story?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CarPhoto {
+  id: string;
+  car_id: string;
+  storage_path: string;
+  sort: number;
+  created_at: string;
+}
+
+export interface Profile {
+  id: string;
+  email: string;
+  name?: string;
+  handle?: string;
+  avatar_url?: string;
+  about?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Legacy interface for backward compatibility
 export interface MyCar {
   id: string;
   name: string;
@@ -22,22 +58,50 @@ export interface MyCar {
   previousCar?: string; // Предыдущий автомобиль
 }
 
-export interface Comment {
+export interface LogbookEntry {
   id: string;
-  text: string;
-  author: string;
-  authorEmail: string;
-  timestamp: string;
-  likes: number;
-  carId: string;
-  parentId?: string; // Для вложенных комментариев
-  replies?: Comment[]; // Вложенные комментарии
-  isEdited?: boolean; // Был ли отредактирован
-  editedAt?: string; // Время редактирования
-  images?: string[]; // Прикрепленные изображения
+  car_id: string;
+  author_id: string;
+  title: string;
+  content: string;
+  allow_comments: boolean;
+  publish_date: string;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface LogbookEntry {
+export interface LogbookMedia {
+  id: string;
+  entry_id: string;
+  storage_path: string;
+  sort: number;
+  created_at: string;
+}
+
+export interface Comment {
+  id: string;
+  entry_id: string;
+  author_id: string;
+  parent_id?: string;
+  text: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PostLike {
+  user_id: string;
+  entry_id: string;
+  created_at: string;
+}
+
+export interface CommentLike {
+  user_id: string;
+  comment_id: string;
+  created_at: string;
+}
+
+// Legacy interfaces for backward compatibility
+export interface LegacyLogbookEntry {
   id: string;
   userId: string; // Primary identifier for ownership
   carId: string;
