@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Car, Edit, Trash2, Loader2 } from "lucide-react";
+import { Plus, Car as CarIcon, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Guard from "@/components/auth/Guard";
 import ImageUpload from "@/components/ui/ImageUpload";
@@ -171,7 +171,7 @@ export default function MyCarsPage() {
           {/* Список машин */}
           {!loading && !error && cars.length === 0 ? (
             <div className="section text-center py-16">
-              <Car size={64} className="mx-auto mb-6 opacity-50" />
+              <CarIcon size={64} className="mx-auto mb-6 opacity-50" />
               <h3 className="text-xl font-semibold mb-3">Noch keine Autos hinzugefügt</h3>
               <p className="opacity-70 text-base mb-6 max-w-md mx-auto">
                 Fügen Sie Ihr erstes Auto hinzu, um Ihre Erfahrungen zu teilen und andere Autoliebhaber zu inspirieren
@@ -272,7 +272,7 @@ function CarCard({
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Car size={20} className="opacity-50" />
+              <CarIcon size={20} className="opacity-50" />
             </div>
           )}
         </div>

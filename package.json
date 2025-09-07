@@ -8,10 +8,11 @@
     "build": "next build --turbopack",
     "build:stable": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check-ellipsis": "node scripts/check-ellipsis.js",
+    "prebuild": "npm run check-ellipsis"
   },
   "dependencies": {
-    "@next/font": "^14.2.15",
     "@supabase/supabase-js": "^2.57.2",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.12",

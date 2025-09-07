@@ -1,5 +1,0 @@
-src/app/car/[id]/page.tsx
-src/components/EditCarModal.tsx
-src/components/ui/ImageUpload.tsx
-src/lib/interactions.ts
-src/lib/types.ts
