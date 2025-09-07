@@ -53,7 +53,7 @@ export default function Sidebar() {
     { icon: Settings, label: "Einstellungen", href: "/settings" },
   ];
 
-  const renderItem = (item: { href: string; label: string; icon?: any; image?: string }, isSubItem = false, showCarImage = false) => {
+  const renderItem = (item: { href: string; label: string; icon?: React.ComponentType<{ className?: string }>; image?: string }, isSubItem = false, showCarImage = false) => {
     const isActive = pathname === item.href || (item.href === "/feed" && pathname === "/");
     return (
       <a 
@@ -74,10 +74,11 @@ export default function Sidebar() {
           ${isSubItem ? 'ml-1 text-sm' : ''}
         `}
       >
-        {!isSubItem && <item.icon size={16} className="flex-shrink-0"/>}
+        {!isSubItem && item.icon && <item.icon className="flex-shrink-0 w-4 h-4"/>}
         {showCarImage && mainVehicle && (
           <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center">
             {mainVehicle.images && mainVehicle.images.length > 0 ? (
+              /* TODO: Replace with Next.js Image component for optimization */
               <img 
                 src={mainVehicle.images[0]} 
                 alt={mainVehicle.make}

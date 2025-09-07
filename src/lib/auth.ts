@@ -49,22 +49,22 @@ export function clearSession() {
   auth.clearSession();
 }
 
-export function login(email: string, password: string): string | null {
+export function login(email: string, password: string): Promise<string | null> {
   // Legacy sync function - convert to async
   return new Promise((resolve) => {
     auth.login({ email, password }).then(result => {
       resolve(result.error || null);
     });
-  }) as any;
+  });
 }
 
-export function register(name: string, email: string, password: string): string | null {
+export function register(name: string, email: string, password: string): Promise<string | null> {
   // Legacy sync function - convert to async
   return new Promise((resolve) => {
     auth.register({ name, email, password }).then(result => {
       resolve(result.error || null);
     });
-  }) as any;
+  });
 }
 
 export function logout() {

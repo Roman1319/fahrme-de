@@ -77,7 +77,7 @@ export default function NewLogbookEntryPage() {
     } else {
       loadDraft();
     }
-  }, [carId, user, editEntryId]);
+  }, [carId, user, editEntryId]); // TODO: Add loadCar, loadDraft, loadEntryForEdit to deps when stable
 
 
   const loadCar = () => {
@@ -126,25 +126,38 @@ export default function NewLogbookEntryPage() {
     const entry = entries.find(e => e.id === editEntryId);
     
     if (entry && entry.author_id === user.id) {
+      // TODO: Replace with proper legacy field mapping when adapters are implemented
+      const legacyEntry = entry as unknown as {
+        text?: string;
+        topic?: string;
+        type?: string;
+        photos?: string[];
+        images?: string[];
+        mileage?: number;
+        cost?: number;
+        poll?: { question: string; options: string[] };
+        pinOnCar?: boolean;
+      };
+      
       setFormData({
         title: entry.title || '',
-        text: entry.content || (entry as any).text || '',
-        type: (entry as any).topic === 'maintenance' ? 'maintenance' :
-              (entry as any).topic === 'repair' ? 'repair' :
-              (entry as any).topic === 'tuning' ? 'tuning' :
-              (entry as any).topic === 'trip' ? 'trip' :
-              (entry as any).topic === 'event' ? 'event' :
-              (entry as any).topic === 'general' ? 'general' :
-              ((entry as any).type === 'modification' ? 'tuning' : 'general'),
+        text: entry.content || legacyEntry.text || '',
+        type: legacyEntry.topic === 'maintenance' ? 'maintenance' :
+              legacyEntry.topic === 'repair' ? 'repair' :
+              legacyEntry.topic === 'tuning' ? 'tuning' :
+              legacyEntry.topic === 'trip' ? 'trip' :
+              legacyEntry.topic === 'event' ? 'event' :
+              legacyEntry.topic === 'general' ? 'general' :
+              (legacyEntry.type === 'modification' ? 'tuning' : 'general'),
         images: [], // Images in text will be handled by RichTextEditor
-        additionalImages: (entry as any).photos || (entry as any).images || [],
-        mileage: (entry as any).mileage?.toString() || '',
+        additionalImages: legacyEntry.photos || legacyEntry.images || [],
+        mileage: legacyEntry.mileage?.toString() || '',
         mileageUnit: 'km',
-        cost: (entry as any).cost?.toString() || '',
+        cost: legacyEntry.cost?.toString() || '',
         currency: 'EUR',
-        poll: (entry as any).poll || { question: '', options: [''] },
+        poll: legacyEntry.poll || { question: '', options: [''] },
         allowComments: entry.allow_comments ?? true,
-        pinToCarPage: (entry as any).pinOnCar ?? false
+        pinToCarPage: legacyEntry.pinOnCar ?? false
       });
     } else {
       // Entry not found or user doesn't own it

@@ -26,7 +26,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     loadProfile();
-  }, [user]);
+  }, [user]); // TODO: Add loadProfile to deps when stable
 
   const loadProfile = async () => {
     if (!user) return;
@@ -66,7 +66,7 @@ export default function ProfilePage() {
   }, [profile, errors]);
 
   function set<K extends keyof Profile>(key: K, val: Profile[K]) {
-    setProfile(prev => prev ? ({ ...prev, [key]: val }) as any : prev);
+    setProfile(prev => prev ? ({ ...prev, [key]: val }) as Profile : prev);
   }
 
   // === Validation helpers ===

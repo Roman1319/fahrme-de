@@ -25,23 +25,29 @@ export default function EditLogbookEntryPage() {
   const [formData, setFormData] = useState({
     title: '',
     text: '',
-    type: 'general' as const,
+    type: 'general' as 'maintenance' | 'repair' | 'tuning' | 'trip' | 'event' | 'general',
     images: [] as string[]
   });
 
   useEffect(() => {
     loadEntry();
-  }, [entryId]);
+  }, [entryId]); // TODO: Add loadEntry to deps when stable
 
   const loadEntry = () => {
     const foundEntry = getLogbookEntryById(entryId);
     if (foundEntry) {
       setEntry(foundEntry);
+      // TODO: Replace with proper legacy field mapping when adapters are implemented
+      const legacyEntry = foundEntry as unknown as {
+        text?: string;
+        images?: string[];
+      };
+      
       setFormData({
         title: foundEntry.title || '',
-        text: (foundEntry as any).text || foundEntry.content || '',
+        text: legacyEntry.text || foundEntry.content || '',
         type: 'general', // Always use 'general' for compatibility
-        images: (foundEntry as any).images || []
+        images: legacyEntry.images || []
       });
     }
     setIsLoading(false);
@@ -161,7 +167,7 @@ export default function EditLogbookEntryPage() {
             </label>
             <select
               value={formData.type}
-              onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as any }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as 'maintenance' | 'repair' | 'tuning' | 'trip' | 'event' | 'general' }))}
               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-accent"
             >
               <option value="maintenance">Wartung</option>

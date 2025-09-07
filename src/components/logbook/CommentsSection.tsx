@@ -72,11 +72,15 @@ export default function CommentsSection({
   };
 
   const canEdit = (comment: Comment) => {
-    return user && ((comment as any).userId === user.id || user.email === (comment as any).authorEmail);
+    // TODO: Replace with proper user ID comparison when profile system is updated
+    const legacyComment = comment as unknown as { userId?: string; authorEmail?: string };
+    return user && (legacyComment.userId === user.id || user.email === legacyComment.authorEmail);
   };
 
   const canDelete = (comment: Comment) => {
-    return user && ((comment as any).userId === user.id || user.email === (comment as any).authorEmail);
+    // TODO: Replace with proper user ID comparison when profile system is updated
+    const legacyComment = comment as unknown as { userId?: string; authorEmail?: string };
+    return user && (legacyComment.userId === user.id || user.email === legacyComment.authorEmail);
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -135,18 +139,21 @@ export default function CommentsSection({
         {comments.map((comment) => (
           <div key={comment.id} className="flex gap-3">
             <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-white font-semibold">
-              {(comment as any).author?.charAt(0).toUpperCase() || 'U'}
+              {/* TODO: Replace with proper author field when profile system is updated */}
+              {(comment as unknown as { author?: string }).author?.charAt(0).toUpperCase() || 'U'}
             </div>
             
             <div className="flex-1">
               <div className="bg-white/5 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-white">{(comment as any).author || 'Unknown'}</span>
+                    {/* TODO: Replace with proper author field when profile system is updated */}
+                    <span className="font-semibold text-white">{(comment as unknown as { author?: string }).author || 'Unknown'}</span>
                     <span className="text-white/50 text-sm">
                       {formatTimeAgo(comment.created_at)}
                     </span>
-                    {(comment as any).editedAt && (
+                    {/* TODO: Replace with proper editedAt field when implemented */}
+                    {(comment as unknown as { editedAt?: string }).editedAt && (
                       <span className="text-white/30 text-xs">(bearbeitet)</span>
                     )}
                   </div>
@@ -205,13 +212,15 @@ export default function CommentsSection({
                     onClick={() => onLikeComment(comment.id)}
                     disabled={!user}
                     className={`flex items-center gap-1 text-sm transition-colors ${
-                      (comment as any).likes?.includes(user?.id || '')
+                      // TODO: Replace with proper likes field when implemented
+                      (comment as unknown as { likes?: string[] }).likes?.includes(user?.id || '')
                         ? 'text-accent'
                         : 'text-white/50 hover:text-white'
                     }`}
                   >
-                    <Heart className={`w-4 h-4 ${(comment as any).likes?.includes(user?.id || '') ? 'fill-current' : ''}`} />
-                    {(comment as any).likes?.length || 0}
+                    <Heart className={`w-4 h-4 ${(comment as unknown as { likes?: string[] }).likes?.includes(user?.id || '') ? 'fill-current' : ''}`} />
+                    {/* TODO: Replace with proper likes field when implemented */}
+                    {(comment as unknown as { likes?: string[] }).likes?.length || 0}
                   </button>
                   
                   {user && (
@@ -261,9 +270,12 @@ export default function CommentsSection({
               )}
 
               {/* Replies */}
-              {(comment as any).replies && (comment as any).replies.length > 0 && (
-                <div className="mt-4 space-y-3">
-                  {(comment as any).replies.map((reply: any) => (
+              {/* TODO: Replace with proper replies handling when implemented */}
+              {(() => {
+                const legacyComment = comment as unknown as { replies?: Array<{ id: string; author: string; text: string; timestamp: string; createdAt?: string; editedAt?: string; likes?: string[] }> };
+                return legacyComment.replies && legacyComment.replies.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    {legacyComment.replies.map((reply) => (
                     <div key={reply.id} className="flex gap-3 ml-4">
                       <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white font-semibold text-sm">
                         {reply.author.charAt(0).toUpperCase()}
@@ -274,14 +286,14 @@ export default function CommentsSection({
                             <div className="flex items-center gap-2">
                               <span className="font-semibold text-white text-sm">{reply.author}</span>
                               <span className="text-white/50 text-xs">
-                                {formatTimeAgo(reply.createdAt)}
+                                {formatTimeAgo(reply.createdAt || reply.timestamp)}
                               </span>
                               {reply.editedAt && (
                                 <span className="text-white/30 text-xs">(bearbeitet)</span>
                               )}
                             </div>
                             
-                            {user && canEdit(reply) && (
+                            {user && canEdit(reply as unknown as Comment) && (
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => onEditReply(comment.id, reply.id, reply.text)}
@@ -304,13 +316,13 @@ export default function CommentsSection({
                               onClick={() => onLikeReply(comment.id, reply.id)}
                               disabled={!user}
                               className={`flex items-center gap-1 text-xs transition-colors ${
-                                reply.likes.includes(user?.id || '')
+                                (reply.likes || []).includes(user?.id || '')
                                   ? 'text-accent'
                                   : 'text-white/50 hover:text-white'
                               }`}
                             >
-                              <Heart className={`w-3 h-3 ${reply.likes.includes(user?.id || '') ? 'fill-current' : ''}`} />
-                              {reply.likes.length}
+                              <Heart className={`w-3 h-3 ${(reply.likes || []).includes(user?.id || '') ? 'fill-current' : ''}`} />
+                              {(reply.likes || []).length}
                             </button>
                           </div>
                         </div>
@@ -318,7 +330,8 @@ export default function CommentsSection({
                     </div>
                   ))}
                 </div>
-              )}
+                );
+              })()}
             </div>
           </div>
         ))}

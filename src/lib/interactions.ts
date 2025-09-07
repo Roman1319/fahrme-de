@@ -130,7 +130,7 @@ export function getComments(carId: string): Comment[] {
       const comments = JSON.parse(savedComments);
       
       // Миграция: добавляем поле images для старых комментариев
-      const migratedComments = comments.map((comment: { [key: string]: any; images?: string[] }) => ({
+      const migratedComments = comments.map((comment: { [key: string]: unknown; images?: string[] }) => ({
         ...comment,
         images: comment.images || []
       }));
@@ -154,8 +154,8 @@ export function editComment(carId: string, commentId: string, text: string): boo
   
   if (comment) {
     comment.text = text;
-    (comment as any).isEdited = true;
-    (comment as any).editedAt = new Date().toLocaleString('de-DE');
+    (comment as unknown as { isEdited?: boolean; editedAt?: string }).isEdited = true;
+    (comment as unknown as { isEdited?: boolean; editedAt?: string }).editedAt = new Date().toLocaleString('de-DE');
     saveComments(carId, comments);
     return true;
   }
@@ -181,7 +181,7 @@ export function likeComment(carId: string, commentId: string): boolean {
   
   if (comment) {
     // Простая логика лайков - в реальном приложении нужно хранить отдельно
-    (comment as any).likes = ((comment as any).likes || 0) + 1;
+    (comment as unknown as { likes?: number }).likes = ((comment as unknown as { likes?: number }).likes || 0) + 1;
     saveComments(carId, comments);
     return true;
   }

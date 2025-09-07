@@ -35,57 +35,64 @@ export class SupabaseAuthService implements AuthService {
     console.log('[supabase-auth] Auth listener setup skipped - using global listener');
   }
 
+  // 1) помощник: дождаться сессии — иначе запрос уйдёт как anon
+  private async waitForSession(maxMs = 4000): Promise<any> {
+    console.log('[supabase-auth] Waiting for session...');
+    const start = Date.now();
+    while (Date.now() - start < maxMs) {
+      const { data, error } = await supabase.auth.getSession();
+      console.log('[supabase-auth] Session check:', { 
+        hasSession: !!data?.session, 
+        hasToken: !!data?.session?.access_token,
+        error: error?.message 
+      });
+      if (data?.session?.access_token) {
+        console.log('[supabase-auth] Session found!');
+        return data.session;
+      }
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    console.error('[supabase-auth] No session found after', maxMs, 'ms');
+    throw new Error('No session yet');
+  }
+
+  // 2) создание профиля: только существующие поля, без .select()
   private async createProfileIfNotExists(userId: string, email: string): Promise<AuthUser> {
+    console.log('[supabase-auth] Creating profile for user:', userId, 'email:', email);
     try {
-      // Try to get existing profile
-      const { data: profile, error } = await supabase
+      await this.waitForSession(); // <<< критично: ждём JWT
+
+      console.log('[supabase-auth] Attempting to upsert profile...');
+      const { error } = await supabase
         .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+        .upsert(
+          { id: userId, display_name: null, avatar_url: null },
+          { onConflict: 'id' } // UPSERT - если есть, обновит, если нет - создаст
+        ); // без .select() — иначе нужен SELECT и полезут 406/400
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.error('[supabase-auth] Error fetching profile:', error);
-        throw error;
+      if (error) {
+        // Если это ошибка дубликата - это нормально, профиль уже существует
+        if (error.code === '23505' && error.message.includes('duplicate key value violates unique constraint')) {
+          console.log('[supabase-auth] Profile already exists, continuing...');
+        } else {
+          console.error('[supabase-auth] Error creating profile:');
+          console.error('Raw error object:', error);
+          console.error('Error type:', typeof error);
+          console.error('Error keys:', Object.keys(error));
+          console.error('Error stringified:', JSON.stringify(error, null, 2));
+          console.error('Error details:', {
+            code: (error as any)?.code,
+            message: (error as any)?.message,
+            details: (error as any)?.details,
+            hint: (error as any)?.hint,
+            status: (error as any)?.status,
+            statusText: (error as any)?.statusText,
+          });
+          throw error;
+        }
       }
 
-      if (profile) {
-        return {
-          id: profile.id,
-          email: profile.email,
-          handle: profile.handle,
-          name: profile.name,
-          avatarUrl: profile.avatar_url
-        };
-      }
-
-      // Profile doesn't exist, create it
-      const { data: newProfile, error: insertError } = await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          email: email,
-          name: email.split('@')[0],
-          handle: email.split('@')[0]
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error('[supabase-auth] Error creating profile:', insertError);
-        throw insertError;
-      }
-
-      return {
-        id: newProfile.id,
-        email: newProfile.email,
-        handle: newProfile.handle,
-        name: newProfile.name,
-        avatarUrl: newProfile.avatar_url
-      };
-    } catch (error) {
-      console.error('[supabase-auth] Error in createProfileIfNotExists:', error);
-      // Fallback to basic user info
+      console.log('[supabase-auth] Profile created successfully!');
       return {
         id: userId,
         email: email,
@@ -93,6 +100,19 @@ export class SupabaseAuthService implements AuthService {
         name: email.split('@')[0],
         avatarUrl: undefined
       };
+    } catch (e) {
+      console.error('[supabase-auth] Error in createProfileIfNotExists:');
+      console.error('Raw error object:', e);
+      console.error('Error type:', typeof e);
+      console.error('Error stringified:', JSON.stringify(e, null, 2));
+      console.error('Error stack:', (e as any)?.stack);
+      return {
+        id: userId,
+        email: email,
+        handle: email.split('@')[0],
+        name: email.split('@')[0],
+        avatarUrl: undefined
+      }; // не блокируем UX
     }
   }
 
@@ -145,18 +165,32 @@ export class SupabaseAuthService implements AuthService {
 
       if (error) {
         console.error('[supabase-auth] Login error:', error);
+        
+        // Handle specific error cases
+        if (error.message.includes('Invalid login credentials') || error.message.includes('Invalid email or password')) {
+          return { success: false, error: 'Ungültige E-Mail-Adresse oder Passwort. Bitte überprüfen Sie Ihre Eingaben.' };
+        }
+        
+        if (error.message.includes('Email not confirmed')) {
+          return { success: false, error: 'Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse, bevor Sie sich anmelden.' };
+        }
+        
+        if (error.message.includes('Too many requests')) {
+          return { success: false, error: 'Zu viele Anmeldeversuche. Bitte warten Sie einen Moment und versuchen Sie es erneut.' };
+        }
+        
         return { success: false, error: error.message };
       }
 
       if (!data.user) {
-        return { success: false, error: 'Login failed' };
+        return { success: false, error: 'Anmeldung fehlgeschlagen' };
       }
 
       const user = await this.getCurrentUserAsync();
       return { success: true, user: user || undefined };
     } catch (error) {
       console.error('[supabase-auth] Login error:', error);
-      return { success: false, error: 'Login failed' };
+      return { success: false, error: 'Anmeldung fehlgeschlagen' };
     }
   }
 
@@ -169,11 +203,25 @@ export class SupabaseAuthService implements AuthService {
 
       if (error) {
         console.error('[supabase-auth] Register error:', error);
+        
+        // Handle specific error cases
+        if (error.message.includes('already registered') || error.message.includes('User already registered')) {
+          return { success: false, error: 'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits. Bitte melden Sie sich an oder verwenden Sie eine andere E-Mail-Adresse.' };
+        }
+        
+        if (error.message.includes('Invalid email')) {
+          return { success: false, error: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.' };
+        }
+        
+        if (error.message.includes('Password should be at least')) {
+          return { success: false, error: 'Das Passwort muss mindestens 6 Zeichen lang sein.' };
+        }
+        
         return { success: false, error: error.message };
       }
 
       if (!data.user) {
-        return { success: false, error: 'Registration failed' };
+        return { success: false, error: 'Registrierung fehlgeschlagen' };
       }
 
       // If email confirmation is disabled, user is immediately signed in
@@ -182,11 +230,11 @@ export class SupabaseAuthService implements AuthService {
         return { success: true, user: user || undefined };
       } else {
         // Email confirmation required
-        return { success: true, error: 'Please check your email to confirm your account' };
+        return { success: true, error: 'Bitte überprüfen Sie Ihre E-Mails, um Ihr Konto zu bestätigen' };
       }
     } catch (error) {
       console.error('[supabase-auth] Register error:', error);
-      return { success: false, error: 'Registration failed' };
+      return { success: false, error: 'Registrierung fehlgeschlagen' };
     }
   }
 

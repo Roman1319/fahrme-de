@@ -32,5 +32,5 @@ export function clearAllProfiles() {
 
 // Добавляем в window для доступа из консоли браузера
 if (typeof window !== 'undefined') {
-  (window as any).clearAllProfiles = clearAllProfiles;
+  (window as unknown as { clearAllProfiles?: () => void }).clearAllProfiles = clearAllProfiles;
 }

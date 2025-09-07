@@ -21,7 +21,7 @@ export default function ProfileMenu() {
       // Fallback to profile data
       const p = readProfile();
       setAvatar(p?.avatarUrl ?? null);
-      setName(p?.displayName || (p as any)?.name || (p as any)?.username || null);
+      setName(p?.displayName || (p as unknown as { name?: string; username?: string })?.name || (p as unknown as { name?: string; username?: string })?.username || null);
     }
   }, [user]);
 

@@ -27,7 +27,13 @@ export default function RegisterPage() {
     setIsLoading(true);
     try {
       const error = await register(name.trim() || "User", email.trim(), pwd);
-      if (error) setErr(error);
+      if (error) {
+        setErr(error);
+        // If user already exists, show a helpful message with login link
+        if (error.includes("existiert bereits")) {
+          setErr(error + " Sie können sich hier anmelden.");
+        }
+      }
       // Navigation will be handled by AuthProvider/Guard
     } finally {
       setIsLoading(false);
@@ -65,7 +71,18 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {err && <p className="form-error">{err}</p>}
+          {err && (
+            <div className="form-error">
+              <p>{err}</p>
+              {err.includes("existiert bereits") && (
+                <p className="mt-2">
+                  <a href="/login" className="text-blue-500 hover:text-blue-700 underline">
+                    Zur Anmeldung wechseln
+                  </a>
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="flex gap-2">
             <button className="btn-primary" type="submit" disabled={isLoading}>

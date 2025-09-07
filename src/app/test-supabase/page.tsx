@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 
 export default function TestSupabasePage() {
   const [status, setStatus] = useState("Checking...");
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

@@ -41,7 +41,8 @@ export default function CommentBlock({
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  const isOwner = currentUserEmail === (comment as any).authorEmail;
+  // TODO: Replace with proper authorEmail field when profile system is updated
+  const isOwner = currentUserEmail === (comment as unknown as { authorEmail?: string }).authorEmail;
   const isMainComment = level === 0;
   const maxLevel = 3; // Максимальная глубина вложенности
 
@@ -100,14 +101,18 @@ export default function CommentBlock({
   };
 
   const nextImage = () => {
-    if ((comment as any).images && Array.isArray((comment as any).images) && (comment as any).images.length > 0) {
-      setSelectedImageIndex((prev) => (prev + 1) % (comment as any).images!.length);
+    // TODO: Replace with proper images field when implemented
+    const legacyComment = comment as unknown as { images?: string[] };
+    if (legacyComment.images && Array.isArray(legacyComment.images) && legacyComment.images.length > 0) {
+      setSelectedImageIndex((prev) => (prev + 1) % legacyComment.images!.length);
     }
   };
 
   const prevImage = () => {
-    if ((comment as any).images && Array.isArray((comment as any).images) && (comment as any).images.length > 0) {
-      setSelectedImageIndex((prev) => (prev - 1 + (comment as any).images!.length) % (comment as any).images!.length);
+    // TODO: Replace with proper images field when implemented
+    const legacyComment = comment as unknown as { images?: string[] };
+    if (legacyComment.images && Array.isArray(legacyComment.images) && legacyComment.images.length > 0) {
+      setSelectedImageIndex((prev) => (prev - 1 + legacyComment.images!.length) % legacyComment.images!.length);
     }
   };
 
@@ -140,11 +145,11 @@ export default function CommentBlock({
         <div className="flex-shrink-0">
           <AvatarTooltip
             src={null}
-            name={(comment as any).author}
+            name={(comment as unknown as { author?: string }).author || 'Unknown'}
             size={32}
             userInfo={{
-              displayName: (comment as any).author,
-              fullName: (comment as any).author,
+              displayName: (comment as unknown as { author?: string }).author || 'Unknown',
+              fullName: (comment as unknown as { author?: string }).author || 'Unknown',
               city: 'Мюнхен', // TODO: Получать из профиля
               about: 'Пользователь'
             }}
@@ -156,7 +161,8 @@ export default function CommentBlock({
         <div className="flex-1 min-w-0">
           {/* Информация о пользователе и автомобиле */}
           <div className="mb-1">
-            <span className="font-semibold text-sm text-white/90">{(comment as any).author}</span>
+            {/* TODO: Replace with proper author field when profile system is updated */}
+            <span className="font-semibold text-sm text-white/90">{(comment as unknown as { author?: string }).author || 'Unknown'}</span>
             <span className="text-xs text-white/60 ml-2">
               Ich fahre BMW 3 Series (G20) {/* TODO: Получать из профиля пользователя */}
             </span>
@@ -193,14 +199,18 @@ export default function CommentBlock({
           ) : (
             <div className="mb-2">
               <p className="text-sm text-white/80 leading-relaxed">{comment.text}</p>
-              {(comment as any).isEdited && (
+              {/* TODO: Replace with proper isEdited field when implemented */}
+              {(comment as unknown as { isEdited?: boolean }).isEdited && (
                 <span className="text-xs text-white/50">(bearbeitet)</span>
               )}
               
               {/* Изображения комментария */}
-              {(comment as any).images && Array.isArray((comment as any).images) && (comment as any).images.length > 0 && (
-                <div className="mt-3 grid grid-cols-2 gap-2 max-w-sm">
-                  {(comment as any).images.map((image: any, index: any) => (
+              {/* TODO: Replace with proper images field when implemented */}
+              {(() => {
+                const legacyComment = comment as unknown as { images?: string[] };
+                return legacyComment.images && Array.isArray(legacyComment.images) && legacyComment.images.length > 0 && (
+                  <div className="mt-3 grid grid-cols-2 gap-2 max-w-sm">
+                    {legacyComment.images.map((image: string, index: number) => (
                     <div
                       key={index}
                       className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group max-h-32"
@@ -222,7 +232,8 @@ export default function CommentBlock({
                     </div>
                   ))}
                 </div>
-              )}
+                );
+              })()}
               
             </div>
           )}
@@ -238,7 +249,8 @@ export default function CommentBlock({
                 }`}
               >
                 <Heart size={14} className={isLiked ? 'fill-current' : ''} />
-                <span>{(comment as any).likes || 0}</span>
+                {/* TODO: Replace with proper likes field when implemented */}
+                <span>{(comment as unknown as { likes?: number }).likes || 0}</span>
               </button>
 
               {/* Ответ */}
@@ -247,13 +259,14 @@ export default function CommentBlock({
                   onClick={() => setIsReplying(true)}
                   className="text-white/60 hover:text-white/80 transition-colors"
                 >
-                  {level === 0 ? 'Antworten' : 'Antworten auf ' + (comment as any).author}
+                  {level === 0 ? 'Antworten' : 'Antworten auf ' + (comment as unknown as { author?: string }).author}
                 </button>
               )}
 
               {/* Время */}
               <span className="text-white/50">
-                {formatTimeAgo((comment as any).timestamp || comment.created_at)}
+                {/* TODO: Replace with proper timestamp field when implemented */}
+                {formatTimeAgo((comment as unknown as { timestamp?: string }).timestamp || comment.created_at)}
               </span>
 
               {/* Меню действий (только для владельца) */}
@@ -326,18 +339,21 @@ export default function CommentBlock({
       </div>
 
       {/* Вложенные комментарии */}
-      {(comment as any).replies && (comment as any).replies.length > 0 && (
-        <div className="mt-3 relative">
-          {/* Вертикальная линия для соединения ответов */}
-          <div className="absolute left-4 top-0 bottom-0 w-px bg-white/10"></div>
-          
-          <div className="space-y-2">
-            {(comment as any).replies.map((reply: any) => (
+      {/* TODO: Replace with proper replies field when implemented */}
+      {(() => {
+        const legacyComment = comment as unknown as { replies?: Array<{ id: string; author: string; text: string; timestamp: string }> };
+        return legacyComment.replies && legacyComment.replies.length > 0 && (
+          <div className="mt-3 relative">
+            {/* Вертикальная линия для соединения ответов */}
+            <div className="absolute left-4 top-0 bottom-0 w-px bg-white/10"></div>
+            
+            <div className="space-y-2">
+              {legacyComment.replies.map((reply) => (
               <div key={reply.id} className="relative">
                 {/* Горизонтальная линия к ответу */}
                 <div className="absolute left-4 top-6 w-4 h-px bg-white/10"></div>
                 <CommentBlock
-                  comment={reply}
+                  comment={reply as unknown as Comment}
                   currentUserEmail={currentUserEmail}
                   onLike={onLike}
                   onReply={onReply}
@@ -352,10 +368,14 @@ export default function CommentBlock({
             ))}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Модальное окно для просмотра изображений */}
-      {showImageModal && (comment as any).images && Array.isArray((comment as any).images) && (comment as any).images.length > 0 && (
+      {/* TODO: Replace with proper images field when implemented */}
+      {showImageModal && (() => {
+        const legacyComment = comment as unknown as { images?: string[] };
+        return legacyComment.images && Array.isArray(legacyComment.images) && legacyComment.images.length > 0 && (
         <div 
           className={`fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-300 ${
             isAnimating ? 'opacity-100' : 'opacity-0'
@@ -378,7 +398,7 @@ export default function CommentBlock({
               }`}
             >
               <Image
-                src={(comment as any).images[selectedImageIndex]}
+                src={(comment as unknown as { images?: string[] }).images?.[selectedImageIndex] || ''}
                 alt={`Комментарий ${selectedImageIndex + 1}`}
                 width={800}
                 height={600}
@@ -390,7 +410,8 @@ export default function CommentBlock({
             </div>
 
             {/* Навигация */}
-            {(comment as any).images.length > 1 && (
+            {/* TODO: Replace with proper images field when implemented */}
+            {((comment as unknown as { images?: string[] }).images?.length || 0) > 1 && (
               <>
                 <button
                   onClick={(e) => {
@@ -417,7 +438,7 @@ export default function CommentBlock({
             <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/10 px-3 py-1 rounded-full text-sm text-white transition-opacity duration-300 ${
               isAnimating ? 'opacity-100' : 'opacity-0'
             }`}>
-              {selectedImageIndex + 1} / {(comment as any).images.length}
+              {selectedImageIndex + 1} / {(comment as unknown as { images?: string[] }).images?.length || 0}
             </div>
 
             {/* Подсказка для закрытия */}
@@ -428,7 +449,8 @@ export default function CommentBlock({
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

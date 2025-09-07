@@ -50,7 +50,7 @@ export function getLogbookEntryLikes(entryId: string): number {
 export function getComments(entryId: string): Comment[] {
   try {
     const comments = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`) || '[]');
-    return comments.filter((comment: Comment) => !(comment as any).deletedAt);
+    return comments.filter((comment: Comment) => !(comment as unknown as { deletedAt?: string }).deletedAt);
   } catch {
     return [];
   }
@@ -78,7 +78,7 @@ export function editComment(entryId: string, commentId: string, newText: string)
     const comment = comments.find(c => c.id === commentId);
     if (comment) {
       comment.text = newText;
-      (comment as any).editedAt = new Date().toISOString();
+      (comment as unknown as { editedAt?: string }).editedAt = new Date().toISOString();
       localStorage.setItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`, JSON.stringify(comments));
       return true;
     }
@@ -93,7 +93,7 @@ export function deleteComment(entryId: string, commentId: string): boolean {
     const comments = getComments(entryId);
     const comment = comments.find(c => c.id === commentId);
     if (comment) {
-      (comment as any).deletedAt = new Date().toISOString();
+      (comment as unknown as { deletedAt?: string }).deletedAt = new Date().toISOString();
       localStorage.setItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`, JSON.stringify(comments));
       return true;
     }
@@ -108,12 +108,13 @@ export function likeComment(entryId: string, commentId: string, userId: string):
     const comments = getComments(entryId);
     const comment = comments.find(c => c.id === commentId);
     if (comment) {
-      const userLiked = (comment as any).likes?.includes(userId) || false;
+      const legacyComment = comment as unknown as { likes?: string[] };
+      const userLiked = legacyComment.likes?.includes(userId) || false;
       if (userLiked) {
-        (comment as any).likes = (comment as any).likes?.filter((id: string) => id !== userId) || [];
+        legacyComment.likes = legacyComment.likes?.filter((id: string) => id !== userId) || [];
       } else {
-        if (!(comment as any).likes) (comment as any).likes = [];
-        (comment as any).likes.push(userId);
+        if (!legacyComment.likes) legacyComment.likes = [];
+        legacyComment.likes.push(userId);
       }
       localStorage.setItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`, JSON.stringify(comments));
       return !userLiked;

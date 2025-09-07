@@ -34,7 +34,7 @@ export default function LogbookEntryDetailPage() {
   useEffect(() => {
     loadEntry();
     loadComments();
-  }, [entryId]);
+  }, [entryId]); // TODO: Add loadEntry, loadComments to deps when stable
 
   const loadEntry = () => {
     const foundEntry = getLogbookEntryById(entryId);
@@ -191,9 +191,11 @@ export default function LogbookEntryDetailPage() {
 
           {/* Metadata */}
           <div className="flex items-center gap-4 text-sm text-white/60 mb-6">
-            <span>{(entry as any).type || 'Allgemein'}</span>
+            {/* TODO: Replace with proper type field when implemented */}
+            <span>{(entry as unknown as { type?: string }).type || 'Allgemein'}</span>
             <span>•</span>
-            <span>{(entry as any).author || 'Unbekannt'}</span>
+            {/* TODO: Replace with proper author field when implemented */}
+            <span>{(entry as unknown as { author?: string }).author || 'Unbekannt'}</span>
             <span>•</span>
             <span>
               {entry.publish_date 
@@ -206,24 +208,30 @@ export default function LogbookEntryDetailPage() {
           {/* Content */}
           <div className="prose prose-invert max-w-none mb-6">
             <div className="text-white whitespace-pre-wrap">
-              {(entry as any).text || entry.content}
+              {/* TODO: Replace with proper text field when implemented */}
+              {(entry as unknown as { text?: string }).text || entry.content}
             </div>
           </div>
 
           {/* Photos */}
-          {(entry as any).images && (entry as any).images.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-              {(entry as any).images.map((image: any, index: any) => (
-                <div key={index} className="aspect-square rounded-lg overflow-hidden">
-                  <img 
-                    src={image} 
-                    alt={`Foto ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          {/* TODO: Replace with proper images field when implemented */}
+          {(() => {
+            const legacyEntry = entry as unknown as { images?: string[] };
+            return legacyEntry.images && legacyEntry.images.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                {legacyEntry.images.map((image: string, index: number) => (
+                  <div key={index} className="aspect-square rounded-lg overflow-hidden">
+                    {/* TODO: Replace with Next.js Image component for optimization */}
+                    <img 
+                      src={image} 
+                      alt={`Foto ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Actions */}
           <div className="flex items-center justify-between pt-4 border-t border-white/10">
@@ -258,7 +266,8 @@ export default function LogbookEntryDetailPage() {
             </div>
             
             <div className="text-sm opacity-50">
-              {(entry as any).language} • {entry.publish_date ? new Date(entry.publish_date).toLocaleDateString('de-DE') : 'Unbekannt'}
+              {/* TODO: Replace with proper language field when implemented */}
+              {(entry as unknown as { language?: string }).language || 'Deutsch'} • {entry.publish_date ? new Date(entry.publish_date).toLocaleDateString('de-DE') : 'Unbekannt'}
             </div>
           </div>
         </div>

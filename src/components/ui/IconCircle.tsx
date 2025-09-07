@@ -19,7 +19,7 @@ export default function IconCircle({ size = 36, asDiv, className = '', ...rest }
   };
 
   return asDiv ? (
-    <div className={cls} style={style} {...(rest as any)} />
+    <div className={cls} style={style} {...(rest as React.HTMLAttributes<HTMLDivElement>)} />
   ) : (
     <button type="button" className={cls} style={style} {...rest} />
   );

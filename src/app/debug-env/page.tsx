@@ -39,7 +39,7 @@ export default function DebugEnvPage() {
             <ol className="list-decimal list-inside space-y-1">
               <li>Check if NEXT_PUBLIC_SUPABASE_URL has any spaces</li>
               <li>Check if NEXT_PUBLIC_SUPABASE_ANON_KEY is complete</li>
-              <li>Make sure NEXT_PUBLIC_AUTH_BACKEND is set to 'supabase'</li>
+              <li>Make sure NEXT_PUBLIC_AUTH_BACKEND is set to &apos;supabase&apos;</li>
               <li>If there are spaces, remove them from .env.local</li>
             </ol>
           </div>

@@ -42,11 +42,11 @@ export default function LogbookEntryPage() {
     loadCar();
     loadEntry();
     loadComments();
-  }, [carId, entryId, user]);
+  }, [carId, entryId, user]); // TODO: Add loadCar, loadComments, loadEntry to deps when stable
 
   useEffect(() => {
     loadCommentProfiles();
-  }, [comments]);
+  }, [comments]); // TODO: Add loadCommentProfiles to deps when stable
 
   const loadCar = () => {
     const savedCars = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
@@ -77,10 +77,12 @@ export default function LogbookEntryPage() {
     const profiles: Record<string, { avatarUrl?: string | null; displayName?: string }> = {};
     
     comments.forEach(comment => {
-      if (!commentProfiles[(comment as any).authorEmail]) {
-        const profile = readProfileByEmail((comment as any).authorEmail);
+      // TODO: Replace with proper author_id lookup when profile system is updated
+      const authorEmail = (comment as unknown as { authorEmail?: string }).authorEmail;
+      if (authorEmail && !commentProfiles[authorEmail]) {
+        const profile = readProfileByEmail(authorEmail);
         if (profile) {
-          profiles[(comment as any).authorEmail] = {
+          profiles[authorEmail] = {
             avatarUrl: profile.avatarUrl,
             displayName: profile.displayName
           };
@@ -100,14 +102,14 @@ export default function LogbookEntryPage() {
     loadEntry(); // Reload to update like count
   };
 
-  const handleAddComment = (text: string, images?: string[]) => {
+  const handleAddComment = (text: string, _images?: string[]) => { // TODO: Implement image handling
     if (!user || !entry) return;
 
     addComment(entryId, text, user.name, user.email);
     loadComments();
   };
 
-  const handleAddReply = (parentId: string, text: string, images?: string[]) => {
+  const handleAddReply = (parentId: string, text: string, _images?: string[]) => { // TODO: Implement image handling
     if (!user || !entry) return;
 
     addComment(entryId, text, user.name, user.email, parentId);
@@ -174,7 +176,7 @@ export default function LogbookEntryPage() {
     if (navigator.share) {
       navigator.share({
         title: entry?.title || 'Logbuch-Eintrag',
-        text: (entry as any)?.text || entry?.content || '',
+        text: entry?.content || '',
         url: window.location.href
       });
     } else {
@@ -259,22 +261,34 @@ export default function LogbookEntryPage() {
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
               <div className="bg-accent text-black px-2 py-1 rounded-full text-sm font-medium">
-                @{(entry as any).author}
+                @{/* TODO: Replace with proper author name lookup */}
+                {(entry as unknown as { author?: string }).author || 'Unknown'}
               </div>
-              <span className="text-sm opacity-70">{(entry as any).timestamp}</span>
-              <span className="text-xs opacity-50 bg-white/10 px-2 py-1 rounded-full">
-                {(entry as any).topic === 'maintenance' ? 'Wartung' :
-                 (entry as any).topic === 'repair' ? 'Reparatur' :
-                 (entry as any).topic === 'tuning' ? 'Tuning' :
-                 (entry as any).topic === 'trip' ? 'Fahrt' :
-                 (entry as any).topic === 'event' ? 'Event' :
-                 (entry as any).topic === 'general' ? 'Allgemein' :
-                 (entry as any).type === 'maintenance' ? 'Wartung' :
-                 (entry as any).type === 'event' ? 'Event' :
-                 (entry as any).type === 'general' ? 'Allgemein' :
-                 'Allgemein'}
+              <span className="text-sm opacity-70">
+                {/* TODO: Replace with proper timestamp formatting */}
+                {(entry as unknown as { timestamp?: string }).timestamp || entry.publish_date}
               </span>
-              {(entry as any).pinOnCar && (
+              <span className="text-xs opacity-50 bg-white/10 px-2 py-1 rounded-full">
+                {/* TODO: Replace with proper topic mapping */}
+                {(() => {
+                  const legacyEntry = entry as unknown as { 
+                    topic?: string; 
+                    type?: string; 
+                  };
+                  if (legacyEntry.topic === 'maintenance') return 'Wartung';
+                  if (legacyEntry.topic === 'repair') return 'Reparatur';
+                  if (legacyEntry.topic === 'tuning') return 'Tuning';
+                  if (legacyEntry.topic === 'trip') return 'Fahrt';
+                  if (legacyEntry.topic === 'event') return 'Event';
+                  if (legacyEntry.topic === 'general') return 'Allgemein';
+                  if (legacyEntry.type === 'maintenance') return 'Wartung';
+                  if (legacyEntry.type === 'event') return 'Event';
+                  if (legacyEntry.type === 'general') return 'Allgemein';
+                  return 'Allgemein';
+                })()}
+              </span>
+              {/* TODO: Replace with proper pinOnCar field */}
+              {(entry as unknown as { pinOnCar?: boolean }).pinOnCar && (
                 <span className="text-xs bg-accent text-black px-2 py-1 rounded-full font-medium">
                   Angepinnt
                 </span>
@@ -283,65 +297,92 @@ export default function LogbookEntryPage() {
           </div>
 
           {/* Images */}
-          {(entry as any).images && (entry as any).images.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              {(entry as any).images.map((image: any, index: any) => (
-                <div key={index} className="aspect-video bg-white/5 rounded-lg overflow-hidden">
-                  <img 
-                    src={image} 
-                    alt={`${entry.title} ${index + 1}`} 
-                    className="w-full h-full object-cover" 
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Additional Info */}
-          {((entry as any).mileage || (entry as any).cost) && (
-            <div className="flex flex-wrap gap-3 mb-6 text-sm">
-              {(entry as any).mileage && (
-                <div className="bg-white/10 px-3 py-2 rounded-lg border border-white/20">
-                  <span className="opacity-70">📏 Kilometerstand:</span>
-                  <span className="ml-2 font-medium">
-                    {(entry as any).mileage.toLocaleString()} {(entry as any).mileageUnit}
-                  </span>
-                </div>
-              )}
-              {(entry as any).cost && (
-                <div className="bg-white/10 px-3 py-2 rounded-lg border border-white/20">
-                  <span className="opacity-70">💰 Kosten:</span>
-                  <span className="ml-2 font-medium">
-                    {(entry as any).cost} {(entry as any).currency}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Poll */}
-          {(entry as any).poll && (
-            <div className="bg-white/10 rounded-lg p-4 mb-6 border border-white/20">
-              <h3 className="font-medium mb-3">{(entry as any).poll.question}</h3>
-              <div className="space-y-2">
-                {(entry as any).poll.options.map((option: any, index: any) => (
-                  <div key={index} className="text-sm opacity-80">
-                    • {option}
+          {/* TODO: Replace with proper media handling when LogbookMedia is implemented */}
+          {(() => {
+            const legacyEntry = entry as unknown as { images?: string[] };
+            return legacyEntry.images && legacyEntry.images.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                {legacyEntry.images.map((image: string, index: number) => (
+                  <div key={index} className="aspect-video bg-white/5 rounded-lg overflow-hidden">
+                    {/* TODO: Replace with Next.js Image component for optimization */}
+                    <img 
+                      src={image} 
+                      alt={`${entry.title} ${index + 1}`} 
+                      className="w-full h-full object-cover" 
+                    />
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            );
+          })()}
+
+          {/* Additional Info */}
+          {/* TODO: Replace with proper mileage and cost fields when implemented */}
+          {(() => {
+            const legacyEntry = entry as unknown as { 
+              mileage?: number; 
+              cost?: number; 
+              mileageUnit?: string; 
+              currency?: string; 
+            };
+            return (legacyEntry.mileage || legacyEntry.cost) && (
+              <div className="flex flex-wrap gap-3 mb-6 text-sm">
+                {legacyEntry.mileage && (
+                  <div className="bg-white/10 px-3 py-2 rounded-lg border border-white/20">
+                    <span className="opacity-70">📏 Kilometerstand:</span>
+                    <span className="ml-2 font-medium">
+                      {legacyEntry.mileage.toLocaleString()} {legacyEntry.mileageUnit || 'km'}
+                    </span>
+                  </div>
+                )}
+                {legacyEntry.cost && (
+                  <div className="bg-white/10 px-3 py-2 rounded-lg border border-white/20">
+                    <span className="opacity-70">💰 Kosten:</span>
+                    <span className="ml-2 font-medium">
+                      {legacyEntry.cost} {legacyEntry.currency || 'EUR'}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Poll */}
+          {/* TODO: Replace with proper poll handling when implemented */}
+          {(() => {
+            const legacyEntry = entry as unknown as { 
+              poll?: { 
+                question: string; 
+                options: string[]; 
+              }; 
+            };
+            return legacyEntry.poll && (
+              <div className="bg-white/10 rounded-lg p-4 mb-6 border border-white/20">
+                <h3 className="font-medium mb-3">{legacyEntry.poll.question}</h3>
+                <div className="space-y-2">
+                  {legacyEntry.poll.options.map((option: string, index: number) => (
+                    <div key={index} className="text-sm opacity-80">
+                      • {option}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Text Content */}
           <div className="prose prose-sm max-w-none dark:prose-invert mb-6">
-            {((entry as any).text || entry.content || '').split('\n').map((line: any, index: any) => {
+            {(() => {
+              const legacyEntry = entry as unknown as { text?: string };
+              const content = legacyEntry.text || entry.content || '';
+              return content.split('\n').map((line: string, index: number) => {
               // Simple markdown parsing
               if (line.startsWith('![') && line.includes('](') && line.includes(')')) {
                 const match = line.match(/!\[([^\]]*)\]\(([^)]+)\)/);
                 if (match) {
                   return (
                     <div key={index} className="my-4">
+                      {/* TODO: Replace with Next.js Image component for optimization */}
                       <img 
                         src={match[2]} 
                         alt={match[1]} 
@@ -378,7 +419,8 @@ export default function LogbookEntryPage() {
                 }
               }
               return <p key={index} className="leading-relaxed">{line}</p>;
-            })}
+              });
+            })()}
           </div>
 
           {/* Actions */}
@@ -405,7 +447,8 @@ export default function LogbookEntryPage() {
             </div>
             
             <div className="text-sm opacity-50">
-              {(entry as any).language} • {entry.publish_date ? new Date(entry.publish_date).toLocaleDateString('de-DE') : 'Unbekannt'}
+              {/* TODO: Replace with proper language field when implemented */}
+              {(entry as unknown as { language?: string }).language || 'Deutsch'} • {entry.publish_date ? new Date(entry.publish_date).toLocaleDateString('de-DE') : 'Unbekannt'}
             </div>
           </div>
         </div>
