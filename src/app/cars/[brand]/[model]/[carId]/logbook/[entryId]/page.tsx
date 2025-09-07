@@ -20,6 +20,7 @@ import {
 import { isCarOwnerByCar } from '@/lib/ownership';
 import { readProfileByEmail } from '@/lib/profile';
 import CommentsList from '@/components/ui/CommentsList';
+import { STORAGE_KEYS } from '@/lib/keys';
 
 export default function LogbookEntryPage() {
   const params = useParams();
@@ -48,7 +49,7 @@ export default function LogbookEntryPage() {
   }, [comments]);
 
   const loadCar = () => {
-    const savedCars = localStorage.getItem('fahrme:my-cars');
+    const savedCars = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
     if (savedCars) {
       try {
         const cars: MyCar[] = JSON.parse(savedCars);

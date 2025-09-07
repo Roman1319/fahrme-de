@@ -1,3 +1,4 @@
+
 "use client";
 import { useAuth } from "./AuthProvider";
 import { User, LogOut, Settings } from "lucide-react";

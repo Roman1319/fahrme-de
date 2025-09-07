@@ -3,9 +3,11 @@
 import { CarInteraction, LogbookLike, Comment, LogbookEntry, LogbookDraft } from './types';
 
 // Unified LocalStorage keys
-const INTERACTIONS_KEY = 'fahrme:interactions';
-const LOGBOOK_LIKES_KEY = 'fahrme:logbook-likes';
-const LOGBOOK_DRAFT_KEY_PREFIX = 'fahrme:logbook:draft:';
+import { STORAGE_KEYS } from './keys';
+
+const INTERACTIONS_KEY = STORAGE_KEYS.INTERACTIONS_KEY;
+const LOGBOOK_LIKES_KEY = STORAGE_KEYS.LOGBOOK_LIKES_KEY;
+const LOGBOOK_DRAFT_KEY_PREFIX = STORAGE_KEYS.LOGBOOK_DRAFT_PREFIX;
 
 // === Управление подписками и лайками автомобилей ===
 
@@ -124,7 +126,7 @@ export function addComment(carId: string, text: string, author: string, authorEm
 }
 
 export function getComments(carId: string): Comment[] {
-  const savedComments = localStorage.getItem(`fahrme:comments:${carId}`);
+  const savedComments = localStorage.getItem(`${STORAGE_KEYS.COMMENTS_PREFIX}${carId}`);
   if (savedComments) {
     try {
       const comments = JSON.parse(savedComments);
@@ -145,7 +147,7 @@ export function getComments(carId: string): Comment[] {
 }
 
 export function saveComments(carId: string, comments: Comment[]): void {
-  localStorage.setItem(`fahrme:comments:${carId}`, JSON.stringify(comments));
+  localStorage.setItem(`${STORAGE_KEYS.COMMENTS_PREFIX}${carId}`, JSON.stringify(comments));
 }
 
 export function editComment(carId: string, commentId: string, text: string): boolean {
@@ -217,7 +219,7 @@ export function addLogbookEntry(
 }
 
 export function getLogbookEntries(carId: string): LogbookEntry[] {
-  const savedEntries = localStorage.getItem(`fahrme:logbook:${carId}`);
+  const savedEntries = localStorage.getItem(`${STORAGE_KEYS.LOGBOOK_ENTRIES_PREFIX}${carId}`);
   if (savedEntries) {
     try {
       return JSON.parse(savedEntries);
@@ -230,7 +232,7 @@ export function getLogbookEntries(carId: string): LogbookEntry[] {
 }
 
 export function saveLogbookEntries(carId: string, entries: LogbookEntry[]): void {
-  localStorage.setItem(`fahrme:logbook:${carId}`, JSON.stringify(entries));
+  localStorage.setItem(`${STORAGE_KEYS.LOGBOOK_ENTRIES_PREFIX}${carId}`, JSON.stringify(entries));
 }
 
 export function deleteLogbookEntry(carId: string, entryId: string): boolean {

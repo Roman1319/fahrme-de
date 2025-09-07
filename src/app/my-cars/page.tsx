@@ -10,6 +10,7 @@ import EditCarModal from "@/components/EditCarModal";
 import { useCarData } from "@/hooks/useCarData";
 import { MyCar } from "@/lib/types";
 import { useAuth } from "@/components/AuthProvider";
+import { STORAGE_KEYS } from "@/lib/keys";
 
 export default function MyCarsPage() {
   const { user } = useAuth();
@@ -19,7 +20,7 @@ export default function MyCarsPage() {
 
   // Загружаем машины из localStorage
   useEffect(() => {
-    const savedCars = localStorage.getItem('fahrme:my-cars');
+    const savedCars = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
     if (savedCars) {
       try {
         setCars(JSON.parse(savedCars));
@@ -32,7 +33,7 @@ export default function MyCarsPage() {
   // Сохраняем машины в localStorage
   const saveCars = (newCars: MyCar[]) => {
     setCars(newCars);
-    localStorage.setItem('fahrme:my-cars', JSON.stringify(newCars));
+    localStorage.setItem(STORAGE_KEYS.MY_CARS_KEY, JSON.stringify(newCars));
     // Отправляем событие об изменении основного автомобиля
     window.dispatchEvent(new CustomEvent('mainVehicleChanged'));
   };

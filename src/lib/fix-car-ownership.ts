@@ -1,8 +1,10 @@
 // Утилита для исправления владения автомобилями
 // Запускается один раз для исправления существующих данных
 
+import { STORAGE_KEYS } from './keys';
+
 export function fixCarOwnership(userId: string, userEmail?: string) {
-  const savedCars = localStorage.getItem('fahrme:my-cars');
+  const savedCars = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
   if (!savedCars) return;
 
   try {
@@ -26,7 +28,7 @@ export function fixCarOwnership(userId: string, userEmail?: string) {
     });
 
     if (hasChanges) {
-      localStorage.setItem('fahrme:my-cars', JSON.stringify(updatedCars));
+      localStorage.setItem(STORAGE_KEYS.MY_CARS_KEY, JSON.stringify(updatedCars));
       console.log('Владение автомобилями исправлено');
       return true;
     } else {

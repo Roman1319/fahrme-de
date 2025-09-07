@@ -3,18 +3,27 @@
 import { useEffect, useRef, useState } from 'react';
 import AvatarButton from '@/components/ui/AvatarButton';
 import { readProfile } from '@/lib/profile';
+import { useAuth } from '@/components/AuthProvider';
 
 export default function ProfileMenu() {
+  const { user, logout } = useAuth();
   const [avatar, setAvatar] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const p = readProfile();
-    setAvatar(p?.avatarUrl ?? null);
-    setName(p?.displayName || (p as any)?.name || (p as any)?.username || null);
-  }, []);
+    if (user) {
+      // Use user data from AuthProvider
+      setName(user.name || user.email || 'User');
+      setAvatar(null); // Supabase doesn't have avatar in user object by default
+    } else {
+      // Fallback to profile data
+      const p = readProfile();
+      setAvatar(p?.avatarUrl ?? null);
+      setName(p?.displayName || (p as any)?.name || (p as any)?.username || null);
+    }
+  }, [user]);
 
   // Закрытие по клику вне
   useEffect(() => {
@@ -65,18 +74,15 @@ export default function ProfileMenu() {
           <MenuItem
             label="Abmelden"
             danger
-            onClick={() => {
+            onClick={async () => {
               try {
-                // Удаляем только ключи сессии, НЕ удаляем пользователей
-                localStorage.removeItem('fahrme:profile');
-                localStorage.removeItem('fahrme:user');
-                localStorage.removeItem('fahrme:session');
-                // НЕ удаляем 'fahrme:users' - это список всех пользователей!
-                // Принудительно обновляем страницу для сброса состояния
-                window.location.href = '/';
+                console.log('[profile-menu] Logging out...');
+                await logout();
+                console.log('[profile-menu] Logout successful');
               } catch (error) {
-                console.warn('Error during logout:', error);
-                window.location.href = '/';
+                console.error('[profile-menu] Logout error:', error);
+                // Fallback: force redirect
+                window.location.href = '/explore';
               }
             }}
           />

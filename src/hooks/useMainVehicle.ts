@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MyCar } from '@/lib/types';
+import { STORAGE_KEYS } from '@/lib/keys';
 
 export function useMainVehicle() {
   const [mainVehicle, setMainVehicle] = useState<MyCar | null>(null);
@@ -8,7 +9,7 @@ export function useMainVehicle() {
   useEffect(() => {
     const loadMainVehicle = () => {
       try {
-        const savedCars = localStorage.getItem('fahrme:my-cars');
+        const savedCars = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
         if (savedCars) {
           const cars: MyCar[] = JSON.parse(savedCars);
           const main = cars.find(car => car.isMainVehicle === true);

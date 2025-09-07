@@ -1,6 +1,8 @@
 // Утилита для очистки всех профилей (только для разработки)
 // Используйте с осторожностью!
 
+import { STORAGE_KEYS } from './keys';
+
 export function clearAllProfiles() {
   if (typeof window === 'undefined') return;
   
@@ -10,14 +12,14 @@ export function clearAllProfiles() {
     
     // Удаляем все ключи профилей
     keys.forEach(key => {
-      if (key.startsWith('fahrme:profile:')) {
+      if (key.startsWith(STORAGE_KEYS.NEW_PROFILE_KEY_PREFIX)) {
         localStorage.removeItem(key);
         console.log('Removed profile:', key);
       }
     });
     
     // Также удаляем старый ключ профиля
-    localStorage.removeItem('fahrme:profile');
+    localStorage.removeItem(STORAGE_KEYS.OLD_PROFILE_KEY);
     
     console.log('All profiles cleared successfully');
     alert('Все профили очищены!');

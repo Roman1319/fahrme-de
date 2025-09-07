@@ -10,12 +10,19 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const error = login(email.trim(), pwd);
-    if (error) setErr(error);
-    else router.push("/feed"); // после входа
+    setErr(null); // Clear previous errors
+    setIsLoading(true);
+    try {
+      const error = await login(email.trim(), pwd);
+      if (error) setErr(error);
+      else router.push("/feed"); // после входа
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -40,7 +47,9 @@ export default function LoginPage() {
           {err && <p className="form-error">{err}</p>}
 
           <div className="flex gap-1.5">
-            <button className="btn-primary" type="submit">Einloggen</button>
+            <button className="btn-primary" type="submit" disabled={isLoading}>
+              {isLoading ? "Wird eingeloggt..." : "Einloggen"}
+            </button>
             <a href="/register" className="btn-secondary">Registrieren</a>
           </div>
         </form>

@@ -16,6 +16,11 @@ export default function Sidebar() {
     { icon: Clock3,  label: "Neueste", href: "/explore?tab=new" },
   ];
 
+  // Debug: log user state
+  console.log('[sidebar] User state:', user ? `${user.email} (${user.id})` : 'null');
+  console.log('[sidebar] Start href:', startHref);
+  console.log('[sidebar] Main items:', mainItems.map(item => `${item.label}: ${item.href}`));
+
   // Dynamisch erstellte Unterpunkte für Meine Autos
   const getMyItems = () => {
     const subItems = [
@@ -53,7 +58,13 @@ export default function Sidebar() {
     return (
       <a 
         key={item.href + item.label} 
-        href={item.href} 
+        href={item.href}
+        data-href={item.href}
+        data-label={item.label}
+        onClick={(e) => {
+          console.log('[sidebar] Clicked:', item.label, 'href:', item.href);
+          console.log('[sidebar] User state at click:', user ? 'logged in' : 'not logged in');
+        }}
         className={`
           sidebar-item flex items-center gap-2 px-2 py-2 rounded-xl transition-all duration-200
           ${isActive 

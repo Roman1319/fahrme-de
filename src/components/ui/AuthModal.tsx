@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
-import type { SignUpPayload, SignInPayload } from '@/lib/auth-service';
+import type { RegisterCredentials, LoginCredentials } from '@/services/auth';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -18,7 +18,7 @@ export default function AuthModal({
   initialMode = 'signin',
   onSuccess 
 }: AuthModalProps) {
-  const { signUp, signIn } = useAuth();
+  const { register, login } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,14 +27,12 @@ export default function AuthModal({
   
   // Формы
   const [signUpForm, setSignUpForm] = useState({
-    handle: '',
-    displayName: '',
+    name: '',
     email: '',
     password: ''
   });
   
   const [signInForm, setSignInForm] = useState({
-    handle: '',
     email: '',
     password: ''
   });
@@ -57,20 +55,19 @@ export default function AuthModal({
     setError(null);
 
     try {
-      const payload: SignUpPayload = {
-        handle: signUpForm.handle,
-        displayName: signUpForm.displayName,
-        email: signUpForm.email || undefined,
-        password: signUpForm.password || undefined
+      const credentials: RegisterCredentials = {
+        name: signUpForm.name,
+        email: signUpForm.email,
+        password: signUpForm.password
       };
 
-      const result = await signUp(payload);
+      const error = await register(credentials);
       
-      if (result.success) {
+      if (!error) {
         onSuccess?.();
         onClose();
       } else {
-        setError(result.error || 'Registrierungsfehler');
+        setError(error);
       }
     } catch {
       setError('Unerwarteter Fehler');
@@ -85,18 +82,18 @@ export default function AuthModal({
     setError(null);
 
     try {
-      const payload: SignInPayload = {
-        email: signInForm.email || undefined,
-        password: signInForm.password || undefined
+      const credentials: LoginCredentials = {
+        email: signInForm.email,
+        password: signInForm.password
       };
 
-      const result = await signIn(payload);
+      const error = await login(credentials);
       
-      if (result.success) {
+      if (!error) {
         onSuccess?.();
         onClose();
       } else {
-        setError(result.error || 'Anmeldefehler');
+        setError(error);
       }
     } catch {
       setError('Unerwarteter Fehler');
@@ -217,39 +214,24 @@ export default function AuthModal({
             <form onSubmit={handleSignUp} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-white/90 mb-1">
-                  Benutzername *
+                  Name *
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50" size={16} />
                   <input
                     type="text"
-                    value={signUpForm.handle}
-                    onChange={(e) => setSignUpForm({ ...signUpForm, handle: e.target.value })}
+                    value={signUpForm.name}
+                    onChange={(e) => setSignUpForm({ ...signUpForm, name: e.target.value })}
                     className="w-full pl-10 pr-3 py-2 bg-white/10 border border-white/20 rounded-md text-white placeholder:text-white/50 focus:ring-2 focus:ring-primary focus:border-transparent"
-                    placeholder="benutzername"
+                    placeholder="Ihr Name"
                     required
                   />
                 </div>
-                <p className="text-xs text-white/60 mt-1">3-30 Zeichen, nur lateinische Buchstaben, Zahlen und _</p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-white/90 mb-1">
-                  Anzeigename *
-                </label>
-                <input
-                  type="text"
-                  value={signUpForm.displayName}
-                  onChange={(e) => setSignUpForm({ ...signUpForm, displayName: e.target.value })}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md text-white placeholder:text-white/50 focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="Ihr Name"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-white/90 mb-1">
-                  E-Mail-Adresse (optional)
+                  E-Mail-Adresse *
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50" size={16} />
@@ -259,6 +241,7 @@ export default function AuthModal({
                     onChange={(e) => setSignUpForm({ ...signUpForm, email: e.target.value })}
                     className="w-full pl-10 pr-3 py-2 bg-white/10 border border-white/20 rounded-md text-white placeholder:text-white/50 focus:ring-2 focus:ring-primary focus:border-transparent"
                     placeholder="ihre.email@beispiel.de"
+                    required
                   />
                 </div>
               </div>

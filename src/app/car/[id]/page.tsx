@@ -32,6 +32,7 @@ import {
 } from '@/lib/interactions';
 import CommentsList from '@/components/ui/CommentsList';
 import LogbookCreateButton from '@/components/LogbookCreateButton';
+import { STORAGE_KEYS } from '@/lib/keys';
 
 export default function CarPage() {
   const params = useParams();
@@ -113,7 +114,7 @@ export default function CarPage() {
 
   const loadCar = () => {
     setIsLoading(true);
-    const savedCars = localStorage.getItem('fahrme:my-cars');
+    const savedCars = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
     if (savedCars) {
       try {
         const cars: MyCar[] = JSON.parse(savedCars);
@@ -262,12 +263,12 @@ export default function CarPage() {
 
 
   const handleSaveCar = (updatedCar: MyCar) => {
-    const savedCars = localStorage.getItem('fahrme:my-cars');
+    const savedCars = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
     if (savedCars) {
       try {
         const cars: MyCar[] = JSON.parse(savedCars);
         const updatedCars = cars.map(c => c.id === carId ? updatedCar : c);
-        localStorage.setItem('fahrme:my-cars', JSON.stringify(updatedCars));
+        localStorage.setItem(STORAGE_KEYS.MY_CARS_KEY, JSON.stringify(updatedCars));
         setCar(updatedCar);
         setShowEditModal(false);
         

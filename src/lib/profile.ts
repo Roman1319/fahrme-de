@@ -22,7 +22,9 @@ export type UserProfile = {
 };
 
 // Unified LocalStorage keys
-const PROFILE_KEY = 'fahrme:profile';
+import { STORAGE_KEYS } from './keys';
+
+const PROFILE_KEY = STORAGE_KEYS.PROFILE_KEY;
 
 export function readProfile(): UserProfile | null {
   if (typeof window === 'undefined') return null;

@@ -40,7 +40,7 @@ export default function EditLogbookEntryPage() {
       setFormData({
         title: foundEntry.title || '',
         text: foundEntry.text || '',
-        type: foundEntry.type || 'general',
+        type: 'general', // Always use 'general' for compatibility
         images: foundEntry.images || []
       });
     }

@@ -1,16 +1,18 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
-import type { User } from "@/lib/auth";
-import * as Auth from "@/lib/auth";
-
-const SESSION_KEY = 'fahrme:session';
+import { getAuthService, type User } from "@/services/auth";
+import { STORAGE_KEYS } from "@/lib/keys";
+import { useRouter } from "next/navigation";
 
 type Ctx = {
   user: User | null;
   refresh: () => void;
-  login: (email:string, pwd:string) => string | null;
-  register: (name:string, email:string, pwd:string) => string | null;
-  logout: () => void;
+  login: (email:string, pwd:string) => Promise<string | null>;
+  register: (name:string, email:string, pwd:string) => Promise<string | null>;
+  logout: () => Promise<void>;
+  isAuthenticated: () => boolean;
+  isGuest: () => boolean;
+  isLoading: boolean;
 };
 const AuthCtx = createContext<Ctx | null>(null);
 
@@ -23,70 +25,134 @@ export function useAuth() {
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const auth = getAuthService();
+  const router = useRouter();
 
   useEffect(() => { 
     setMounted(true); 
+    setIsLoading(true);
     console.info('[auth] Initializing auth provider...');
     
-    // Проверяем аутентификацию при загрузке
-    const currentUser = Auth.currentUser();
-    console.info('[auth] currentUser() result:', currentUser);
-    setUser(currentUser);
+    // For Supabase, we need to check session asynchronously
+    // For local auth, we check immediately
+    const initializeAuth = async () => {
+      try {
+        const currentUser = auth.getCurrentUser();
+        console.info('[auth] currentUser() result:', currentUser);
+        
+        if (currentUser) {
+          setUser(currentUser);
+          console.info('[auth] User loaded:', currentUser.email, 'ID:', currentUser.id);
+        } else {
+          // For Supabase, we rely on onAuthStateChanged for user state
+          console.info('[auth] No user session found, waiting for onAuthStateChanged...');
+        }
+      } catch (error) {
+        console.error('[auth] Error initializing auth:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    if (currentUser) {
-      console.info('[auth] User loaded:', currentUser.email, 'ID:', currentUser.id);
-    } else {
-      console.info('[auth] No user session found');
-    }
-  }, []);
+    initializeAuth();
+  }, [auth]);
   
-  const refresh = () => setUser(Auth.currentUser());
+  const refresh = () => setUser(auth.getCurrentUser());
   
-  // Слушаем изменения в localStorage для синхронизации между вкладками
+  // Listen to auth state changes (works for both local and Supabase)
+  useEffect(() => {
+    if (!mounted) return;
+    
+    console.info('[auth] Setting up auth state listener...');
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      console.info('[auth] Auth state changed:', user ? `User: ${user.email}` : 'No user');
+      setUser(user);
+      setIsLoading(false);
+      
+      // Don't redirect here - let Guard handle it
+      // This prevents race conditions between AuthProvider and Guard
+    });
+    
+    return () => {
+      console.info('[auth] Cleaning up auth state listener');
+      unsubscribe();
+    };
+  }, [mounted, auth, router]);
+  
+  // Слушаем изменения в localStorage для синхронизации между вкладками (только для local auth)
   useEffect(() => {
     if (!mounted) return;
     
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === SESSION_KEY) {
+      if (e.key === STORAGE_KEYS.SESSION_KEY) {
         console.info('[auth] Session changed in another tab');
-        const newUser = Auth.currentUser();
+        const newUser = auth.getCurrentUser();
         setUser(newUser);
         
         // Если сессия была очищена в другой вкладке, редиректим на explore
         if (!newUser && e.newValue === null) {
           console.info('[auth] Session cleared in another tab, redirecting to explore');
-          window.location.href = '/explore';
+          router.replace('/explore');
         }
       }
     };
     
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [mounted]);
+  }, [mounted, auth, router]);
 
   return (
     <AuthCtx.Provider value={{
       user: mounted ? user : null,
       refresh,
-      login: (e,p)=>{ const err = Auth.login(e,p); setUser(Auth.currentUser()); return err; },
-      register: (n,e,p)=>{ const err = Auth.register(n,e,p); setUser(Auth.currentUser()); return err; },
-      logout: ()=>{ 
+      isAuthenticated: () => !!user,
+      isGuest: () => !user,
+      isLoading: isLoading,
+      login: async (e,p)=>{ 
+        try {
+          console.info('[auth] Attempting login for:', e);
+          const result = await auth.login({email: e, password: p}); 
+          console.info('[auth] Login result:', result);
+          if (result.success) {
+            console.info('[auth] Login successful');
+            // User will be set by onAuthStateChanged
+            return null;
+          }
+          console.error('[auth] Login failed:', result.error);
+          return result.error || 'Login failed';
+        } catch (error) {
+          console.error('[auth] Login error:', error);
+          return 'Login failed';
+        }
+      },
+      register: async (n,e,p)=>{ 
+        try {
+          console.info('[auth] Attempting registration for:', e);
+          const result = await auth.register({name: n, email: e, password: p}); 
+          if (result.success) {
+            console.info('[auth] Registration successful');
+            // User will be set by onAuthStateChanged if session is created
+            return result.error || null; // Return error message if email confirmation required
+          }
+          console.error('[auth] Registration failed:', result.error);
+          return result.error || 'Registration failed';
+        } catch (error) {
+          console.error('[auth] Registration error:', error);
+          return 'Registration failed';
+        }
+      },
+      logout: async ()=>{ 
         try {
           console.info('[auth] Logging out...');
-          Auth.logout(); 
-          setUser(null); 
-          
-          // Синхронизация с другими вкладками
-          localStorage.setItem(SESSION_KEY, '');
-          localStorage.removeItem(SESSION_KEY);
-          
-          // Редирект на explore
-          window.location.href = '/explore';
+          await auth.logout(); 
+          // User will be cleared by onAuthStateChanged
+          // Redirect will be handled by Guard component
         } catch (error) {
           console.error('[auth] Logout error:', error);
-          // Принудительно очищаем localStorage и редиректим
-          localStorage.clear();
-          window.location.href = '/explore';
+          // Force clear and redirect
+          setUser(null);
+          router.replace('/explore');
         }
       }
     }}>

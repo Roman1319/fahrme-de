@@ -2,7 +2,9 @@
 import { LogbookEntry, Comment, User } from './types';
 
 // Like system for logbook entries
-const LIKES_KEY = 'fahrme:logbook-likes';
+import { STORAGE_KEYS } from './keys';
+
+const LIKES_KEY = STORAGE_KEYS.LOGBOOK_LIKES_KEY;
 
 export function hasUserLikedLogbookEntry(entryId: string, userId: string): boolean {
   try {
@@ -46,7 +48,7 @@ export function getLogbookEntryLikes(entryId: string): number {
 // Comment system for logbook entries
 export function getComments(entryId: string): Comment[] {
   try {
-    const comments = JSON.parse(localStorage.getItem(`fahrme:logbook:comments:${entryId}`) || '[]');
+    const comments = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`) || '[]');
     return comments.filter((comment: Comment) => !comment.deletedAt);
   } catch {
     return [];
@@ -64,7 +66,7 @@ export function addComment(entryId: string, comment: Omit<Comment, 'id' | 'creat
   
   const comments = getComments(entryId);
   comments.push(newComment);
-  localStorage.setItem(`fahrme:logbook:comments:${entryId}`, JSON.stringify(comments));
+  localStorage.setItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`, JSON.stringify(comments));
   
   return newComment;
 }
@@ -76,7 +78,7 @@ export function editComment(entryId: string, commentId: string, newText: string)
     if (comment) {
       comment.text = newText;
       comment.editedAt = new Date().toISOString();
-      localStorage.setItem(`fahrme:logbook:comments:${entryId}`, JSON.stringify(comments));
+      localStorage.setItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`, JSON.stringify(comments));
       return true;
     }
     return false;
@@ -91,7 +93,7 @@ export function deleteComment(entryId: string, commentId: string): boolean {
     const comment = comments.find(c => c.id === commentId);
     if (comment) {
       comment.deletedAt = new Date().toISOString();
-      localStorage.setItem(`fahrme:logbook:comments:${entryId}`, JSON.stringify(comments));
+      localStorage.setItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`, JSON.stringify(comments));
       return true;
     }
     return false;
@@ -111,7 +113,7 @@ export function likeComment(entryId: string, commentId: string, userId: string):
       } else {
         comment.likes.push(userId);
       }
-      localStorage.setItem(`fahrme:logbook:comments:${entryId}`, JSON.stringify(comments));
+      localStorage.setItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`, JSON.stringify(comments));
       return !userLiked;
     }
     return false;
@@ -157,7 +159,7 @@ export function getLogbookEntryById(entryId: string): LogbookEntry | null {
     const cars = JSON.parse(savedCars);
     
     for (const car of cars) {
-      const logbookKey = `fahrme:logbook:${car.id}`;
+      const logbookKey = `${STORAGE_KEYS.LOGBOOK_ENTRIES_PREFIX}${car.id}`;
       const entries = JSON.parse(localStorage.getItem(logbookKey) || '[]');
       const entry = entries.find((e: LogbookEntry) => e.id === entryId);
       if (entry) {
@@ -179,7 +181,7 @@ export function updateLogbookEntry(entryId: string, updates: Partial<LogbookEntr
     const cars = JSON.parse(savedCars);
     
     for (const car of cars) {
-      const logbookKey = `fahrme:logbook:${car.id}`;
+      const logbookKey = `${STORAGE_KEYS.LOGBOOK_ENTRIES_PREFIX}${car.id}`;
       const entries = JSON.parse(localStorage.getItem(logbookKey) || '[]');
       const entryIndex = entries.findIndex((e: LogbookEntry) => e.id === entryId);
       
@@ -204,7 +206,7 @@ export function deleteLogbookEntry(entryId: string): boolean {
     const cars = JSON.parse(savedCars);
     
     for (const car of cars) {
-      const logbookKey = `fahrme:logbook:${car.id}`;
+      const logbookKey = `${STORAGE_KEYS.LOGBOOK_ENTRIES_PREFIX}${car.id}`;
       const entries = JSON.parse(localStorage.getItem(logbookKey) || '[]');
       const filteredEntries = entries.filter((e: LogbookEntry) => e.id !== entryId);
       

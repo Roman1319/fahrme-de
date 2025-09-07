@@ -1,6 +1,8 @@
 // Идемпотентные миграции данных
 
-const MIGRATION_FLAG_PREFIX = 'fahrme:migr:';
+import { STORAGE_KEYS } from './keys';
+
+const MIGRATION_FLAG_PREFIX = STORAGE_KEYS.MIGRATION_FLAG_PREFIX;
 
 export function fixCarOwnershipOnce(userId: string, userEmail?: string): boolean {
   const flagKey = `${MIGRATION_FLAG_PREFIX}ownerIdToUserId:v1`;
@@ -13,7 +15,7 @@ export function fixCarOwnershipOnce(userId: string, userEmail?: string): boolean
 
   console.info('[migr] Starting car ownership migration...');
   
-  const savedCars = localStorage.getItem('fahrme:my-cars');
+  const savedCars = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
   if (!savedCars) {
     console.info('[migr] No cars found, marking migration as complete');
     localStorage.setItem(flagKey, '1');
@@ -44,7 +46,7 @@ export function fixCarOwnershipOnce(userId: string, userEmail?: string): boolean
     });
 
     if (hasChanges) {
-      localStorage.setItem('fahrme:my-cars', JSON.stringify(updatedCars));
+      localStorage.setItem(STORAGE_KEYS.MY_CARS_KEY, JSON.stringify(updatedCars));
       console.info('[migr] Updated', updatedCount, 'car(s)');
     } else {
       console.info('[migr] No cars needed updating');

@@ -14,14 +14,22 @@ export default function RegisterPage() {
   const [pwd, setPwd] = useState("");
   const [pwd2, setPwd2] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErr(null); // Clear previous errors
     if (!isEmail(email)) return setErr("Bitte gültige E-Mail eingeben.");
     if (pwd.length < 6) return setErr("Passwort muss mindestens 6 Zeichen haben.");
     if (pwd !== pwd2) return setErr("Passwörter stimmen nicht überein.");
-    const error = register(name.trim() || "User", email.trim(), pwd);
-    if (error) setErr(error); else router.push("/feed");
+    
+    setIsLoading(true);
+    try {
+      const error = await register(name.trim() || "User", email.trim(), pwd);
+      if (error) setErr(error); else router.push("/feed");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -57,7 +65,9 @@ export default function RegisterPage() {
           {err && <p className="form-error">{err}</p>}
 
           <div className="flex gap-2">
-            <button className="btn-primary" type="submit">Konto erstellen</button>
+            <button className="btn-primary" type="submit" disabled={isLoading}>
+              {isLoading ? "Wird erstellt..." : "Konto erstellen"}
+            </button>
             <a href="/login" className="btn-secondary">Ich habe schon ein Konto</a>
           </div>
         </form>

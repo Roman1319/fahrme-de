@@ -1,8 +1,10 @@
 // Утилита для миграции старых профилей на новую систему
 // Запускается один раз при обновлении
 
-const OLD_PROFILE_KEY = 'fahrme:profile';
-const NEW_PROFILE_KEY_PREFIX = 'fahrme:profile:';
+import { STORAGE_KEYS } from './keys';
+
+const OLD_PROFILE_KEY = STORAGE_KEYS.OLD_PROFILE_KEY;
+const NEW_PROFILE_KEY_PREFIX = STORAGE_KEYS.NEW_PROFILE_KEY_PREFIX;
 
 export function migrateProfiles() {
   if (typeof window === 'undefined') return;
@@ -16,7 +18,7 @@ export function migrateProfiles() {
     }
     
     // Получаем текущего пользователя
-    const session = localStorage.getItem('fahrme:session');
+    const session = localStorage.getItem(STORAGE_KEYS.SESSION_KEY);
     if (!session) {
       console.log('No current user found, migration skipped');
       return;

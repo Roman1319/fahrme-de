@@ -1,6 +1,8 @@
 // Like-System für fahrme.de
 // Frontend-only Implementation mit localStorage und in-memory Fallback
 
+import { STORAGE_KEYS } from './keys';
+
 export type LikeTargetType = 'POST' | 'COMMENT' | 'CAR' | 'ALBUM';
 
 export interface LikeStatus {
@@ -74,7 +76,7 @@ class LikeService {
     }
 
     try {
-      const stored = localStorage.getItem('fahrme:likes:set');
+      const stored = localStorage.getItem(STORAGE_KEYS.LIKES_SET_KEY);
       if (stored) {
         const likes = JSON.parse(stored);
         return new Set(likes);
@@ -94,7 +96,7 @@ class LikeService {
     }
 
     try {
-      localStorage.setItem('fahrme:likes:set', JSON.stringify([...likes]));
+      localStorage.setItem(STORAGE_KEYS.LIKES_SET_KEY, JSON.stringify([...likes]));
     } catch (error) {
       console.warn('Error saving likes to localStorage, using memory storage:', error);
       this.useMemoryStorage = true;
@@ -108,7 +110,7 @@ class LikeService {
     }
 
     try {
-      const stored = localStorage.getItem('fahrme:likes:counters');
+      const stored = localStorage.getItem(STORAGE_KEYS.LIKES_COUNTERS_KEY);
       if (stored) {
         const counters = JSON.parse(stored);
         return new Map(Object.entries(counters));
@@ -129,7 +131,7 @@ class LikeService {
 
     try {
       const obj = Object.fromEntries(counters);
-      localStorage.setItem('fahrme:likes:counters', JSON.stringify(obj));
+      localStorage.setItem(STORAGE_KEYS.LIKES_COUNTERS_KEY, JSON.stringify(obj));
     } catch (error) {
       console.warn('Error saving counters to localStorage, using memory storage:', error);
       this.useMemoryStorage = true;
@@ -141,9 +143,9 @@ class LikeService {
     if (!this.useMemoryStorage) {
       // Dispatch storage event for cross-tab synchronization
       window.dispatchEvent(new StorageEvent('storage', {
-        key: 'fahrme:likes:set',
-        newValue: localStorage.getItem('fahrme:likes:set'),
-        oldValue: localStorage.getItem('fahrme:likes:set'),
+        key: STORAGE_KEYS.LIKES_SET_KEY,
+        newValue: localStorage.getItem(STORAGE_KEYS.LIKES_SET_KEY),
+        oldValue: localStorage.getItem(STORAGE_KEYS.LIKES_SET_KEY),
         storageArea: localStorage,
         url: window.location.href
       }));
@@ -276,8 +278,8 @@ class LikeService {
       this.memoryCounters.clear();
     } else {
       try {
-        localStorage.removeItem('fahrme:likes:set');
-        localStorage.removeItem('fahrme:likes:counters');
+        localStorage.removeItem(STORAGE_KEYS.LIKES_SET_KEY);
+        localStorage.removeItem(STORAGE_KEYS.LIKES_COUNTERS_KEY);
       } catch (error) {
         console.warn('Error clearing localStorage:', error);
       }

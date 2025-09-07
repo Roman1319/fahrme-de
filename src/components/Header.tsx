@@ -20,6 +20,10 @@ export default function Header({ variant="default", showAuth=true }: Props) {
   const router = useRouter();
   const [q, setQ] = useState("");
 
+  // Debug: log user state
+  console.log('[header] User state:', user ? `${user.email} (${user.id})` : 'null');
+  console.log('[header] Home href:', homeHref);
+
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const query = q.trim();
@@ -51,6 +55,13 @@ export default function Header({ variant="default", showAuth=true }: Props) {
 
         {/* Rechter Cluster */}
         <div className="flex items-center gap-2">
+          {/* Explore link - only for guests */}
+          {!user && (
+            <a href="/explore" className="btn-ghost">
+              Explore
+            </a>
+          )}
+          
           <button className="icon-btn icon-btn--tight" title="Theme">
             <ThemeToggle/>
           </button>

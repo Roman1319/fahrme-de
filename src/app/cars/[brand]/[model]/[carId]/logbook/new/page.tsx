@@ -17,6 +17,7 @@ import {
 import { isCarOwnerByCar } from '@/lib/ownership';
 import PhotoUpload from '@/components/ui/PhotoUpload';
 import RichTextEditor from '@/components/ui/RichTextEditor';
+import { STORAGE_KEYS } from '@/lib/keys';
 
 const LOGBOOK_TYPES = [
   { value: 'maintenance', label: 'Wartung' },
@@ -82,7 +83,7 @@ export default function NewLogbookEntryPage() {
 
 
   const loadCar = () => {
-    const savedCars = localStorage.getItem('fahrme:my-cars');
+    const savedCars = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
     if (savedCars) {
       try {
         const cars: MyCar[] = JSON.parse(savedCars);

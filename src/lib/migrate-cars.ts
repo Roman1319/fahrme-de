@@ -1,8 +1,10 @@
 // Утилита для миграции автомобилей на новую систему
 // Запускается один раз при обновлении
 
-const OLD_CARS_KEY = 'fahrme:my-cars';
-const NEW_CARS_KEY_PREFIX = 'fahrme:my-cars:';
+import { STORAGE_KEYS } from './keys';
+
+const OLD_CARS_KEY = STORAGE_KEYS.OLD_CARS_KEY;
+const NEW_CARS_KEY_PREFIX = STORAGE_KEYS.NEW_CARS_KEY_PREFIX;
 
 export function migrateCars() {
   if (typeof window === 'undefined') return;
@@ -16,7 +18,7 @@ export function migrateCars() {
     }
     
     // Получаем текущего пользователя
-    const session = localStorage.getItem('fahrme:session');
+    const session = localStorage.getItem(STORAGE_KEYS.SESSION_KEY);
     if (!session) {
       console.log('No current user found, migration skipped');
       return;
