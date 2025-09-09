@@ -1,8 +1,14 @@
 "use client";
-import { createContext, useContext, useEffect, useState, useMemo } from "react";
-import { getAuthService, type User } from "@/services/auth";
-import { STORAGE_KEYS } from "@/lib/keys";
+import { createContext, useContext, useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+
+type User = {
+  id: string;
+  email: string;
+  name?: string;
+  handle?: string;
+};
 
 type Ctx = {
   user: User | null;
@@ -28,70 +34,31 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [authReady, setAuthReady] = useState(false);
-  const auth = useMemo(() => getAuthService(), []); // Memoize auth service to prevent recreation
   const router = useRouter();
 
   useEffect(() => { 
     setMounted(true); 
     setIsLoading(true);
     setAuthReady(false);
-    console.info('[auth] Initializing auth provider...');
+    console.info('[auth] Initializing Supabase auth provider...');
     
-    // For Supabase, we need to check session asynchronously
-    // For local auth, we check immediately
     const initializeAuth = async () => {
       try {
-        const currentUser = auth.getCurrentUser();
-        console.info('[auth] currentUser() result:', currentUser);
-        
-        if (currentUser) {
-          setUser(currentUser);
-          console.info('[auth] User loaded:', currentUser.email, 'ID:', currentUser.id);
-          setAuthReady(true);
-          console.info('[auth] AuthReady set to true (user found)');
-        } else {
-          // For Supabase, we need to check if there's already a session
-          // This handles the case where the user is already signed in but we missed the initial event
-          if (typeof window !== 'undefined' && window.authStateChangeCallbacks) {
-            console.info('[auth] Checking for existing Supabase session...');
-            // Try to get the current session from Supabase directly
-            import('@/lib/supabaseClient').then(({ supabase }) => {
-              supabase.auth.getSession().then(({ data: { session }, error }) => {
-                if (error) {
-                  console.error('[auth] Error getting session:', error);
-                } else if (session?.user) {
-                  console.info('[auth] Found existing Supabase session:', session.user.email);
-                  // Manually trigger the auth state change immediately
-                  if (window.authStateChangeCallbacks) {
-                    window.authStateChangeCallbacks.forEach(callback => {
-                      try {
-                        callback(session.user);
-                      } catch (error) {
-                        console.error('[auth] Error in manual auth callback:', error);
-                      }
-                    });
-                  }
-                } else {
-                  console.info('[auth] No existing Supabase session found');
-                }
-              });
-            });
-            
-            // Set fallback timer
-            setTimeout(() => {
-              console.info('[auth] Fallback timer: marking auth as ready');
-              setAuthReady(true);
-              console.info('[auth] AuthReady set to true (fallback timer)');
-            }, 300);
-          } else {
-            // For local auth, set fallback timer
-            setTimeout(() => {
-              console.info('[auth] Fallback timer: marking auth as ready');
-              setAuthReady(true);
-              console.info('[auth] AuthReady set to true (fallback timer)');
-            }, 300);
-          }
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('[auth] Error getting session:', error);
+        } else if (session?.user) {
+          const userData: User = {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata?.name,
+            handle: session.user.user_metadata?.handle
+          };
+          setUser(userData);
+          console.info('[auth] User loaded from session:', userData.email, 'ID:', userData.id);
         }
+        setAuthReady(true);
+        console.info('[auth] AuthReady set to true');
       } catch (error) {
         console.error('[auth] Error initializing auth:', error);
         setAuthReady(true);
@@ -101,53 +68,61 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     };
     
     initializeAuth();
-  }, [auth]); // Removed authReady from dependencies to prevent infinite loop
+  }, []);
   
-  const refresh = useMemo(() => () => setUser(auth.getCurrentUser()), [auth]);
+  const refresh = () => {
+    // Refresh user data from Supabase
+    supabase.auth.getUser().then(({ data: { user: currentUser }, error }) => {
+      if (error) {
+        console.error('[auth] Error refreshing user:', error);
+        return;
+      }
+      if (currentUser) {
+        const userData: User = {
+          id: currentUser.id,
+          email: currentUser.email || '',
+          name: currentUser.user_metadata?.name,
+          handle: currentUser.user_metadata?.handle
+        };
+        setUser(userData);
+      } else {
+        setUser(null);
+      }
+    });
+  };
   
-  // Listen to auth state changes (works for both local and Supabase)
+  // Listen to Supabase auth state changes
   useEffect(() => {
     if (!mounted) return;
     
-    console.info('[auth] Setting up auth state listener...');
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      console.info('[auth] Auth state changed:', user ? `User: ${user.email}` : 'No user');
-      setUser(user);
+    console.info('[auth] Setting up Supabase auth state listener...');
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.info('[auth] Supabase auth state changed:', event, session?.user?.email);
+      
+      if (session?.user) {
+        const userData: User = {
+          id: session.user.id,
+          email: session.user.email || '',
+          name: session.user.user_metadata?.name,
+          handle: session.user.user_metadata?.handle
+        };
+        setUser(userData);
+        console.info('[auth] User set:', userData.email);
+      } else {
+        setUser(null);
+        console.info('[auth] User cleared');
+      }
+      
       setIsLoading(false);
       setAuthReady(true);
       console.info('[auth] AuthReady set to true (auth state changed)');
-      
-      // Don't redirect here - let Guard handle it
-      // This prevents race conditions between AuthProvider and Guard
     });
     
     return () => {
-      console.info('[auth] Cleaning up auth state listener');
-      unsubscribe();
+      console.info('[auth] Cleaning up Supabase auth listener');
+      subscription.unsubscribe();
     };
-  }, [mounted, auth, router]);
-  
-  // Слушаем изменения в localStorage для синхронизации между вкладками (только для local auth)
-  useEffect(() => {
-    if (!mounted) return;
-    
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEYS.SESSION_KEY) {
-        console.info('[auth] Session changed in another tab');
-        const newUser = auth.getCurrentUser();
-        setUser(newUser);
-        
-        // Если сессия была очищена в другой вкладке, редиректим на главную
-        if (!newUser && e.newValue === null) {
-          console.info('[auth] Session cleared in another tab, redirecting to home');
-          router.replace('/');
-        }
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [mounted, auth, router]);
+  }, [mounted]);
 
   return (
     <AuthCtx.Provider value={{
@@ -157,50 +132,70 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       isGuest: () => !user,
       isLoading: isLoading,
       authReady: mounted ? authReady : false,
-      login: async (e,p)=>{ 
+      login: async (email, password) => { 
         try {
-          console.info('[auth] Attempting login for:', e);
-          const result = await auth.login({email: e, password: p}); 
-          console.info('[auth] Login result:', result);
-          if (result.success) {
-            console.info('[auth] Login successful');
-            // User will be set by onAuthStateChanged
-            return null;
+          console.info('[auth] Attempting Supabase login for:', email);
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+          });
+          
+          if (error) {
+            console.error('[auth] Login failed:', error.message);
+            return error.message;
           }
-          console.error('[auth] Login failed:', result.error);
-          return result.error || 'Login failed';
+          
+          console.info('[auth] Login successful');
+          // User will be set by onAuthStateChanged
+          return null;
         } catch (error) {
           console.error('[auth] Login error:', error);
           return 'Login failed';
         }
       },
-      register: async (n,e,p)=>{ 
+      register: async (name, email, password) => { 
         try {
-          console.info('[auth] Attempting registration for:', e);
-          const result = await auth.register({name: n, email: e, password: p}); 
-          if (result.success) {
-            console.info('[auth] Registration successful');
-            // User will be set by onAuthStateChanged if session is created
-            return result.error || null; // Return error message if email confirmation required
+          console.info('[auth] Attempting Supabase registration for:', email);
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                name,
+                handle: email.split('@')[0]
+              }
+            }
+          });
+          
+          if (error) {
+            console.error('[auth] Registration failed:', error.message);
+            return error.message;
           }
-          console.error('[auth] Registration failed:', result.error);
-          return result.error || 'Registration failed';
+          
+          console.info('[auth] Registration successful');
+          // User will be set by onAuthStateChanged if session is created
+          return null;
         } catch (error) {
           console.error('[auth] Registration error:', error);
           return 'Registration failed';
         }
       },
-      logout: async ()=>{ 
+      logout: async () => { 
         try {
-          console.info('[auth] Logging out...');
-          await auth.logout(); 
+          console.info('[auth] Logging out from Supabase...');
+          const { error } = await supabase.auth.signOut();
+          
+          if (error) {
+            console.error('[auth] Logout error:', error);
+            return;
+          }
+          
+          console.info('[auth] Logout successful');
           // User will be cleared by onAuthStateChanged
-          // Redirect will be handled by Guard component
         } catch (error) {
           console.error('[auth] Logout error:', error);
-          // Force clear and redirect
+          // Force clear
           setUser(null);
-          router.replace('/');
         }
       }
     }}>

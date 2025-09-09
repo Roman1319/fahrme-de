@@ -10,7 +10,12 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
-  const { user } = useAuth();
+  const { user, authReady, isLoading } = useAuth();
+
+  // Показываем загрузку пока проверяется авторизация
+  if (!authReady || isLoading) {
+    return <>{children}</>;
+  }
 
   // Если пользователь не зарегистрирован, показываем контент без навигации
   if (!user) {

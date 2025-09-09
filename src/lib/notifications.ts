@@ -1,5 +1,5 @@
 "use client";
-import { currentUser } from "./auth";
+import { useAuth } from "@/components/AuthProvider";
 
 export type NotificationType = "like" | "comment" | "reaction" | "follow";
 export type Notification = {
@@ -13,49 +13,89 @@ export type Notification = {
   read: boolean;
 };
 
-function key() {
-  const u = currentUser();
-  return `fahrme.notifications.${u?.email ?? "guest"}`;
+// This hook should be used in components that need notifications
+export function useNotifications() {
+  const { user } = useAuth();
+  
+  function key() {
+    return `fahrme.notifications.${user?.email ?? "guest"}`;
+  }
+
+  function read(): Notification[] {
+    try { return JSON.parse(localStorage.getItem(key()) || "[]"); }
+    catch { return []; }
+  }
+  
+  function write(list: Notification[]) {
+    localStorage.setItem(key(), JSON.stringify(list));
+  }
+
+  const all = (): Notification[] => read().sort((a,b)=>b.createdAt-a.createdAt);
+  
+  const add = (n: Omit<Notification,"id"|"createdAt"|"read">) => {
+    const list = read();
+    list.push({ id: crypto.randomUUID(), createdAt: Date.now(), read:false, ...n });
+    write(list);
+  }
+  
+  const markAllRead = () => {
+    const list = read().map(n => ({...n, read:true})); 
+    write(list);
+  }
+  
+  const unreadCount = (): number => read().filter(n=>!n.read).length;
+
+  const seedDemo = () => {
+    if (read().length) return;
+    add({
+      type: "like",
+      message: "Alex hat deinen Post geliked",
+      postId: "1",
+      postTitle: "Mein neuer BMW",
+      actor: "Alex"
+    });
+    add({
+      type: "comment",
+      message: "Sandra hat deinen Post kommentiert",
+      postId: "1",
+      postTitle: "Mein neuer BMW",
+      actor: "Sandra"
+    });
+    add({
+      type: "follow",
+      message: "Max folgt dir jetzt",
+      actor: "Max"
+    });
+  }
+
+  return {
+    all,
+    add,
+    markAllRead,
+    unreadCount,
+    seedDemo
+  };
 }
 
-function read(): Notification[] {
-  try { return JSON.parse(localStorage.getItem(key()) || "[]"); }
-  catch { return []; }
-}
-function write(list: Notification[]) {
-  localStorage.setItem(key(), JSON.stringify(list));
+// Legacy exports for backward compatibility (deprecated)
+export function all(): Notification[] { 
+  console.warn('all() is deprecated, use useNotifications() hook instead');
+  return []; 
 }
 
-export function all(): Notification[] { return read().sort((a,b)=>b.createdAt-a.createdAt); }
-export function add(n: Omit<Notification,"id"|"createdAt"|"read">) {
-  const list = read();
-  list.push({ id: crypto.randomUUID(), createdAt: Date.now(), read:false, ...n });
-  write(list);
+export function add(n: Omit<Notification,"id"|"createdAt"|"read">) { 
+  console.warn('add() is deprecated, use useNotifications() hook instead');
 }
-export function markAllRead() {
-  const list = read().map(n => ({...n, read:true})); write(list);
-}
-export function unreadCount(): number { return read().filter(n=>!n.read).length; }
 
-/* демо-наполнение */
-export function seedDemo() {
-  if (read().length) return;
-  add({
-    type: "like",
-    message: 'Alex gefällt Dein Beitrag „BMW 3er G20".',
-    actor: "Alex",
-    postId: "1",
-    postTitle: "BMW 3er G20",
-  });
-  add({
-    type: "comment",
-    message: 'Sandra hat kommentiert: „Sieht super aus!"',
-    actor: "Sandra",
-    postId: "2",
-    postTitle: "Mini Cooper S R56",
-  });
-  add({
-    type: "reaction",
-    message: "Max reagierte auf Deinen Beitrag mit 🔥",
-  });
+export function markAllRead() { 
+  console.warn('markAllRead() is deprecated, use useNotifications() hook instead');
+}
+
+export function unreadCount(): number { 
+  console.warn('unreadCount() is deprecated, use useNotifications() hook instead');
+  return 0; 
+}
+
+export function seedDemo() { 
+  console.warn('seedDemo() is deprecated, use useNotifications() hook instead');
 }

@@ -310,7 +310,7 @@ CREATE POLICY "Users can upload car photos for their own cars" ON storage.object
     AND EXISTS (
       SELECT 1 FROM cars 
       WHERE cars.owner_id = auth.uid() 
-      AND cars.id::text = (storage.foldername(name))[2]
+      AND cars.id::text = (storage.foldername(name))[1]
     )
   );
 
@@ -320,7 +320,7 @@ CREATE POLICY "Users can delete car photos for their own cars" ON storage.object
     AND EXISTS (
       SELECT 1 FROM cars 
       WHERE cars.owner_id = auth.uid() 
-      AND cars.id::text = (storage.foldername(name))[2]
+      AND cars.id::text = (storage.foldername(name))[1]
     )
   );
 

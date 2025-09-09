@@ -2,8 +2,11 @@
 
 import React from 'react';
 import { Heart } from 'lucide-react';
-import { useLikes, LikeTargetType } from '@/lib/likes';
+// import { useLikes, LikeTargetType } from '@/lib/likes'; // TODO: Implement Supabase likes
 import { useAuth } from '@/components/AuthProvider';
+
+// Temporary types until Supabase likes are implemented
+type LikeTargetType = 'post' | 'comment';
 
 interface LikeButtonProps {
   targetType: LikeTargetType;
@@ -37,11 +40,15 @@ export default function LikeButton({
   onLikeChange
 }: LikeButtonProps) {
   const { user } = useAuth();
-  const { liked, likeCount, isLoading, toggle } = useLikes(
-    user?.id || '',
-    targetType,
-    targetId
-  );
+  const isAuthed = !!user?.id;
+  
+  // Temporary placeholder until Supabase likes are implemented
+  const liked = false;
+  const likeCount = 0;
+  const isLoading = false;
+  const toggle = () => {
+    console.log('Like functionality not yet implemented with Supabase');
+  };
 
   // Notify parent component of changes
   React.useEffect(() => {
@@ -51,6 +58,10 @@ export default function LikeButton({
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!isAuthed) {
+      window.location.href = '/login';
+      return;
+    }
     toggle();
   };
 
@@ -110,7 +121,7 @@ export default function LikeButton({
       className={`${baseClasses} ${variantClasses[variant]} ${className}`}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      disabled={isLoading}
+      disabled={!isAuthed || isLoading}
       aria-pressed={liked}
       aria-label={liked ? 'Like entfernen' : 'Like hinzufügen'}
       title={liked ? 'Like entfernen' : 'Like hinzufügen'}

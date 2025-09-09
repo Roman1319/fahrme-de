@@ -4,14 +4,15 @@ import { useState, useEffect } from "react";
 import { Plus, Car as CarIcon, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Guard from "@/components/auth/Guard";
-// import ImageUpload from "@/components/ui/ImageUpload"; // TODO: Use ImageUpload if needed
 import AutoCompleteInput from "@/components/ui/AutoCompleteInput";
 import EditCarModal from "@/components/EditCarModal";
-import { useCarData } from "@/hooks/useCarData";
+import { useSupabaseCarData } from "@/hooks/useSupabaseCarData";
 import { Car, MyCar } from "@/lib/types";
 import { useAuth } from "@/components/AuthProvider";
 import { getCars, createCar, updateCar, deleteCar, getCarPhotos, getCarPhotoUrl } from "@/lib/cars";
 import { CreateCarData } from "@/lib/cars";
+import { supabase } from "@/lib/supabaseClient";
+import { STORAGE_KEYS } from "@/lib/keys";
 
 export default function MyCarsPage() {
   const { user } = useAuth();
@@ -33,6 +34,28 @@ export default function MyCarsPage() {
         setLoading(true);
         setError(null);
         const userCars = await getCars(user.id);
+        
+        // Check if multiple cars are marked as main vehicle
+        const mainCars = userCars.filter(car => car.is_main_vehicle);
+        if (mainCars.length > 1) {
+          console.warn(`Found ${mainCars.length} main vehicles, fixing...`);
+          // Keep only the first one as main, unset others
+          const { error: unsetError } = await supabase
+            .from('cars')
+            .update({ is_main_vehicle: false })
+            .eq('owner_id', user.id)
+            .neq('id', mainCars[0].id);
+          
+          if (unsetError) {
+            console.error('Error fixing multiple main vehicles:', unsetError);
+          } else {
+            // Update local state
+            userCars.forEach(car => {
+              car.is_main_vehicle = car.id === mainCars[0].id;
+            });
+          }
+        }
+        
         setCars(userCars);
       } catch (err) {
         console.error('[MyCars] Error loading cars:', err);
@@ -52,10 +75,18 @@ export default function MyCarsPage() {
       return;
     }
 
+    console.log('[MyCars] handleAddCar called with carData:', carData);
+    console.log('[MyCars] Images in carData:', carData.images);
+    console.log('[MyCars] Images length:', carData.images?.length || 0);
+
     try {
       setLoading(true);
       const newCar = await createCar(carData, user.id);
-      setCars(prev => [newCar, ...prev]);
+      
+      // Reload cars to get photos
+      const userCars = await getCars(user.id);
+      setCars(userCars);
+      
       setShowAddForm(false);
     } catch (err) {
       console.error('[MyCars] Error adding car:', err);
@@ -97,7 +128,7 @@ export default function MyCarsPage() {
         is_main_vehicle: updatedCar.isMainVehicle,
         is_former: updatedCar.isFormerCar,
         description: updatedCar.description,
-        story: updatedCar.story
+        story: updatedCar.description // Используем description для обоих полей
       };
       const updatedCarResult = await updateCar(carData);
       setCars(prev => prev.map(car => car.id === updatedCarResult.id ? updatedCarResult : car));
@@ -114,12 +145,15 @@ export default function MyCarsPage() {
   const handleSetMainVehicle = async (id: string) => {
     try {
       setLoading(true);
-      // First, unset all other main vehicles
-      const otherCars = cars.filter(car => car.id !== id);
-      for (const car of otherCars) {
-        if (car.is_main_vehicle) {
-          await updateCar({ id: car.id, is_main_vehicle: false });
-        }
+      // First, unset ALL main vehicles in the database
+      const { error: unsetError } = await supabase
+        .from('cars')
+        .update({ is_main_vehicle: false })
+        .eq('owner_id', user?.id);
+      
+      if (unsetError) {
+        console.error('Error unsetting main vehicles:', unsetError);
+        throw unsetError;
       }
       
       // Set the selected car as main vehicle
@@ -130,6 +164,26 @@ export default function MyCarsPage() {
         ...car,
         is_main_vehicle: car.id === id
       })));
+
+      // Save to localStorage and dispatch event
+      try {
+        const main = cars.find(c => c.id === id) ?? null;
+        if (main) {
+          const payload = {
+            id: main.id,
+            make: main.brand,
+            model: main.model,
+            year: main.year,
+            images: [],
+            description: main.description ?? '',
+            isMainVehicle: true,
+          };
+          localStorage.setItem(STORAGE_KEYS.MAIN_VEHICLE_KEY, JSON.stringify(payload));
+          window.dispatchEvent(new Event('mainVehicleChanged'));
+        }
+      } catch (e) {
+        console.warn('[MyCars] Unable to cache main vehicle', e);
+      }
     } catch (err) {
       console.error('[MyCars] Error setting main vehicle:', err);
       alert('Fehler beim Setzen des Hauptfahrzeugs');
@@ -180,6 +234,7 @@ export default function MyCarsPage() {
             </div>
           )}
 
+
           {/* Список машин */}
           {!loading && !error && cars.length === 0 ? (
             <div className="section text-center py-16">
@@ -201,7 +256,6 @@ export default function MyCarsPage() {
                 <CarCard
                   key={car.id}
                   car={car}
-                  onEdit={() => setEditingCar(car)}
                   onDelete={() => handleDeleteCar(car.id)}
                   onSetMain={() => handleSetMainVehicle(car.id)}
                   loading={loading}
@@ -251,17 +305,16 @@ export default function MyCarsPage() {
 // Car Card Component
 function CarCard({ 
   car, 
-  onEdit, 
   onDelete, 
   onSetMain, 
   loading 
 }: { 
   car: Car; 
-  onEdit: () => void; 
   onDelete: () => void; 
   onSetMain: () => void; 
   loading: boolean;
 }) {
+  // Use photos from car.photos if available, otherwise load them
   const [photos, setPhotos] = useState<string[]>([]);
   const [photosLoading, setPhotosLoading] = useState(true);
 
@@ -269,6 +322,17 @@ function CarCard({
     const loadPhotos = async () => {
       try {
         setPhotosLoading(true);
+        
+        // If car already has photos, use them
+        if (car.photos && car.photos.length > 0) {
+          console.log(`[CarCard] Using ${car.photos.length} photos from car.photos for car ${car.id}`);
+          const photoUrls = car.photos.map(photo => getCarPhotoUrl(photo.storage_path));
+          setPhotos(photoUrls);
+          setPhotosLoading(false);
+          return;
+        }
+        
+        // Otherwise, load photos from database
         const carPhotos = await getCarPhotos(car.id);
         const photoUrls = carPhotos.map(photo => getCarPhotoUrl(photo.storage_path));
         setPhotos(photoUrls);
@@ -280,7 +344,7 @@ function CarCard({
     };
 
     loadPhotos();
-  }, [car.id]);
+  }, [car.id, car.photos]);
 
   return (
     <div className="section p-2 group">
@@ -340,13 +404,6 @@ function CarCard({
 
       {/* Action buttons */}
       <div className="flex gap-1 mt-2">
-        <button 
-          onClick={onEdit}
-          disabled={loading}
-          className="flex-1 px-2 py-1 text-xs text-white border border-[#868E96] rounded-full hover:bg-[#343A40] transition-colors disabled:opacity-50"
-        >
-          Bearbeiten
-        </button>
         {!car.is_main_vehicle ? (
           <button 
             onClick={onSetMain}
@@ -385,7 +442,7 @@ function AddCarForm({
   onAdd: (car: CreateCarData) => void;
   onCancel: () => void;
 }) {
-  const { makes, getModels, isLoading: carDataLoading } = useCarData();
+  const { makes, getModels, isLoading: carDataLoading } = useSupabaseCarData();
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     brand: '',
@@ -394,32 +451,51 @@ function AddCarForm({
     name: '',
     color: '',
     description: '',
-    story: '',
     is_main_vehicle: false,
     is_former: false
   });
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+
+
+  // Handle file input directly
+  const handleFileInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      const fileArray = Array.from(files);
+      setImageFiles(fileArray);
+      
+      // Also create URLs for preview
+      const urls = fileArray.map(file => URL.createObjectURL(file));
+      setImageUrls(urls);
+    }
+  };
 
   // Безопасное обновление доступных моделей при изменении марки
   useEffect(() => {
-    try {
-      if (formData.brand && makes.length > 0) {
-        const models = getModels(formData.brand);
-        setAvailableModels(models);
-        
-        // Сбрасываем модель, если она не доступна для выбранной марки
-        if (formData.model && !models.includes(formData.model)) {
-          setFormData(prev => ({ ...prev, model: '' }));
+    const updateModels = async () => {
+      try {
+        if (formData.brand && makes.length > 0) {
+          const models = await getModels(formData.brand);
+          setAvailableModels(models);
+          
+          // Сбрасываем модель, если она не доступна для выбранной марки
+          if (formData.model && !models.includes(formData.model)) {
+            setFormData(prev => ({ ...prev, model: '' }));
+          }
+        } else {
+          setAvailableModels([]);
+          if (!formData.brand) {
+            setFormData(prev => ({ ...prev, model: '' }));
+          }
         }
-      } else {
+      } catch (error) {
+        console.warn('Error updating models:', error);
         setAvailableModels([]);
-        if (!formData.brand) {
-          setFormData(prev => ({ ...prev, model: '' }));
-        }
       }
-    } catch (error) {
-      console.warn('Error updating models:', error);
-      setAvailableModels([]);
-    }
+    };
+
+    updateModels();
   }, [formData.brand, getModels, makes.length]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -436,7 +512,9 @@ function AddCarForm({
     
     if (formData.brand && formData.model && formData.year > 0 && user) {
       console.log('[AddCarForm] Validation passed, calling onAdd');
-      onAdd(formData);
+      console.log('[AddCarForm] Image files:', imageFiles);
+      console.log('[AddCarForm] Image files length:', imageFiles.length);
+      onAdd({ ...formData, images: imageFiles });
     } else {
       console.error('[AddCarForm] Validation failed');
       alert('Bitte füllen Sie alle Pflichtfelder aus (Marke, Modell, Baujahr)');
@@ -582,32 +660,75 @@ function AddCarForm({
             </div>
           </div>
 
-          {/* Note about photos */}
+          {/* Photos */}
           <div className="space-y-4">
             <div>
               <h3 className="text-lg font-semibold mb-2">Fotos</h3>
               <p className="text-sm opacity-70 mb-4">
-                Fotos können nach dem Erstellen des Autos hinzugefügt werden.
+                Fügen Sie Fotos Ihres Autos hinzu (optional).
               </p>
+              <div className="space-y-4">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleFileInput}
+                  className="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-full file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-primary file:text-white
+                    hover:file:bg-primary/80
+                    file:cursor-pointer cursor-pointer"
+                />
+                {imageUrls.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {imageUrls.map((url, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={url}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-32 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newUrls = imageUrls.filter((_, i) => i !== index);
+                            const newFiles = imageFiles.filter((_, i) => i !== index);
+                            setImageUrls(newUrls);
+                            setImageFiles(newFiles);
+                          }}
+                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-gray-500">
+                  Выберите до 10 фотографий (максимум 5MB каждая)
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Geschichte des Autos */}
+          {/* Beschreibung des Autos */}
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Geschichte des Autos</h3>
+              <h3 className="text-lg font-semibold mb-2">Beschreibung des Autos</h3>
             </div>
             
             <div className="relative">
               <textarea
-                className="form-input min-h-[120px] resize-y"
-                value={formData.story}
-                onChange={(e) => setFormData({...formData, story: e.target.value})}
-                placeholder="Kaufgeschichte oder allgemeine Eindrücke."
+                className="form-input min-h-[200px] resize-y"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                placeholder="Erzählen Sie alles über Ihr Auto: Geschichte, особенности, впечатления от вождения, технические детали..."
                 maxLength={25000}
               />
               <div className="absolute top-2 right-2 text-xs opacity-60">
-                {formData.story.length}/25000
+                {formData.description.length}/25000
               </div>
             </div>
 

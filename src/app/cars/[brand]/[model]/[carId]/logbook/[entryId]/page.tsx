@@ -6,21 +6,23 @@ import { ArrowLeft, Heart, MessageCircle, Share2, Edit, Trash2 } from 'lucide-re
 import { MyCar, LogbookEntry, Comment } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
 import { 
-  getLogbookEntries, 
+  getLogbookEntries
+} from '@/lib/logbook';
+import {
   toggleLogbookEntryLike, 
   getLogbookEntryLikes, 
   hasUserLikedLogbookEntry,
+  getLogbookEntry,
+  deleteLogbookEntry
+} from '@/lib/logbook-operations';
+import {
   addComment,
   getComments,
   editComment,
   deleteComment,
-  likeComment,
-  deleteLogbookEntry
-} from '@/lib/interactions';
-// import { isCarOwnerByCar } from '@/lib/ownership'; // TODO: Use isCarOwnerByCar if needed
-import { readProfileByEmail } from '@/lib/profile';
+  likeComment
+} from '@/lib/comments';
 import CommentsList from '@/components/ui/CommentsList';
-import { STORAGE_KEYS } from '@/lib/keys';
 
 export default function LogbookEntryPage() {
   const params = useParams();
@@ -37,56 +39,139 @@ export default function LogbookEntryPage() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [commentProfiles, setCommentProfiles] = useState<Record<string, { avatarUrl?: string | null; displayName?: string }>>({});
+  const [likesCount, setLikesCount] = useState(0);
+  const [hasLiked, setHasLiked] = useState(false);
 
   useEffect(() => {
-    loadCar();
-    loadEntry();
-    loadComments();
-  }, [carId, entryId, user]); // TODO: Add loadCar, loadComments, loadEntry to deps when stable
+    const loadData = async () => {
+      await Promise.all([
+        loadCar(),
+        loadEntry(),
+        loadComments()
+      ]);
+    };
+    loadData();
+  }, [carId, entryId, user]);
+
+  useEffect(() => {
+    if (entry && user) {
+      loadLikes();
+    }
+  }, [entry, user]);
 
   useEffect(() => {
     loadCommentProfiles();
   }, [comments]); // TODO: Add loadCommentProfiles to deps when stable
 
-  const loadCar = () => {
-    const savedCars = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
-    if (savedCars) {
-      try {
-        const cars: MyCar[] = JSON.parse(savedCars);
-        const foundCar = cars.find(c => c.id === carId);
-        setCar(foundCar || null);
-      } catch (error) {
-        console.error('Error loading car:', error);
+  const loadCar = async () => {
+    try {
+      const { getCar } = await import('@/lib/cars');
+      const carData = await getCar(carId);
+      if (carData) {
+        // Convert Car to MyCar format
+        const myCar: MyCar = {
+          id: carData.id,
+          name: carData.name || '',
+          make: carData.brand,
+          model: carData.model,
+          year: carData.year,
+          color: carData.color || '',
+          power: carData.power || 0,
+          engine: carData.engine || '',
+          volume: carData.volume || '',
+          gearbox: carData.gearbox || '',
+          drive: carData.drive || '',
+          description: carData.description || '',
+          story: carData.story || '',
+          images: [], // Will be loaded separately
+          isMainVehicle: carData.is_main_vehicle || false,
+          isFormerCar: carData.is_former || false,
+          addedDate: carData.created_at,
+          ownerId: carData.owner_id
+        };
+        setCar(myCar);
+      } else {
         setCar(null);
       }
+    } catch (error) {
+      console.error('Error loading car:', error);
+      setCar(null);
     }
   };
 
-  const loadEntry = () => {
-    const entries = getLogbookEntries(carId);
-    const foundEntry = entries.find(e => e.id === entryId);
-    setEntry(foundEntry || null);
-    setIsLoading(false);
+  const loadEntry = async () => {
+    try {
+      const entryData = await getLogbookEntry(entryId);
+      if (entryData) {
+        // Convert to LogbookEntry format
+        const logbookEntry: LogbookEntry = {
+          id: entryData.id,
+          car_id: entryData.car_id,
+          author_id: entryData.author_id,
+          title: entryData.title,
+          content: entryData.content,
+          allow_comments: entryData.allow_comments,
+          publish_date: entryData.publish_date,
+          created_at: entryData.created_at,
+          updated_at: entryData.updated_at,
+          author: entryData.author ? {
+            name: entryData.author.name,
+            handle: entryData.author.handle,
+            avatar_url: entryData.author.avatar_url
+          } : undefined,
+          // Legacy fields for backward compatibility
+          carId: entryData.car_id,
+          authorId: entryData.author_id,
+          publishDate: entryData.publish_date,
+          createdAt: entryData.created_at,
+          updatedAt: entryData.updated_at
+        };
+        setEntry(logbookEntry);
+      } else {
+        setEntry(null);
+      }
+    } catch (error) {
+      console.error('Error loading entry:', error);
+      setEntry(null);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const loadComments = () => {
-    setComments(getComments(entryId));
+  const loadComments = async () => {
+    try {
+      const commentsData = await getComments(entryId);
+      setComments(commentsData);
+    } catch (error) {
+      console.error('Error loading comments:', error);
+      setComments([]);
+    }
+  };
+
+  const loadLikes = async () => {
+    if (!entry || !user) return;
+    
+    try {
+      const [count, liked] = await Promise.all([
+        getLogbookEntryLikes(entry.id),
+        hasUserLikedLogbookEntry(entry.id, user.id)
+      ]);
+      setLikesCount(count);
+      setHasLiked(liked);
+    } catch (error) {
+      console.error('Error loading likes:', error);
+    }
   };
 
   const loadCommentProfiles = () => {
     const profiles: Record<string, { avatarUrl?: string | null; displayName?: string }> = {};
     
     comments.forEach(comment => {
-      // TODO: Replace with proper author_id lookup when profile system is updated
-      const authorEmail = (comment as unknown as { authorEmail?: string }).authorEmail;
-      if (authorEmail && !commentProfiles[authorEmail]) {
-        const profile = readProfileByEmail(authorEmail);
-        if (profile) {
-          profiles[authorEmail] = {
-            avatarUrl: profile.avatarUrl,
-            displayName: profile.displayName
-          };
-        }
+      if (comment.author && !commentProfiles[comment.author_id]) {
+        profiles[comment.author_id] = {
+          avatarUrl: comment.author.avatar_url,
+          displayName: comment.author.name || comment.author.handle || 'Unknown User'
+        };
       }
     });
     
@@ -95,58 +180,58 @@ export default function LogbookEntryPage() {
     }
   };
 
-  const handleToggleLike = () => {
+  const handleToggleLike = async () => {
     if (!user || !entry) return;
     
-    toggleLogbookEntryLike(entry.id, user.id, user.email);
-    loadEntry(); // Reload to update like count
+    await toggleLogbookEntryLike(entry.id, user.id);
+    loadLikes(); // Reload likes
   };
 
-  const handleAddComment = (text: string, _images?: string[]) => { // TODO: Implement image handling
+  const handleAddComment = async (text: string, _images?: string[]) => { // TODO: Implement image handling
     if (!user || !entry) return;
 
-    addComment(entryId, text, user.name, user.email);
+    await addComment(entryId, text, user.id);
     loadComments();
   };
 
-  const handleAddReply = (parentId: string, text: string, _images?: string[]) => { // TODO: Implement image handling
+  const handleAddReply = async (parentId: string, text: string, _images?: string[]) => { // TODO: Implement image handling
     if (!user || !entry) return;
 
-    addComment(entryId, text, user.name, user.email, parentId);
+    await addComment(entryId, text, user.id, parentId);
     loadComments();
   };
 
-  const handleEditComment = (commentId: string, text: string) => {
-    editComment(entryId, commentId, text);
+  const handleEditComment = async (commentId: string, text: string) => {
+    await editComment(commentId, text);
     loadComments();
   };
 
-  const handleDeleteComment = (commentId: string) => {
-    deleteComment(entryId, commentId);
+  const handleDeleteComment = async (commentId: string) => {
+    await deleteComment(commentId);
     loadComments();
   };
 
-  const handleLikeComment = (commentId: string) => {
+  const handleLikeComment = async (commentId: string) => {
     if (!user) return;
     
-    likeComment(entryId, commentId);
+    await likeComment(commentId, user.id);
     loadComments();
   };
 
-  const handleLikeReply = (parentId: string, replyId: string) => {
+  const handleLikeReply = async (parentId: string, replyId: string) => {
     if (!user) return;
     
-    likeComment(entryId, replyId);
+    await likeComment(replyId, user.id);
     loadComments();
   };
 
-  const handleEditReply = (parentId: string, replyId: string, text: string) => {
-    editComment(entryId, replyId, text);
+  const handleEditReply = async (parentId: string, replyId: string, text: string) => {
+    await editComment(replyId, text);
     loadComments();
   };
 
-  const handleDeleteReply = (parentId: string, replyId: string) => {
-    deleteComment(entryId, replyId);
+  const handleDeleteReply = async (parentId: string, replyId: string) => {
+    await deleteComment(replyId);
     loadComments();
   };
 
@@ -156,11 +241,11 @@ export default function LogbookEntryPage() {
     router.push(`/logbuch/${entryId}/edit`);
   };
 
-  const handleDeleteEntry = () => {
+  const handleDeleteEntry = async () => {
     if (!entry || !user || entry.author_id !== user.id) return;
     
     if (confirm('Möchten Sie diesen Logbuch-Eintrag wirklich löschen?')) {
-      const success = deleteLogbookEntry(carId, entryId);
+      const success = await deleteLogbookEntry(entryId);
       if (success) {
         // Show success message
         alert('Eintrag wurde gelöscht');
@@ -429,13 +514,13 @@ export default function LogbookEntryPage() {
               <button
                 onClick={handleToggleLike}
                 className={`flex items-center gap-2 transition-all hover:scale-105 ${
-                  hasUserLikedLogbookEntry(entry.id, user?.id || '') 
+                  hasLiked 
                     ? 'opacity-100 text-accent' 
                     : 'opacity-70 hover:opacity-100'
                 }`}
               >
-                <Heart className={`w-5 h-5 ${hasUserLikedLogbookEntry(entry.id, user?.id || '') ? 'fill-current' : ''}`} />
-                <span className="font-medium">{getLogbookEntryLikes(entry.id)}</span>
+                <Heart className={`w-5 h-5 ${hasLiked ? 'fill-current' : ''}`} />
+                <span className="font-medium">{likesCount}</span>
               </button>
               
               {entry.allow_comments && (

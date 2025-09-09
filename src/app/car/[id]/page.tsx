@@ -4,13 +4,15 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, MessageCircle, ChevronLeft, ChevronRight, X, Loader2, Plus } from 'lucide-react';
+import { Heart, MessageCircle, ChevronLeft, ChevronRight, X, Loader2, Plus, Edit } from 'lucide-react';
 import { Car, LogbookEntry, Comment } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
-import { getCar, getCarPhotos, getCarPhotoUrl } from '@/lib/cars';
+import { getCar, getCarPhotos, getCarPhotoUrl, updateCarWithPhotos } from '@/lib/cars';
 import { getLogbookEntries, getComments, createComment, togglePostLike, getPostLikes, countPostLikes, hasLikedPost } from '@/lib/logbook';
 import { getProfile } from '@/lib/profiles';
 import CreatePostModal from '@/components/logbook/CreatePostModal';
+import { CarPhotoUploader } from '@/components/CarPhotoUploader';
+import EditCarModal from '@/components/EditCarModal';
 
 export default function CarPage() {
   const params = useParams();
@@ -27,6 +29,8 @@ export default function CarPage() {
   const [showComments, setShowComments] = useState(false);
   const [showLogbook, setShowLogbook] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
+  const [showEditCar, setShowEditCar] = useState(false);
+  const [isSavingCar, setIsSavingCar] = useState(false);
   const [carStats, setCarStats] = useState({ followers: 0, likes: 0 });
   const [userInteraction, setUserInteraction] = useState<{ isFollowing: boolean; isLiked: boolean } | null>(null);
   const [ownerProfile, setOwnerProfile] = useState<{ avatarUrl?: string | null; name?: string } | null>(null);
@@ -199,6 +203,81 @@ export default function CarPage() {
     router.push(`/post/${entryId}`);
   };
 
+  const handleEditCar = () => {
+    setShowEditCar(true);
+  };
+
+  const handleSaveCar = async (updatedCar: any) => {
+    if (!car || !user) return;
+    
+    try {
+      setIsSavingCar(true);
+      
+      // Prepare car data for API
+      const carUpdateData = {
+        id: car.id,
+        brand: updatedCar.make,
+        model: updatedCar.model,
+        year: updatedCar.year,
+        name: updatedCar.name,
+        color: updatedCar.color,
+        power: updatedCar.power,
+        engine: updatedCar.engine,
+        volume: updatedCar.volume,
+        gearbox: updatedCar.gearbox,
+        drive: updatedCar.drive,
+        description: updatedCar.description,
+        story: updatedCar.story
+      };
+
+      // Get new images (base64 strings) and deleted images
+      const newImages = updatedCar.images || [];
+      const deletedImages = updatedCar.deletedImages || [];
+      
+      // Update car with photos
+      await updateCarWithPhotos(carUpdateData, newImages, deletedImages, user.id);
+      
+      // Show success message
+      const deletedCount = deletedImages.length;
+      const newCount = newImages.filter(img => img.startsWith('data:image/')).length;
+      
+      let message = 'Автомобиль успешно обновлен!';
+      if (deletedCount > 0) message += `\nУдалено фото: ${deletedCount}`;
+      if (newCount > 0) message += `\nДобавлено фото: ${newCount}`;
+      
+      alert(message);
+      setShowEditCar(false);
+      
+      // Update local state immediately for better UX
+      if (car) {
+        // Update car data locally
+        setCar(prev => prev ? {
+          ...prev,
+          name: carUpdateData.name || prev.name,
+          brand: carUpdateData.brand || prev.brand,
+          model: carUpdateData.model || prev.model,
+          year: carUpdateData.year || prev.year,
+          color: carUpdateData.color || prev.color,
+          power: carUpdateData.power || prev.power,
+          engine: carUpdateData.engine || prev.engine,
+          volume: carUpdateData.volume || prev.volume,
+          gearbox: carUpdateData.gearbox || prev.gearbox,
+          drive: carUpdateData.drive || prev.drive,
+          description: carUpdateData.description || prev.description,
+          story: carUpdateData.story || prev.story
+        } : null);
+      }
+      
+      // Reload photos in background (less critical)
+      loadPhotos();
+    } catch (error) {
+      console.error('Error saving car:', error);
+      alert('Ошибка при сохранении автомобиля: ' + (error as Error).message);
+    } finally {
+      setIsSavingCar(false);
+    }
+  };
+
   const nextImage = () => {
     if (photos.length > 0 && !isTransitioning) {
       setIsTransitioning(true);
@@ -300,13 +379,22 @@ export default function CarPage() {
               </p>
             </div>
             {isOwner && (
-              <div className="flex gap-1 flex-shrink-0 ml-2">
+              <div className="flex gap-1.5 flex-shrink-0 ml-2">
                 <button 
                   onClick={() => setShowComments(true)}
-                  className="btn-accent px-1.5 py-1 text-xs"
+                  className="btn-accent px-3 py-1.5 text-xs flex items-center gap-1.5"
                 >
+                  <Plus size={12} />
                   <span className="hidden sm:inline">In Logbuch schreiben</span>
                   <span className="sm:hidden">Logbuch</span>
+                </button>
+                <button 
+                  onClick={handleEditCar}
+                  className="btn-primary px-3 py-1.5 text-xs flex items-center gap-1.5"
+                >
+                  <Edit size={12} />
+                  <span className="hidden sm:inline">Bearbeiten</span>
+                  <span className="sm:hidden">Edit</span>
                 </button>
               </div>
             )}
@@ -379,17 +467,19 @@ export default function CarPage() {
                 )}
               </>
             ) : (
-              <div className="w-full h-full bg-fallback flex flex-col items-center justify-center text-center p-4">
-                <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-3">
-                  <svg className="w-8 h-8 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <span className="opacity-60 text-sm font-medium">Kein Foto verfügbar</span>
-                <span className="opacity-40 text-xs mt-1">Fügen Sie ein Bild hinzu</span>
+              <div className="w-full h-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
+                <Image
+                  src="/hero-car.jpg"
+                  alt="Placeholder"
+                  width={800}
+                  height={600}
+                  className="object-cover w-full h-full opacity-80"
+                  priority
+                />
               </div>
             )}
           </div>
+
 
           {/* Action Buttons */}
           {!isOwner && (
@@ -512,18 +602,10 @@ export default function CarPage() {
         </div>
 
         {/* Description */}
-        {car.description && (
+        {(car.description || car.story) && (
           <div className="section">
             <h2 className="text-sm font-bold mb-2">Beschreibung</h2>
-            <p className="opacity-80 text-xs leading-relaxed break-words whitespace-pre-wrap">{car.description}</p>
-          </div>
-        )}
-
-        {/* Story */}
-        {car.story && (
-          <div className="section">
-            <h2 className="text-sm font-bold mb-2">Geschichte</h2>
-            <p className="opacity-80 text-xs leading-relaxed break-words whitespace-pre-wrap">{car.story}</p>
+            <p className="opacity-80 text-xs leading-relaxed break-words whitespace-pre-wrap">{car.description || car.story}</p>
           </div>
         )}
 
@@ -847,6 +929,34 @@ export default function CarPage() {
           carId={car.id}
           authorId={user.id}
           onPostCreated={handlePostCreated}
+        />
+      )}
+
+      {/* Edit Car Modal */}
+      {showEditCar && car && (
+        <EditCarModal
+          car={{
+            id: car.id,
+            name: car.name || '',
+            make: car.brand || '',
+            model: car.model || '',
+            year: car.year || 0,
+            color: car.color || '',
+            power: car.power || 0,
+            engine: car.engine || '',
+            volume: car.volume || '',
+            gearbox: car.gearbox || '',
+            drive: car.drive || '',
+            description: car.description || car.story || '',
+            story: car.story || '',
+            images: photos || [],
+            isMainVehicle: car.is_main_vehicle || false,
+            isFormerCar: car.is_former || false
+          }}
+          isOpen={showEditCar}
+          onClose={() => setShowEditCar(false)}
+          onSave={handleSaveCar}
+          isSaving={isSavingCar}
         />
       )}
     </main>

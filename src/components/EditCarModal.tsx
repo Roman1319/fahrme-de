@@ -1,21 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { MyCar } from '@/lib/types';
 import ImageUpload from '@/components/ui/ImageUpload';
 import AutoCompleteInput from '@/components/ui/AutoCompleteInput';
-import { useCarData } from '@/hooks/useCarData';
+import { useSupabaseCarData } from '@/hooks/useSupabaseCarData';
 
 interface EditCarModalProps {
   car: MyCar;
   isOpen: boolean;
   onClose: () => void;
   onSave: (updatedCar: MyCar) => void;
+  isSaving?: boolean;
 }
 
-export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarModalProps) {
-  const { makes, getModels } = useCarData();
+export default function EditCarModal({ car, isOpen, onClose, onSave, isSaving = false }: EditCarModalProps) {
+  const { makes, getModels } = useSupabaseCarData();
   const [formData, setFormData] = useState({
     name: car.name || '',
     make: car.make || '',
@@ -27,11 +28,13 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
     volume: car.volume || '',
     gearbox: car.gearbox || '',
     drive: car.drive || '',
-    description: car.description || '',
-    story: car.story || ''
+    description: car.description || car.story || ''
   });
-  const [images, setImages] = useState<string[]>(car.images || []);
+  const [newImages, setNewImages] = useState<string[]>([]);
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>(car.images || []);
+  const [deletedImageUrls, setDeletedImageUrls] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
 
   // Генерируем опции для года
   const yearOptions = Array.from({ length: 125 }, (_, i) => {
@@ -39,8 +42,51 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
     return year.toString();
   });
 
-  // Получаем модели для выбранной марки
-  const filteredModels = formData.make ? getModels(formData.make) : [];
+  // Загружаем модели для выбранной марки
+  useEffect(() => {
+    const loadModels = async () => {
+      if (formData.make) {
+        try {
+          const models = await getModels(formData.make);
+          setAvailableModels(models);
+        } catch (error) {
+          console.error('Error loading models:', error);
+          setAvailableModels([]);
+        }
+      } else {
+        setAvailableModels([]);
+      }
+    };
+
+    loadModels();
+  }, [formData.make, getModels]);
+
+  // Опции для выпадающих списков
+  const engineOptions = [
+    'Benzin',
+    'Diesel', 
+    'Elektro',
+    'Hybrid'
+  ];
+
+  const volumeOptions = [
+    '1.0L', '1.2L', '1.4L', '1.5L', '1.6L', '1.8L', '2.0L', '2.2L', '2.5L', '2.7L', '3.0L', '3.2L', '3.5L', '4.0L', '4.2L', '4.4L', '5.0L', '6.0L', '6.2L'
+  ];
+
+  const gearboxOptions = [
+    'Automatik',
+    'Schaltgetriebe'
+  ];
+
+  const driveOptions = [
+    'Frontantrieb',
+    'Heckantrieb', 
+    'Allrad'
+  ];
+
+  const colorOptions = [
+    'Schwarz', 'Weiß', 'Silber', 'Grau', 'Blau', 'Rot', 'Grün', 'Gelb', 'Orange', 'Braun', 'Beige', 'Gold', 'Bronze'
+  ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,16 +110,23 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
       gearbox: formData.gearbox || undefined,
       drive: formData.drive || undefined,
       description: formData.description || undefined,
-      story: formData.story || undefined,
-      images: images
+      story: formData.description || undefined, // Сохраняем описание в оба поля для совместимости
+      images: [...existingImageUrls, ...newImages], // Объединяем существующие и новые изображения
+      deletedImages: deletedImageUrls // Передаем удаленные изображения
     };
 
     onSave(updatedCar);
     setIsSubmitting(false);
   };
 
-  const handleImageUpload = (newImages: string[]) => {
-    setImages(newImages);
+  const handleImageUpload = (images: string[]) => {
+    setNewImages(images);
+  };
+
+  const handleDeleteExistingImage = (index: number) => {
+    const imageToDelete = existingImageUrls[index];
+    setDeletedImageUrls(prev => [...prev, imageToDelete]);
+    setExistingImageUrls(prev => prev.filter((_, i) => i !== index));
   };
 
   if (!isOpen) return null;
@@ -111,7 +164,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
               <AutoCompleteInput
                 value={formData.model}
                 onChange={(value) => setFormData(prev => ({ ...prev, model: value }))}
-                options={filteredModels}
+                options={availableModels}
                 placeholder="z.B. 3er, A4, C-Klasse"
                 maxSuggestions={50}
               />
@@ -141,12 +194,12 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
 
             <div>
               <label className="form-label">Farbe</label>
-              <input
-                type="text"
+              <AutoCompleteInput
                 value={formData.color}
-                onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, color: value }))}
+                options={colorOptions}
                 placeholder="z.B. Schwarz, Weiß, Blau"
-                className="form-input"
+                maxSuggestions={20}
               />
             </div>
 
@@ -176,80 +229,99 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="form-label">Motor</label>
-              <input
-                type="text"
+              <AutoCompleteInput
                 value={formData.engine}
-                onChange={(e) => setFormData(prev => ({ ...prev, engine: e.target.value }))}
-                placeholder="z.B. 2.0 TDI, V6, Elektro"
-                className="form-input"
+                onChange={(value) => setFormData(prev => ({ ...prev, engine: value }))}
+                options={engineOptions}
+                placeholder="z.B. Benzin, Diesel, Elektro"
+                maxSuggestions={10}
               />
             </div>
 
             <div>
               <label className="form-label">Hubraum</label>
-              <input
-                type="text"
+              <AutoCompleteInput
                 value={formData.volume}
-                onChange={(e) => setFormData(prev => ({ ...prev, volume: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, volume: value }))}
+                options={volumeOptions}
                 placeholder="z.B. 2.0L, 3.0L"
-                className="form-input"
+                maxSuggestions={20}
               />
             </div>
 
             <div>
               <label className="form-label">Getriebe</label>
-              <input
-                type="text"
+              <AutoCompleteInput
                 value={formData.gearbox}
-                onChange={(e) => setFormData(prev => ({ ...prev, gearbox: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, gearbox: value }))}
+                options={gearboxOptions}
                 placeholder="z.B. Automatik, Schaltgetriebe"
-                className="form-input"
+                maxSuggestions={5}
               />
             </div>
 
             <div>
               <label className="form-label">Antrieb</label>
-              <input
-                type="text"
+              <AutoCompleteInput
                 value={formData.drive}
-                onChange={(e) => setFormData(prev => ({ ...prev, drive: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, drive: value }))}
+                options={driveOptions}
                 placeholder="z.B. Frontantrieb, Heckantrieb, Allrad"
-                className="form-input"
+                maxSuggestions={5}
               />
             </div>
           </div>
 
-          {/* Description and Story */}
-          <div className="space-y-4">
-            <div>
-              <label className="form-label">Beschreibung</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Kurze Beschreibung Ihres Autos..."
-                rows={3}
-                className="form-input"
-              />
-            </div>
-
-            <div>
-              <label className="form-label">Geschichte</label>
-              <textarea
-                value={formData.story}
-                onChange={(e) => setFormData(prev => ({ ...prev, story: e.target.value }))}
-                placeholder="Erzählen Sie die Geschichte Ihres Autos..."
-                rows={4}
-                className="form-input"
-              />
-            </div>
+          {/* Description */}
+          <div>
+            <label className="form-label">Beschreibung</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Erzählen Sie alles über Ihr Auto: Geschichte, особенности, впечатления от вождения..."
+              rows={8}
+              className="form-input resize-y"
+            />
           </div>
 
+
+          {/* Existing Photos */}
+          {existingImageUrls.length > 0 && (
+            <div>
+              <label className="form-label">Bestehende Fotos</label>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
+                {existingImageUrls.map((imageUrl, index) => (
+                  <div key={`existing-${index}`} className="relative group">
+                    <div className="aspect-video rounded-xl overflow-hidden bg-white/5">
+                      <img
+                        src={imageUrl}
+                        alt={`Existing photo ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteExistingImage(index)}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    >
+                      <X size={12} />
+                    </button>
+                    <div className="absolute bottom-1 left-1 right-1">
+                      <div className="bg-black/70 text-white text-xs px-2 py-1 rounded-lg text-center">
+                        Vorhanden {index + 1}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Photo Upload */}
           <div>
-            <label className="form-label">Fotos</label>
+            <label className="form-label">Neue Fotos hinzufügen</label>
             <ImageUpload
-              images={images}
+              images={newImages}
               onImagesChange={handleImageUpload}
               maxImages={10}
             />
@@ -266,10 +338,10 @@ export default function EditCarModal({ car, isOpen, onClose, onSave }: EditCarMo
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isSaving}
               className="btn-primary"
             >
-              {isSubmitting ? 'Speichern...' : 'Speichern'}
+              {isSubmitting || isSaving ? 'Speichern...' : 'Speichern'}
             </button>
           </div>
         </form>

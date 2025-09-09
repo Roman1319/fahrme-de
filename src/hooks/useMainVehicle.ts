@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MyCar } from '@/lib/types';
-import { STORAGE_KEYS } from '@/lib/keys';
 import { useAuth } from '@/components/AuthProvider';
+import { getMainVehicle } from '@/lib/cars';
 
 export function useMainVehicle() {
   const { user } = useAuth();
@@ -9,7 +9,7 @@ export function useMainVehicle() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadMainVehicle = () => {
+    const loadMainVehicle = async () => {
       if (!user) {
         setMainVehicle(null);
         setIsLoading(false);
@@ -17,13 +17,27 @@ export function useMainVehicle() {
       }
 
       try {
-        const savedCars = localStorage.getItem(STORAGE_KEYS.MY_CARS_KEY);
-        if (savedCars) {
-          const cars: MyCar[] = JSON.parse(savedCars);
-          // Фильтруем только автомобили текущего пользователя
-          const userCars = cars.filter(car => car.ownerId === user.id);
-          const main = userCars.find(car => car.isMainVehicle === true);
-          setMainVehicle(main || null);
+        setIsLoading(true);
+        const serverMainVehicle = await getMainVehicle(user.id);
+        
+        if (serverMainVehicle) {
+          // Convert server data to MyCar format
+          const mainVehicleData: MyCar = {
+            id: serverMainVehicle.id,
+            make: serverMainVehicle.brand,
+            model: serverMainVehicle.model,
+            year: serverMainVehicle.year,
+            images: [],
+            description: serverMainVehicle.description ?? '',
+            isMainVehicle: true,
+            isFormerCar: serverMainVehicle.is_former,
+            name: serverMainVehicle.name ?? '',
+            color: serverMainVehicle.color ?? '',
+            story: serverMainVehicle.story ?? '',
+            addedDate: serverMainVehicle.created_at,
+            ownerId: serverMainVehicle.owner_id
+          };
+          setMainVehicle(mainVehicleData);
         } else {
           setMainVehicle(null);
         }
@@ -37,23 +51,15 @@ export function useMainVehicle() {
 
     loadMainVehicle();
 
-    // Слушаем изменения в localStorage
-    const handleStorageChange = () => {
+    // Listen for main vehicle changes
+    const handleMainVehicleChange = () => {
       loadMainVehicle();
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Также слушаем изменения в том же окне
-    const handleCustomStorageChange = () => {
-      loadMainVehicle();
-    };
-
-    window.addEventListener('mainVehicleChanged', handleCustomStorageChange);
+    window.addEventListener('mainVehicleChanged', handleMainVehicleChange);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('mainVehicleChanged', handleCustomStorageChange);
+      window.removeEventListener('mainVehicleChanged', handleMainVehicleChange);
     };
   }, [user]);
 

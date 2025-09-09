@@ -141,18 +141,16 @@ export async function getExploreFeed(filters: FeedFilters = {}): Promise<FeedEnt
 export async function getCarBrands(): Promise<string[]> {
   try {
     const { data, error } = await supabase
-      .from('cars')
-      .select('brand')
-      .order('brand');
+      .from('brands')
+      .select('name')
+      .order('name');
 
     if (error) {
       console.error('Error fetching car brands:', error);
       throw error;
     }
 
-    // Get unique brands
-    const brands = [...new Set(data?.map(car => car.brand) || [])];
-    return brands;
+    return data?.map(brand => brand.name) || [];
   } catch (error) {
     console.error('Error in getCarBrands:', error);
     throw error;
@@ -162,12 +160,15 @@ export async function getCarBrands(): Promise<string[]> {
 export async function getCarModels(brand?: string): Promise<string[]> {
   try {
     let query = supabase
-      .from('cars')
-      .select('model')
-      .order('model');
+      .from('car_models')
+      .select('name')
+      .order('name');
 
     if (brand) {
-      query = query.eq('brand', brand);
+      query = query.eq('brands.name', brand).select(`
+        name,
+        brands!inner(name)
+      `);
     }
 
     const { data, error } = await query;
@@ -177,9 +178,7 @@ export async function getCarModels(brand?: string): Promise<string[]> {
       throw error;
     }
 
-    // Get unique models
-    const models = [...new Set(data?.map(car => car.model) || [])];
-    return models;
+    return data?.map(model => model.name) || [];
   } catch (error) {
     console.error('Error in getCarModels:', error);
     throw error;

@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import { useAuth } from './AuthProvider';
 
 export default function ClientHeader() {
-  const { user: _user } = useAuth();
+  const { user: _user, authReady, isLoading } = useAuth();
   const [_mounted, setMounted] = useState(false);
   const _pathname = usePathname();
 

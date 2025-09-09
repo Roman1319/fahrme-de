@@ -10,6 +10,8 @@ export const STORAGE_KEYS = {
   
   // User data
   MY_CARS_KEY: "fahrme:my-cars",
+  MAIN_VEHICLE_KEY: 'fahrme:mainVehicle',
+  LEGACY_MAIN_VEHICLE_KEY: 'mainVehicle',
   INTERACTIONS_KEY: "fahrme:interactions",
   LOGBOOK_LIKES_KEY: "fahrme:logbook-likes",
   

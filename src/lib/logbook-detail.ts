@@ -1,126 +1,104 @@
-// Logbook detail page utilities
+// Logbook detail page utilities - Supabase version
 import { LogbookEntry, Comment } from './types';
-// import { User } from '../services/auth/types'; // TODO: Use User if needed
+import { 
+  getLogbookEntry, 
+  updateLogbookEntry as updateLogbookEntryInSupabase, 
+  deleteLogbookEntry as deleteLogbookEntryInSupabase,
+  getComments as getCommentsFromSupabase,
+  createComment,
+  updateComment,
+  deleteComment as deleteCommentInSupabase,
+  toggleCommentLike,
+  hasLikedComment,
+  countCommentLikes,
+  togglePostLike,
+  hasLikedPost,
+  countPostLikes
+} from './logbook';
 
-// Like system for logbook entries
-import { STORAGE_KEYS } from './keys';
-
-const LIKES_KEY = STORAGE_KEYS.LOGBOOK_LIKES_KEY;
-
-export function hasUserLikedLogbookEntry(entryId: string, userId: string): boolean {
+// Like system for logbook entries - Supabase version
+export async function hasUserLikedLogbookEntry(entryId: string, userId: string): Promise<boolean> {
   try {
-    const likes = JSON.parse(localStorage.getItem(LIKES_KEY) || '{}');
-    return likes[entryId]?.includes(userId) || false;
-  } catch {
+    return await hasLikedPost(entryId, userId);
+  } catch (error) {
+    console.error('Error checking if user liked entry:', error);
     return false;
   }
 }
 
-export function toggleLogbookEntryLike(entryId: string, userId: string): boolean {
+export async function toggleLogbookEntryLike(entryId: string, userId: string): Promise<boolean> {
   try {
-    const likes = JSON.parse(localStorage.getItem(LIKES_KEY) || '{}');
-    if (!likes[entryId]) {
-      likes[entryId] = [];
-    }
-    
-    const userLiked = likes[entryId].includes(userId);
-    if (userLiked) {
-      likes[entryId] = likes[entryId].filter((id: string) => id !== userId);
-    } else {
-      likes[entryId].push(userId);
-    }
-    
-    localStorage.setItem(LIKES_KEY, JSON.stringify(likes));
-    return !userLiked;
-  } catch {
+    return await togglePostLike(entryId, userId);
+  } catch (error) {
+    console.error('Error toggling entry like:', error);
     return false;
   }
 }
 
-export function getLogbookEntryLikes(entryId: string): number {
+export async function getLogbookEntryLikes(entryId: string): Promise<number> {
   try {
-    const likes = JSON.parse(localStorage.getItem(LIKES_KEY) || '{}');
-    return likes[entryId]?.length || 0;
-  } catch {
+    return await countPostLikes(entryId);
+  } catch (error) {
+    console.error('Error getting entry likes count:', error);
     return 0;
   }
 }
 
-// Comment system for logbook entries
-export function getComments(entryId: string): Comment[] {
+// Comment system for logbook entries - Supabase version
+export async function getCommentsForEntry(entryId: string): Promise<Comment[]> {
   try {
-    const comments = JSON.parse(localStorage.getItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`) || '[]');
-    return comments.filter((comment: Comment) => !(comment as unknown as { deletedAt?: string }).deletedAt);
-  } catch {
+    return await getCommentsFromSupabase(entryId);
+  } catch (error) {
+    console.error('Error getting comments:', error);
     return [];
   }
 }
 
-export function addComment(entryId: string, comment: Omit<Comment, 'id' | 'createdAt' | 'likes' | 'replies'>): Comment {
-  const newComment: Comment = {
-    ...comment,
-    id: Date.now().toString(),
-    created_at: new Date().toISOString(),
-    // likes: [], // TODO: Add likes field to Comment type
-    // replies: [] // TODO: Add replies field to Comment type
-  };
-  
-  const comments = getComments(entryId);
-  comments.push(newComment);
-  localStorage.setItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`, JSON.stringify(comments));
-  
-  return newComment;
+export async function addCommentToEntry(
+  entryId: string, 
+  comment: Omit<Comment, 'id' | 'created_at' | 'updated_at' | 'author_id'>,
+  authorId: string
+): Promise<Comment> {
+  try {
+    return await createComment({
+      entry_id: entryId,
+      text: comment.text,
+      parent_id: comment.parent_id
+    }, authorId);
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    throw error;
+  }
 }
 
-export function editComment(entryId: string, commentId: string, newText: string): boolean {
+export async function editCommentInEntry(entryId: string, commentId: string, newText: string): Promise<boolean> {
   try {
-    const comments = getComments(entryId);
-    const comment = comments.find(c => c.id === commentId);
-    if (comment) {
-      comment.text = newText;
-      (comment as unknown as { editedAt?: string }).editedAt = new Date().toISOString();
-      localStorage.setItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`, JSON.stringify(comments));
-      return true;
-    }
-    return false;
-  } catch {
+    await updateComment({
+      id: commentId,
+      text: newText
+    });
+    return true;
+  } catch (error) {
+    console.error('Error editing comment:', error);
     return false;
   }
 }
 
-export function deleteComment(entryId: string, commentId: string): boolean {
+export async function deleteCommentFromEntry(entryId: string, commentId: string): Promise<boolean> {
   try {
-    const comments = getComments(entryId);
-    const comment = comments.find(c => c.id === commentId);
-    if (comment) {
-      (comment as unknown as { deletedAt?: string }).deletedAt = new Date().toISOString();
-      localStorage.setItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`, JSON.stringify(comments));
-      return true;
-    }
-    return false;
-  } catch {
+    await deleteCommentInSupabase(commentId);
+    return true;
+  } catch (error) {
+    console.error('Error deleting comment:', error);
     return false;
   }
 }
 
-export function likeComment(entryId: string, commentId: string, userId: string): boolean {
+export async function likeCommentInEntry(entryId: string, commentId: string, userId: string): Promise<boolean> {
   try {
-    const comments = getComments(entryId);
-    const comment = comments.find(c => c.id === commentId);
-    if (comment) {
-      const legacyComment = comment as unknown as { likes?: string[] };
-      const userLiked = legacyComment.likes?.includes(userId) || false;
-      if (userLiked) {
-        legacyComment.likes = legacyComment.likes?.filter((id: string) => id !== userId) || [];
-      } else {
-        if (!legacyComment.likes) legacyComment.likes = [];
-        legacyComment.likes.push(userId);
-      }
-      localStorage.setItem(`${STORAGE_KEYS.LOGBOOK_COMMENTS_PREFIX}${entryId}`, JSON.stringify(comments));
-      return !userLiked;
-    }
-    return false;
-  } catch {
+    return await toggleCommentLike(commentId, userId);
+  } catch (error) {
+    console.error('Error liking comment:', error);
     return false;
   }
 }
@@ -152,75 +130,35 @@ export function buildCommentTree(comments: Comment[]): Comment[] {
   return rootComments;
 }
 
-// Entry utilities
-export function getLogbookEntryById(entryId: string): LogbookEntry | null {
+// Entry utilities - Supabase version
+export async function getLogbookEntryById(entryId: string): Promise<LogbookEntry | null> {
   try {
-    // Search through all cars' logbooks
-    const savedCars = localStorage.getItem('fahrme:my-cars');
-    if (!savedCars) return null;
-
-    const cars = JSON.parse(savedCars);
-    
-    for (const car of cars) {
-      const logbookKey = `${STORAGE_KEYS.LOGBOOK_ENTRIES_PREFIX}${car.id}`;
-      const entries = JSON.parse(localStorage.getItem(logbookKey) || '[]');
-      const entry = entries.find((e: LogbookEntry) => e.id === entryId);
-      if (entry) {
-        return entry;
-      }
-    }
-    
-    return null;
-  } catch {
+    return await getLogbookEntry(entryId);
+  } catch (error) {
+    console.error('Error getting logbook entry:', error);
     return null;
   }
 }
 
-export function updateLogbookEntry(entryId: string, updates: Partial<LogbookEntry>): boolean {
+export async function updateLogbookEntryById(entryId: string, updates: Partial<LogbookEntry>): Promise<boolean> {
   try {
-    const savedCars = localStorage.getItem('fahrme:my-cars');
-    if (!savedCars) return false;
-
-    const cars = JSON.parse(savedCars);
-    
-    for (const car of cars) {
-      const logbookKey = `${STORAGE_KEYS.LOGBOOK_ENTRIES_PREFIX}${car.id}`;
-      const entries = JSON.parse(localStorage.getItem(logbookKey) || '[]');
-      const entryIndex = entries.findIndex((e: LogbookEntry) => e.id === entryId);
-      
-      if (entryIndex !== -1) {
-        entries[entryIndex] = { ...entries[entryIndex], ...updates };
-        localStorage.setItem(logbookKey, JSON.stringify(entries));
-        return true;
-      }
-    }
-    
-    return false;
-  } catch {
+    await updateLogbookEntryInSupabase({
+      id: entryId,
+      ...updates
+    });
+    return true;
+  } catch (error) {
+    console.error('Error updating logbook entry:', error);
     return false;
   }
 }
 
-export function deleteLogbookEntry(entryId: string): boolean {
+export async function deleteLogbookEntryById(entryId: string): Promise<boolean> {
   try {
-    const savedCars = localStorage.getItem('fahrme:my-cars');
-    if (!savedCars) return false;
-
-    const cars = JSON.parse(savedCars);
-    
-    for (const car of cars) {
-      const logbookKey = `${STORAGE_KEYS.LOGBOOK_ENTRIES_PREFIX}${car.id}`;
-      const entries = JSON.parse(localStorage.getItem(logbookKey) || '[]');
-      const filteredEntries = entries.filter((e: LogbookEntry) => e.id !== entryId);
-      
-      if (filteredEntries.length !== entries.length) {
-        localStorage.setItem(logbookKey, JSON.stringify(filteredEntries));
-        return true;
-      }
-    }
-    
-    return false;
-  } catch {
+    await deleteLogbookEntryInSupabase(entryId);
+    return true;
+  } catch (error) {
+    console.error('Error deleting logbook entry:', error);
     return false;
   }
 }
@@ -229,3 +167,13 @@ export function deleteLogbookEntry(entryId: string): boolean {
 export function isEntryOwner(entry: LogbookEntry, userId: string): boolean {
   return entry.author_id === userId;
 }
+
+// Backward compatibility functions (deprecated - use Supabase functions directly)
+export const getComments = getCommentsForEntry;
+export const addComment = addCommentToEntry;
+export const editComment = editCommentInEntry;
+export const deleteComment = deleteCommentFromEntry;
+export const likeComment = likeCommentInEntry;
+export const updateLogbookEntry = updateLogbookEntryById;
+export const deleteLogbookEntry = deleteLogbookEntryById;
+// Note: getLogbookEntryById is already exported above

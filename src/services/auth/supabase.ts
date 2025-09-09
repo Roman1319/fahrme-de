@@ -10,7 +10,7 @@ import {
   AuthStateChangeCallback 
 } from './types';
 import { supabase } from '@/lib/supabaseClient';
-// import { readProfile } from '@/lib/profile'; // TODO: Use readProfile if needed
+// Profile functionality moved to Supabase
 
 // AuthUser type for Supabase integration
 export type AuthUser = {
@@ -250,7 +250,8 @@ export class SupabaseAuthService implements AuthService {
       if (typeof window !== 'undefined') {
         try {
           // Очищаем только временные данные пользователя
-          localStorage.removeItem('mainVehicle');
+          localStorage.removeItem('mainVehicle'); // legacy
+          localStorage.removeItem('fahrme:mainVehicle'); // new
           localStorage.removeItem('userProfile');
           
           console.info('[supabase-auth] Temporary user data cleared from localStorage (cars preserved)');

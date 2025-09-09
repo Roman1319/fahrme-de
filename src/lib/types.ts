@@ -10,8 +10,14 @@ export interface Car {
   is_former: boolean;
   description?: string;
   story?: string;
+  power?: number;
+  engine?: string;
+  volume?: string;
+  gearbox?: string;
+  drive?: string;
   created_at: string;
   updated_at: string;
+  photos?: CarPhoto[];
 }
 
 export interface CarPhoto {
@@ -68,6 +74,17 @@ export interface LogbookEntry {
   publish_date: string;
   created_at: string;
   updated_at: string;
+  author?: {
+    name?: string;
+    handle?: string;
+    avatar_url?: string;
+  };
+  // Legacy fields for backward compatibility
+  carId?: string;
+  authorId?: string;
+  publishDate?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface LogbookMedia {
@@ -86,6 +103,11 @@ export interface Comment {
   text: string;
   created_at: string;
   updated_at: string;
+  author?: {
+    name?: string;
+    handle?: string;
+    avatar_url?: string;
+  };
 }
 
 export interface PostLike {

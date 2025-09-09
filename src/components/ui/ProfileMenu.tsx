@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import AvatarButton from '@/components/ui/AvatarButton';
-import { readProfile } from '@/lib/profile';
 import { useAuth } from '@/components/AuthProvider';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function ProfileMenu() {
   const { user, logout } = useAuth();
@@ -13,16 +13,33 @@ export default function ProfileMenu() {
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (user) {
-      // Use user data from AuthProvider
-      setName(user.name || user.email || 'User');
-      setAvatar(null); // Supabase doesn't have avatar in user object by default
-    } else {
-      // Fallback to profile data
-      const p = readProfile();
-      setAvatar(p?.avatarUrl ?? null);
-      setName(p?.displayName || (p as unknown as { name?: string; username?: string })?.name || (p as unknown as { name?: string; username?: string })?.username || null);
-    }
+    const loadProfile = async () => {
+      if (user) {
+        // Use user data from AuthProvider
+        setName(user.name || user.email || 'User');
+        
+        // Try to get profile data from Supabase
+        try {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('avatar_url, name, handle')
+            .eq('id', user.id)
+            .single();
+          
+          if (!error && profile) {
+            setAvatar(profile.avatar_url);
+            setName(profile.name || user.name || user.email || 'User');
+          }
+        } catch (error) {
+          console.error('Error loading profile:', error);
+        }
+      } else {
+        setAvatar(null);
+        setName(null);
+      }
+    };
+    
+    loadProfile();
   }, [user]);
 
   // Закрытие по клику вне
