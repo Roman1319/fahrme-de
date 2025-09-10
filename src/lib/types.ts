@@ -35,6 +35,10 @@ export interface Profile {
   handle?: string;
   avatar_url?: string;
   about?: string;
+  country?: string;
+  city?: string;
+  gender?: 'male' | 'female' | 'other';
+  birth_date?: string; // ISO date string
   created_at: string;
   updated_at: string;
 }
@@ -70,6 +74,7 @@ export interface LogbookEntry {
   author_id: string;
   title: string;
   content: string;
+  topic?: string;
   allow_comments: boolean;
   publish_date: string;
   created_at: string;

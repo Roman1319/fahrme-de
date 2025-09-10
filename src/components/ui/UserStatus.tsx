@@ -39,9 +39,9 @@ export default function UserStatus() {
           className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
         >
           <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium">
-            {user.name.charAt(0).toUpperCase()}
+            {user.name?.charAt(0).toUpperCase() || 'U'}
           </div>
-          <span className="hidden sm:block">{user.name}</span>
+          <span className="hidden sm:block">{user.name || 'User'}</span>
         </button>
 
         {/* Выпадающее меню */}
@@ -50,7 +50,7 @@ export default function UserStatus() {
             <div className="p-3 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
-                  {user.name.charAt(0).toUpperCase()}
+                  {user.name?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 <div>
                   <div className="font-medium text-gray-900 dark:text-white">

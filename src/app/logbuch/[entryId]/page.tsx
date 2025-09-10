@@ -9,14 +9,14 @@ import {
   getLogbookEntryById, 
   hasUserLikedLogbookEntry, 
   getLogbookEntryLikes,
-  getComments,
-  addComment,
-  editComment,
-  deleteComment,
-  likeComment,
-  deleteLogbookEntry,
+  getCommentsForEntry,
+  addCommentToEntry,
+  editCommentInEntry,
+  deleteCommentFromEntry,
+  likeCommentInEntry,
+  deleteLogbookEntryById,
   isEntryOwner
-} from '@/lib/logbook-detail';
+} from '@/lib/logbook-detail-supabase';
 import CommentsList from '@/components/ui/CommentsList';
 
 export default function LogbookEntryDetailPage() {
@@ -32,21 +32,40 @@ export default function LogbookEntryDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
-    loadEntry();
-    loadComments();
+    const loadData = () => {
+      Promise.all([
+        loadEntry(),
+        loadComments()
+      ]).catch(error => {
+        console.error('Error in loadData:', error);
+      });
+    };
+    loadData();
   }, [entryId]); // TODO: Add loadEntry, loadComments to deps when stable
 
   const loadEntry = () => {
-    const foundEntry = getLogbookEntryById(entryId);
-    if (foundEntry) {
-      setEntry(foundEntry);
-    }
-    setIsLoading(false);
+    getLogbookEntryById(entryId)
+        .then((foundEntry) => {
+          if (foundEntry) {
+            setEntry(foundEntry);
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
   };
 
   const loadComments = () => {
-    const entryComments = getComments(entryId);
-    setComments(entryComments);
+    getCommentsForEntry(entryId)
+        .then((entryComments) => {
+          setComments(entryComments);
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
   };
 
   const handleToggleLike = () => {
@@ -60,14 +79,11 @@ export default function LogbookEntryDetailPage() {
   const handleAddComment = (text: string) => {
     if (!entry || !user) return;
     
-    addComment(entryId, {
-      text,
-      author_id: user.id,
+    addCommentToEntry(entryId, {
       entry_id: entryId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      text,
       parent_id: undefined
-    });
+    }, user.id);
     
     loadComments();
   };
@@ -75,21 +91,21 @@ export default function LogbookEntryDetailPage() {
   const handleEditComment = (commentId: string, newText: string) => {
     if (!entry) return;
     
-    editComment(entryId, commentId, newText);
+    editCommentInEntry(entryId, commentId, newText);
     loadComments();
   };
 
   const handleDeleteComment = (commentId: string) => {
     if (!entry) return;
     
-    deleteComment(entryId, commentId);
+    deleteCommentFromEntry(entryId, commentId);
     loadComments();
   };
 
   const handleLikeComment = (commentId: string) => {
     if (!entry || !user) return;
     
-    likeComment(entryId, commentId, user.id);
+    likeCommentInEntry(entryId, commentId, user.id);
     loadComments();
   };
 
@@ -101,7 +117,7 @@ export default function LogbookEntryDetailPage() {
   const handleDeleteEntry = () => {
     if (!entry || !user || !isEntryOwner(entry, user.id)) return;
     
-    deleteLogbookEntry(entryId);
+    deleteLogbookEntryById(entryId);
     router.push('/');
   };
 

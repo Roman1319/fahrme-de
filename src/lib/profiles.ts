@@ -8,6 +8,10 @@ export interface UpdateProfileData {
   handle?: string;
   about?: string;
   avatar_url?: string;
+  country?: string;
+  city?: string;
+  gender?: 'male' | 'female' | 'other';
+  birth_date?: string;
 }
 
 export async function getProfile(userId: string): Promise<Profile | null> {
@@ -64,8 +68,10 @@ export async function uploadAvatar(userId: string, file: File): Promise<string> 
     const fileName = `${crypto.randomUUID()}.${fileExt}`;
     const filePath = `${userId}/${fileName}`;
 
+    console.log('Uploading avatar:', { userId, fileName, filePath, fileSize: file.size, fileType: file.type });
+
     // Upload to storage
-    const { error: uploadError } = await supabase.storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(filePath, file, {
         cacheControl: '3600',
@@ -74,15 +80,18 @@ export async function uploadAvatar(userId: string, file: File): Promise<string> 
 
     if (uploadError) {
       console.error('Error uploading avatar:', uploadError);
-      throw uploadError;
+      throw new Error(`Upload failed: ${uploadError.message}`);
     }
 
+    console.log('Upload successful:', uploadData);
+
     // Get public URL
-    const { data } = supabase.storage
+    const { data: urlData } = supabase.storage
       .from('avatars')
       .getPublicUrl(filePath);
 
-    return data.publicUrl;
+    console.log('Public URL generated:', urlData.publicUrl);
+    return urlData.publicUrl;
   } catch (error) {
     console.error('Error in uploadAvatar:', error);
     throw error;

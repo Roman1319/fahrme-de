@@ -19,20 +19,17 @@ export default function ProfileMenu() {
         setName(user.name || user.email || 'User');
         
         // Try to get profile data from Supabase
-        try {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('avatar_url, name, handle')
-            .eq('id', user.id)
-            .single();
-          
-          if (!error && profile) {
-            setAvatar(profile.avatar_url);
-            setName(profile.name || user.name || user.email || 'User');
-          }
-        } catch (error) {
-          console.error('Error loading profile:', error);
-        }
+        supabase
+          .from('profiles')
+          .select('avatar_url, name, handle')
+          .eq('id', user.id)
+          .single()
+          .then(({ data: profile, error }) => {
+            if (!error && profile) {
+              setAvatar(profile.avatar_url);
+              setName(profile.name || user.name || user.email || 'User');
+            }
+          });
       } else {
         setAvatar(null);
         setName(null);
@@ -41,6 +38,57 @@ export default function ProfileMenu() {
     
     loadProfile();
   }, [user]);
+
+  // Listen for profile changes
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Profile updated:', payload);
+          const newProfile = payload.new as { avatar_url?: string; name?: string };
+          if (newProfile.avatar_url) {
+            setAvatar(newProfile.avatar_url);
+          }
+          if (newProfile.name) {
+            setName(newProfile.name);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  // Listen for profile update events
+  useEffect(() => {
+    const handleProfileUpdate = (event: CustomEvent) => {
+      console.log('Profile update event received:', event.detail);
+      if (event.detail.avatar_url) {
+        setAvatar(event.detail.avatar_url);
+      }
+      if (event.detail.name) {
+        setName(event.detail.name);
+      }
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate as EventListener);
+    };
+  }, []);
 
   // Закрытие по клику вне
   useEffect(() => {
@@ -94,8 +142,13 @@ export default function ProfileMenu() {
             onClick={async () => {
               try {
                 console.log('[profile-menu] Logging out...');
-                await logout();
-                console.log('[profile-menu] Logout successful');
+                logout()
+        .then(() => {
+          console.log('[profile-menu] Logout successful');
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
               } catch (error) {
                 console.error('[profile-menu] Logout error:', error);
                 // Fallback: force redirect

@@ -3,28 +3,34 @@
 import { useState } from 'react';
 import { uploadCarPhoto } from '@/lib/storage';
 import { addCarPhoto } from '@/lib/cars';
+import { CarPhoto } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
 
-export function CarPhotoUploader({ carId, onAdded }: { carId: string; onAdded?: (photo: any)=>void }) {
+export function CarPhotoUploader({ carId, onAdded }: { carId: string; onAdded?: (photo: CarPhoto)=>void }) {
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
     setBusy(true); setErr(null);
-    try {
-      const { storagePath, publicUrl } = await uploadCarPhoto(file, carId, user.id);
-      const row = await addCarPhoto({ carId, userId: user.id, url: publicUrl, storagePath, isCover: false });
-      onAdded?.(row);
-    } catch (e: any) {
-      console.error('Upload error:', e);
-      setErr(e?.message ?? 'Upload failed');
-    } finally {
-      setBusy(false);
-      e.target.value = '';
-    }
+    
+    uploadCarPhoto(file, carId, user.id)
+      .then(({ storagePath, publicUrl }) => {
+        return addCarPhoto({ carId, userId: user.id, url: publicUrl, storagePath, isCover: false });
+      })
+      .then(row => {
+        onAdded?.(row);
+      })
+      .catch((e: unknown) => {
+        console.error('Upload error:', e);
+        setErr((e as Error)?.message ?? 'Upload failed');
+      })
+      .finally(() => {
+        setBusy(false);
+        e.target.value = '';
+      });
   }
 
   return (

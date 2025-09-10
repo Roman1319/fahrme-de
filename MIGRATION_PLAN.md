@@ -37,6 +37,7 @@ ADD COLUMN IF NOT EXISTS drive TEXT;
 CREATE TABLE IF NOT EXISTS comment_likes (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   comment_id UUID REFERENCES comments(id) ON DELETE CASCADE NOT NULL,
+  
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   PRIMARY KEY (user_id, comment_id)
 );

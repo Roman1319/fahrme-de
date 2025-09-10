@@ -9,8 +9,8 @@ interface AdminStats {
   totalCars: number;
   totalPhotos: number;
   totalLogbookEntries: number;
-  recentUsers: any[];
-  recentCars: any[];
+  recentUsers: Record<string, unknown>[];
+  recentCars: Record<string, unknown>[];
 }
 
 export default function AdminDashboard() {
@@ -146,11 +146,11 @@ export default function AdminDashboard() {
           </h3>
           <div className="space-y-6">
             {stats?.recentUsers.map((user) => (
-              <div key={user.id} className="flex items-center justify-between py-6 px-6 bg-[#0A0A0A] rounded-xl border border-[#333] hover:border-[#444] transition-colors">
+              <div key={(user as { id: string }).id} className="flex items-center justify-between py-6 px-6 bg-[#0A0A0A] rounded-xl border border-[#333] hover:border-[#444] transition-colors">
                 <div>
-                  <p className="font-medium text-xl">{user.email}</p>
+                  <p className="font-medium text-xl">{(user as { email: string }).email}</p>
                   <p className="text-base text-gray-400">
-                    {new Date(user.created_at).toLocaleDateString('ru-RU')}
+                    {new Date((user as { created_at: string }).created_at).toLocaleDateString('ru-RU')}
                   </p>
                 </div>
               </div>
@@ -166,11 +166,11 @@ export default function AdminDashboard() {
           </h3>
           <div className="space-y-6">
             {stats?.recentCars.map((car) => (
-              <div key={car.id} className="flex items-center justify-between py-6 px-6 bg-[#0A0A0A] rounded-xl border border-[#333] hover:border-[#444] transition-colors">
+              <div key={(car as { id: string }).id} className="flex items-center justify-between py-6 px-6 bg-[#0A0A0A] rounded-xl border border-[#333] hover:border-[#444] transition-colors">
                 <div>
-                  <p className="font-medium text-xl">{car.brand} {car.model}</p>
+                  <p className="font-medium text-xl">{(car as { brand: string; model: string }).brand} {(car as { brand: string; model: string }).model}</p>
                   <p className="text-base text-gray-400">
-                    {car.year} • {new Date(car.created_at).toLocaleDateString('ru-RU')}
+                    {(car as { year: number }).year} • {new Date((car as { created_at: string }).created_at).toLocaleDateString('ru-RU')}
                   </p>
                 </div>
               </div>

@@ -23,6 +23,7 @@ import {
 } from '@/lib/logbook';
 import { getCar } from '@/lib/cars';
 import { getProfile } from '@/lib/profiles';
+import { getTopicLabel, getTopicIcon, getTopicColor } from '@/lib/logbook-topics';
 import { LogbookEntry, LogbookMedia, Comment, Car as CarType, Profile } from '@/lib/types';
 
 export default function PostPage() {
@@ -49,124 +50,103 @@ export default function PostPage() {
   const [uploadingMedia, setUploadingMedia] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!entryId) return;
-      
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        // Fetch entry
-        const fetchedEntry = await getLogbookEntry(entryId);
+    if (!entryId) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    getLogbookEntry(entryId)
+      .then(async (fetchedEntry) => {
         if (!fetchedEntry) {
           setError('Post not found');
           return;
         }
         setEntry(fetchedEntry);
 
-        // Fetch car
-        const fetchedCar = await getCar(fetchedEntry.car_id);
-        setCar(fetchedCar);
+        // Fetch all data in parallel
+        Promise.all([
+          getCar(fetchedEntry.car_id),
+          getProfile(fetchedEntry.author_id),
+          listMedia(entryId),
+          listComments(entryId)
+        ]).then(([fetchedCar, fetchedAuthor, fetchedMedia, fetchedComments]) => {
 
-        // Fetch author
-        const fetchedAuthor = await getProfile(fetchedEntry.author_id);
-        setAuthor(fetchedAuthor);
+          setCar(fetchedCar);
+          setAuthor(fetchedAuthor);
+          setMedia(fetchedMedia);
+          setComments(fetchedComments);
+          setCommentCount(fetchedComments.length);
 
-        // Fetch media
-        const fetchedMedia = await listMedia(entryId);
-        setMedia(fetchedMedia);
-
-        // Fetch comments
-        const fetchedComments = await listComments(entryId);
-        setComments(fetchedComments);
-        setCommentCount(fetchedComments.length);
-
-        // Fetch like status and count
-        if (user) {
-          const liked = await hasLikedPost(entryId, user.id);
-          setIsLiked(liked);
-        }
-        const likes = await countPostLikes(entryId);
-        setLikeCount(likes);
-
-      } catch (err) {
+          // Fetch like status and count (temporarily disabled)
+          if (user) {
+            setIsLiked(false);
+          }
+          setLikeCount(0);
+        });
+      })
+      .catch(err => {
         console.error('Error loading post data:', err);
         setError('Failed to load post');
-      } finally {
+      })
+      .finally(() => {
         setIsLoading(false);
-      }
-    };
-
-    fetchData();
+      });
   }, [entryId, user]);
 
-  const handleLike = async () => {
+  const handleLike = () => {
     if (!user || !entry) return;
 
-    try {
-      const newLiked = !isLiked;
-      setIsLiked(newLiked);
-      setLikeCount(prev => newLiked ? prev + 1 : prev - 1);
-
-      if (newLiked) {
-        await likePost(entryId, user.id);
-      } else {
-        await unlikePost(entryId, user.id);
-      }
-    } catch (error) {
-      console.error('Error toggling like:', error);
-      // Revert optimistic update
-      setIsLiked(!isLiked);
-      setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
-    }
+    // Временно отключено из-за проблем с post_likes таблицей
+    console.log('Like functionality temporarily disabled');
   };
 
-  const handleAddComment = async () => {
+  const handleAddComment = () => {
     if (!user || !entry || !newComment.trim()) return;
 
-    try {
-      const comment = await addComment({
-        entry_id: entryId,
-        text: newComment.trim()
-      }, user.id);
-
-      setComments(prev => [...prev, comment]);
-      setCommentCount(prev => prev + 1);
-      setNewComment('');
-      setShowCommentForm(false);
-    } catch (error) {
-      console.error('Error adding comment:', error);
-    }
+    addComment({
+      entry_id: entryId,
+      text: newComment.trim()
+    }, user.id)
+      .then(comment => {
+        setComments(prev => [...prev, comment]);
+        setCommentCount(prev => prev + 1);
+        setNewComment('');
+        setShowCommentForm(false);
+      })
+      .catch(error => {
+        console.error('Error adding comment:', error);
+      });
   };
 
-  const handleEditComment = async (commentId: string) => {
+  const handleEditComment = (commentId: string) => {
     if (!editingCommentText.trim()) return;
 
-    try {
-      const updatedComment = await updateComment({
-        id: commentId,
-        text: editingCommentText.trim()
+    updateComment({
+      id: commentId,
+      text: editingCommentText.trim()
+    })
+      .then(updatedComment => {
+        setComments(prev => prev.map(c => c.id === commentId ? updatedComment : c));
+        setEditingComment(null);
+        setEditingCommentText('');
+      })
+      .catch(error => {
+        console.error('Error updating comment:', error);
       });
-
-      setComments(prev => prev.map(c => c.id === commentId ? updatedComment : c));
-      setEditingComment(null);
-      setEditingCommentText('');
-    } catch (error) {
-      console.error('Error updating comment:', error);
-    }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    try {
-      await deleteComment(commentId);
-      setComments(prev => prev.filter(c => c.id !== commentId));
-      setCommentCount(prev => prev - 1);
-    } catch (error) {
-      console.error('Error deleting comment:', error);
-    }
+  const handleDeleteComment = (commentId: string) => {
+    deleteComment(commentId)
+      .then(() => {
+        setComments(prev => prev.filter(c => c.id !== commentId));
+        setCommentCount(prev => prev - 1);
+      })
+      .catch(error => {
+        console.error('Error deleting comment:', error);
+      });
   };
 
-  // const handleLikeComment = async (commentId: string) => {
+  // const handleLikeComment = (commentId: string) => {
   //   if (!user) return;
 
   //   try {
@@ -177,41 +157,45 @@ export default function PostPage() {
   //   }
   // }; // TODO: Use handleLikeComment if needed
 
-  const handleMediaUpload = async (files: FileList) => {
+  const handleMediaUpload = (files: FileList) => {
     if (!user || !entry || uploadingMedia) return;
 
     setUploadingMedia(true);
-    try {
-      const fileArray = Array.from(files);
-      const uploadedMedia = await addMedia(entryId, fileArray, user.id);
-      setMedia(prev => [...prev, ...uploadedMedia]);
-      setShowMediaUpload(false);
-    } catch (error) {
-      console.error('Error uploading media:', error);
-    } finally {
-      setUploadingMedia(false);
-    }
+    const fileArray = Array.from(files);
+    addMedia(entryId, fileArray, user.id)
+      .then(uploadedMedia => {
+        setMedia(prev => [...prev, ...uploadedMedia]);
+        setShowMediaUpload(false);
+      })
+      .catch(error => {
+        console.error('Error uploading media:', error);
+      })
+      .finally(() => {
+        setUploadingMedia(false);
+      });
   };
 
-  const handleDeleteMedia = async (mediaId: string) => {
-    try {
-      await deleteLogbookMedia(mediaId);
-      setMedia(prev => prev.filter(m => m.id !== mediaId));
-    } catch (error) {
-      console.error('Error deleting media:', error);
-    }
+  const handleDeleteMedia = (mediaId: string) => {
+    deleteLogbookMedia(mediaId)
+      .then(() => {
+        setMedia(prev => prev.filter(m => m.id !== mediaId));
+      })
+      .catch(error => {
+        console.error('Error deleting media:', error);
+      });
   };
 
-  const handleDeletePost = async () => {
+  const handleDeletePost = () => {
     if (!entry || !user || entry.author_id !== user.id) return;
 
     if (confirm('Are you sure you want to delete this post?')) {
-      try {
-        await deleteLogbookEntry(entryId);
-        router.push(`/car/${entry.car_id}`);
-      } catch (error) {
-        console.error('Error deleting post:', error);
-      }
+      deleteLogbookEntry(entryId)
+        .then(() => {
+          router.push(`/car/${entry.car_id}`);
+        })
+        .catch(error => {
+          console.error('Error deleting post:', error);
+        });
     }
   };
 
@@ -273,6 +257,15 @@ export default function PostPage() {
                   <span>{car.brand} {car.model} ({car.year})</span>
                   <span>•</span>
                   <span>{new Date(entry.publish_date).toLocaleDateString()}</span>
+                  {entry.topic && (
+                    <>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <span>{getTopicIcon(entry.topic)}</span>
+                        <span>{getTopicLabel(entry.topic)}</span>
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

@@ -2,12 +2,12 @@
 import { LogbookEntry, Comment } from './types';
 import { 
   getLogbookEntry, 
-  updateLogbookEntry, 
-  deleteLogbookEntry,
-  getComments,
+  updateLogbookEntry as updateLogbookEntryOriginal, 
+  deleteLogbookEntry as deleteLogbookEntryOriginal,
+  getComments as getCommentsOriginal,
   createComment,
   updateComment,
-  deleteComment,
+  deleteComment as deleteCommentOriginal,
   toggleCommentLike,
   hasLikedComment,
   countCommentLikes,
@@ -47,7 +47,7 @@ export async function getLogbookEntryLikes(entryId: string): Promise<number> {
 // Comment system for logbook entries - Supabase version
 export async function getCommentsForEntry(entryId: string): Promise<Comment[]> {
   try {
-    return await getComments(entryId);
+    return await getCommentsOriginal(entryId);
   } catch (error) {
     console.error('Error getting comments:', error);
     return [];
@@ -86,7 +86,7 @@ export async function editCommentInEntry(entryId: string, commentId: string, new
 
 export async function deleteCommentFromEntry(entryId: string, commentId: string): Promise<boolean> {
   try {
-    await deleteComment(commentId);
+    await deleteCommentOriginal(commentId);
     return true;
   } catch (error) {
     console.error('Error deleting comment:', error);
@@ -142,7 +142,7 @@ export async function getLogbookEntryById(entryId: string): Promise<LogbookEntry
 
 export async function updateLogbookEntryById(entryId: string, updates: Partial<LogbookEntry>): Promise<boolean> {
   try {
-    await updateLogbookEntry({
+    await updateLogbookEntryOriginal({
       id: entryId,
       ...updates
     });
@@ -155,7 +155,7 @@ export async function updateLogbookEntryById(entryId: string, updates: Partial<L
 
 export async function deleteLogbookEntryById(entryId: string): Promise<boolean> {
   try {
-    await deleteLogbookEntry(entryId);
+    await deleteLogbookEntryOriginal(entryId);
     return true;
   } catch (error) {
     console.error('Error deleting logbook entry:', error);
@@ -174,6 +174,6 @@ export const addComment = addCommentToEntry;
 export const editComment = editCommentInEntry;
 export const deleteComment = deleteCommentFromEntry;
 export const likeComment = likeCommentInEntry;
-export const getLogbookEntryById = getLogbookEntryById;
+// export const getLogbookEntryById = getLogbookEntryById; // Already exported above
 export const updateLogbookEntry = updateLogbookEntryById;
 export const deleteLogbookEntry = deleteLogbookEntryById;

@@ -44,15 +44,16 @@ export default function EditCarModal({ car, isOpen, onClose, onSave, isSaving = 
 
   // Загружаем модели для выбранной марки
   useEffect(() => {
-    const loadModels = async () => {
+    const loadModels = () => {
       if (formData.make) {
-        try {
-          const models = await getModels(formData.make);
-          setAvailableModels(models);
-        } catch (error) {
-          console.error('Error loading models:', error);
-          setAvailableModels([]);
-        }
+        getModels(formData.make)
+          .then(models => {
+            setAvailableModels(models);
+          })
+          .catch(error => {
+            console.error('Error loading models:', error);
+            setAvailableModels([]);
+          });
       } else {
         setAvailableModels([]);
       }
@@ -111,8 +112,7 @@ export default function EditCarModal({ car, isOpen, onClose, onSave, isSaving = 
       drive: formData.drive || undefined,
       description: formData.description || undefined,
       story: formData.description || undefined, // Сохраняем описание в оба поля для совместимости
-      images: [...existingImageUrls, ...newImages], // Объединяем существующие и новые изображения
-      deletedImages: deletedImageUrls // Передаем удаленные изображения
+      images: [...existingImageUrls, ...newImages] // Объединяем существующие и новые изображения
     };
 
     onSave(updatedCar);

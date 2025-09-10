@@ -8,7 +8,7 @@ type Props = React.HTMLAttributes<HTMLButtonElement> & {
 
 export default function IconCircle({ size = 36, asDiv, className = '', ...rest }: Props) {
   const cls =
-    'icon-btn inline-flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/40 ' +
+    'icon-btn inline-flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/40 relative ' +
     className;
 
   const style = { 

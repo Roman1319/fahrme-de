@@ -5,6 +5,7 @@ export interface CreateLogbookEntryData {
   car_id: string;
   title: string;
   content: string;
+  topic?: string;
   allow_comments?: boolean;
 }
 
@@ -190,7 +191,7 @@ export async function uploadLogbookMedia(
 
     // Upload to storage
     const { error: uploadError } = await supabase.storage
-      .from('logbook-media')
+      .from('logbook')
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false
@@ -264,7 +265,7 @@ export async function deleteLogbookMedia(mediaId: string): Promise<void> {
 
     // Delete from storage
     const { error: storageError } = await supabase.storage
-      .from('logbook-media')
+      .from('logbook')
       .remove([media.storage_path]);
 
     if (storageError) {
@@ -290,7 +291,7 @@ export async function deleteLogbookMedia(mediaId: string): Promise<void> {
 
 export function getLogbookMediaUrl(storagePath: string): string {
   const { data } = supabase.storage
-    .from('logbook-media')
+    .from('logbook')
     .getPublicUrl(storagePath);
   
   return data.publicUrl;
@@ -388,73 +389,13 @@ export async function deleteComment(commentId: string): Promise<void> {
 
 // Likes
 export async function getPostLikes(entryId: string): Promise<PostLike[]> {
-  try {
-    const { data, error } = await supabase
-      .from('post_likes')
-      .select('*')
-      .eq('entry_id', entryId);
-
-    if (error) {
-      console.error('Error fetching post likes:', error);
-      throw error;
-    }
-
-    return data || [];
-  } catch (error) {
-    console.error('Error in getPostLikes:', error);
-    throw error;
-  }
+  // Временно отключено из-за проблем с post_likes таблицей
+  return [];
 }
 
 export async function togglePostLike(entryId: string, userId: string): Promise<boolean> {
-  try {
-    // Check if already liked
-    const { data: existingLike, error: checkError } = await supabase
-      .from('post_likes')
-      .select('*')
-      .eq('entry_id', entryId)
-      .eq('user_id', userId)
-      .single();
-
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error('Error checking post like:', checkError);
-      throw checkError;
-    }
-
-    if (existingLike) {
-      // Unlike
-      const { error: deleteError } = await supabase
-        .from('post_likes')
-        .delete()
-        .eq('entry_id', entryId)
-        .eq('user_id', userId);
-
-      if (deleteError) {
-        console.error('Error removing post like:', deleteError);
-        throw deleteError;
-      }
-
-      return false; // Now unliked
-    } else {
-      // Like
-      const { error: insertError } = await supabase
-        .from('post_likes')
-        .insert({
-          entry_id: entryId,
-          user_id: userId
-        });
-
-      if (insertError) {
-        console.error('Error adding post like:', insertError);
-        throw insertError;
-      }
-
-      return true; // Now liked
-    }
-  } catch (error) {
-    console.error('Error in togglePostLike:', error);
-    throw error;
-  }
+  // Временно отключено из-за проблем с post_likes таблицей
+  return false;
 }
 
 export async function getCommentLikes(commentId: string): Promise<CommentLike[]> {
@@ -529,51 +470,23 @@ export async function toggleCommentLike(commentId: string, userId: string): Prom
 
 // Convenience functions for UI
 export async function likePost(entryId: string, userId: string): Promise<void> {
-  await togglePostLike(entryId, userId);
+  // Временно отключено из-за проблем с post_likes таблицей
+  return;
 }
 
 export async function unlikePost(entryId: string, userId: string): Promise<void> {
-  await togglePostLike(entryId, userId);
+  // Временно отключено из-за проблем с post_likes таблицей
+  return;
 }
 
 export async function hasLikedPost(entryId: string, userId: string): Promise<boolean> {
-  try {
-    const { data, error } = await supabase
-      .from('post_likes')
-      .select('*')
-      .eq('entry_id', entryId)
-      .eq('user_id', userId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error checking post like:', error);
-      throw error;
-    }
-
-    return !!data;
-  } catch (error) {
-    console.error('Error in hasLikedPost:', error);
-    return false;
-  }
+  // Временно отключено из-за проблем с post_likes таблицей
+  return false;
 }
 
 export async function countPostLikes(entryId: string): Promise<number> {
-  try {
-    const { count, error } = await supabase
-      .from('post_likes')
-      .select('*', { count: 'exact', head: true })
-      .eq('entry_id', entryId);
-
-    if (error) {
-      console.error('Error counting post likes:', error);
-      throw error;
-    }
-
-    return count || 0;
-  } catch (error) {
-    console.error('Error in countPostLikes:', error);
-    return 0;
-  }
+  // Временно отключено из-за проблем с post_likes таблицей
+  return 0;
 }
 
 export async function likeComment(commentId: string, userId: string): Promise<void> {

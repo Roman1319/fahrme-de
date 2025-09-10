@@ -104,7 +104,7 @@ export default function CommentsSection({
         <form onSubmit={handleSubmitComment} className="mb-8">
           <div className="flex gap-3">
             <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-white font-semibold">
-              {user.name.charAt(0).toUpperCase()}
+              {user.name?.charAt(0).toUpperCase() || 'U'}
             </div>
             <div className="flex-1">
               <textarea
@@ -240,7 +240,7 @@ export default function CommentsSection({
                 <div className="mt-3 ml-4">
                   <div className="flex gap-3">
                     <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white font-semibold text-sm">
-                      {user?.name.charAt(0).toUpperCase()}
+                      {user?.name?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <div className="flex-1">
                       <textarea

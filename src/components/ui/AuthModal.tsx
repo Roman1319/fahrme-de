@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
-import type { RegisterCredentials, LoginCredentials } from '@/services/auth';
+// import type { RegisterCredentials, LoginCredentials } from '@/services/auth/supabase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -49,57 +49,59 @@ export default function AuthModal({
     }
   }, [isOpen, initialMode, mounted]);
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleSignUp = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    try {
-      const credentials: RegisterCredentials = {
-        name: signUpForm.name,
-        email: signUpForm.email,
-        password: signUpForm.password
-      };
+    const credentials = {
+      name: signUpForm.name,
+      email: signUpForm.email,
+      password: signUpForm.password
+    };
 
-      const error = await register(credentials.name, credentials.email, credentials.password);
-      
-      if (!error) {
-        onSuccess?.();
-        onClose();
-      } else {
-        setError(error);
-      }
-    } catch {
-      setError('Unerwarteter Fehler');
-    } finally {
-      setIsLoading(false);
-    }
+    register(credentials.name, credentials.email, credentials.password)
+      .then((error) => {
+        if (!error) {
+          onSuccess?.();
+          onClose();
+        } else {
+          setError(error);
+        }
+      })
+      .catch(() => {
+        setError('Unerwarteter Fehler');
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    try {
-      const credentials: LoginCredentials = {
-        email: signInForm.email,
-        password: signInForm.password
-      };
+    const credentials = {
+      email: signInForm.email,
+      password: signInForm.password
+    };
 
-      const error = await login(credentials.email, credentials.password);
-      
-      if (!error) {
-        onSuccess?.();
-        onClose();
-      } else {
-        setError(error);
-      }
-    } catch {
-      setError('Unerwarteter Fehler');
-    } finally {
-      setIsLoading(false);
-    }
+    login(credentials.email, credentials.password)
+      .then((error) => {
+        if (!error) {
+          onSuccess?.();
+          onClose();
+        } else {
+          setError(error);
+        }
+      })
+      .catch(() => {
+        setError('Unerwarteter Fehler');
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
 

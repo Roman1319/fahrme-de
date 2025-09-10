@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Eye, Filter } from 'lucide-react';
 import { FeedEntry, getExploreFeed, getCarBrands, getYearRange } from '@/lib/feed';
+import { LOGBOOK_TOPICS, getTopicLabel, getTopicIcon } from '@/lib/logbook-topics';
 import { FeedFilters } from '@/lib/feed';
 
 export default function ExplorePage() {
@@ -95,7 +96,7 @@ export default function ExplorePage() {
           {/* Filters */}
           {showFilters && (
             <div className="bg-white/5 rounded-lg p-4 space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-4">
                 <div>
                   <label className="form-label">Marke</label>
                   <select
@@ -120,6 +121,21 @@ export default function ExplorePage() {
                     <option value="">Alle Modelle</option>
                     {models.map(model => (
                       <option key={model} value={model}>{model}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Thema</label>
+                  <select
+                    value={filters.topic || ''}
+                    onChange={(e) => handleFilterChange({ topic: e.target.value || undefined })}
+                    className="form-input"
+                  >
+                    <option value="">Alle Themen</option>
+                    {LOGBOOK_TOPICS.map(topic => (
+                      <option key={topic.value} value={topic.value}>
+                        {topic.icon} {topic.label}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -190,6 +206,15 @@ export default function ExplorePage() {
                       <span className="font-semibold text-sm">@{entry.author_handle}</span>
                       <span className="text-xs opacity-70">•</span>
                       <span className="text-xs opacity-70">{entry.car_brand} {entry.car_model} ({entry.car_year})</span>
+                      {entry.topic && (
+                        <>
+                          <span className="text-xs opacity-70">•</span>
+                          <span className="text-xs opacity-70 flex items-center gap-1">
+                            <span>{getTopicIcon(entry.topic)}</span>
+                            <span>{getTopicLabel(entry.topic)}</span>
+                          </span>
+                        </>
+                      )}
                       <span className="text-xs opacity-70">•</span>
                       <span className="text-xs opacity-70">{formatTimeAgo(entry.publish_date)}</span>
                     </div>

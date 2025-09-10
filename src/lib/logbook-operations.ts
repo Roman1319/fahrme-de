@@ -42,10 +42,7 @@ export async function getLogbookEntry(entryId: string): Promise<LogbookEntry | n
   try {
     const { data, error } = await supabase
       .from('logbook_entries')
-      .select(`
-        *,
-        author:profiles!logbook_entries_author_id_fkey(name, handle, avatar_url)
-      `)
+      .select('*')
       .eq('id', entryId)
       .single();
 
@@ -57,7 +54,24 @@ export async function getLogbookEntry(entryId: string): Promise<LogbookEntry | n
       return null;
     }
 
-    return data;
+    // Batch load author profile
+    let author = undefined;
+    if (data.author_id) {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('name, handle, avatar_url')
+        .eq('id', data.author_id)
+        .single();
+
+      if (!profileError && profile) {
+        author = profile;
+      }
+    }
+
+    return {
+      ...data,
+      author
+    };
   } catch (error) {
     console.error('Error in getLogbookEntry:', error);
     return null;
@@ -65,85 +79,16 @@ export async function getLogbookEntry(entryId: string): Promise<LogbookEntry | n
 }
 
 export async function toggleLogbookEntryLike(entryId: string, userId: string): Promise<boolean> {
-  try {
-    // Check if already liked
-    const { data: existing } = await supabase
-      .from('post_likes')
-      .select('id')
-      .eq('entry_id', entryId)
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (existing) {
-      // Unlike
-      const { error } = await supabase
-        .from('post_likes')
-        .delete()
-        .eq('entry_id', entryId)
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('Error unliking entry:', error);
-        return false;
-      }
-    } else {
-      // Like
-      const { error } = await supabase
-        .from('post_likes')
-        .insert({
-          entry_id: entryId,
-          user_id: userId
-        });
-
-      if (error) {
-        console.error('Error liking entry:', error);
-        return false;
-      }
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error in toggleLogbookEntryLike:', error);
-    return false;
-  }
+  // Временно отключено из-за проблем с post_likes таблицей
+  return false;
 }
 
 export async function getLogbookEntryLikes(entryId: string): Promise<number> {
-  try {
-    const { count, error } = await supabase
-      .from('post_likes')
-      .select('*', { count: 'exact', head: true })
-      .eq('entry_id', entryId);
-
-    if (error) {
-      console.error('Error getting entry likes:', error);
-      return 0;
-    }
-
-    return count || 0;
-  } catch (error) {
-    console.error('Error in getLogbookEntryLikes:', error);
-    return 0;
-  }
+  // Временно отключено из-за проблем с post_likes таблицей
+  return 0;
 }
 
 export async function hasUserLikedLogbookEntry(entryId: string, userId: string): Promise<boolean> {
-  try {
-    const { data, error } = await supabase
-      .from('post_likes')
-      .select('id')
-      .eq('entry_id', entryId)
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error checking entry like:', error);
-      return false;
-    }
-
-    return !!data;
-  } catch (error) {
-    console.error('Error in hasUserLikedLogbookEntry:', error);
-    return false;
-  }
+  // Временно отключено из-за проблем с post_likes таблицей
+  return false;
 }

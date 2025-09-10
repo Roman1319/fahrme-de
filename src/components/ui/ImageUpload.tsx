@@ -67,7 +67,7 @@ export default function ImageUpload({
   };
 
   // Обработка файлов
-  const handleFiles = useCallback(async (files: FileList) => {
+  const handleFiles = useCallback((files: FileList) => {
     if (images.length + files.length > maxImages) {
       alert(`Maximale Anzahl von ${maxImages} Bildern erreicht.`);
       return;
@@ -75,26 +75,44 @@ export default function ImageUpload({
 
     setUploading(true);
     const newImages: string[] = [];
+    let processedFiles = 0;
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       
-      if (await validateImage(file)) {
-        try {
-          const base64 = await fileToBase64(file);
-          newImages.push(base64);
-        } catch (error) {
-          console.error('Error converting file to base64:', error);
-          alert(`Fehler beim Verarbeiten von ${file.name}`);
-        }
-      }
+      validateImage(file)
+        .then((isValid) => {
+          if (isValid) {
+            fileToBase64(file)
+              .then(base64 => {
+                newImages.push(base64);
+              })
+              .catch(error => {
+                console.error('Error converting file to base64:', error);
+                alert(`Fehler beim Verarbeiten von ${file.name}`);
+              });
+          } else {
+            alert(`${file.name} ist kein gültiges Bildformat`);
+          }
+          
+          processedFiles++;
+          if (processedFiles === files.length) {
+            // Update images after all files are processed
+            if (newImages.length > 0) {
+              onImagesChange([...images, ...newImages]);
+            }
+            setUploading(false);
+          }
+        })
+        .catch(error => {
+          console.error('Error validating image:', error);
+          alert(`Fehler beim Validieren von ${file.name}`);
+          processedFiles++;
+          if (processedFiles === files.length) {
+            setUploading(false);
+          }
+        });
     }
-
-    if (newImages.length > 0) {
-      onImagesChange([...images, ...newImages]);
-    }
-
-    setUploading(false);
   }, [images, onImagesChange, maxImages, maxSize, minWidth, minHeight]);
 
   // Обработчики drag & drop

@@ -2,27 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Heart, MessageCircle, Share2, Edit, Trash2 } from 'lucide-react';
-import { MyCar, LogbookEntry, Comment } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
-import { 
-  getLogbookEntries
-} from '@/lib/logbook';
-import {
-  toggleLogbookEntryLike, 
-  getLogbookEntryLikes, 
-  hasUserLikedLogbookEntry,
-  getLogbookEntry,
-  deleteLogbookEntry
-} from '@/lib/logbook-operations';
-import {
-  addComment,
-  getComments,
-  editComment,
-  deleteComment,
-  likeComment
-} from '@/lib/comments';
-import CommentsList from '@/components/ui/CommentsList';
+import { getCar } from '@/lib/cars';
+import { getLogbookEntry, deleteLogbookEntry } from '@/lib/logbook-operations';
+import { getComments, addComment, deleteComment } from '@/lib/comments';
+import { MyCar, LogbookEntry, Comment } from '@/lib/types';
+import { getProfile } from '@/lib/profiles';
+// import { formatDistanceToNow } from 'date-fns';
+// import { de } from 'date-fns/locale';
 
 export default function LogbookEntryPage() {
   const params = useParams();
@@ -30,531 +17,347 @@ export default function LogbookEntryPage() {
   const { user } = useAuth();
   
   const carId = params.carId as string;
-  // const brand = params.brand as string; // TODO: Use brand if needed
-  // const model = params.model as string; // TODO: Use model if needed
   const entryId = params.entryId as string;
   
   const [car, setCar] = useState<MyCar | null>(null);
   const [entry, setEntry] = useState<LogbookEntry | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [commentProfiles, setCommentProfiles] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [commentProfiles, setCommentProfiles] = useState<Record<string, { avatarUrl?: string | null; displayName?: string }>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState('');
+  const [showCommentForm, setShowCommentForm] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
 
+  // Load car data
   useEffect(() => {
-    const loadData = async () => {
-      await Promise.all([
-        loadCar(),
-        loadEntry(),
-        loadComments()
-      ]);
-    };
-    loadData();
-  }, [carId, entryId, user]);
+    if (carId) {
+      getCar(carId)
+        .then(carData => {
+          if (carData) {
+            // Convert Car to MyCar format
+            const myCar: MyCar = {
+              id: carData.id,
+              name: carData.name || '',
+              make: carData.brand,
+              model: carData.model,
+              year: carData.year,
+              color: carData.color || '',
+              power: carData.power || 0,
+              engine: carData.engine || '',
+              volume: carData.volume || '',
+              gearbox: carData.gearbox || '',
+              drive: carData.drive || '',
+              description: carData.description || '',
+              story: carData.story || '',
+              images: [], // Will be loaded separately
+              isMainVehicle: carData.is_main_vehicle || false,
+              isFormerCar: carData.is_former || false,
+              addedDate: carData.created_at,
+              ownerId: carData.owner_id
+            };
+            setCar(myCar);
+          }
+        })
+        .catch(error => {
+          console.error('Error loading car:', error);
+        });
+    }
+  }, [carId]);
 
+  // Load logbook entry data
   useEffect(() => {
-    if (entry && user) {
-      loadLikes();
+    if (entryId) {
+      getLogbookEntry(entryId)
+        .then(entryData => {
+          if (entryData) {
+            setEntry(entryData);
+          }
+        })
+        .catch(error => {
+          console.error('Error loading entry:', error);
+          setError('Eintrag nicht gefunden');
+        });
     }
-  }, [entry, user]);
+  }, [entryId]);
 
+  // Load comments
   useEffect(() => {
-    loadCommentProfiles();
-  }, [comments]); // TODO: Add loadCommentProfiles to deps when stable
-
-  const loadCar = async () => {
-    try {
-      const { getCar } = await import('@/lib/cars');
-      const carData = await getCar(carId);
-      if (carData) {
-        // Convert Car to MyCar format
-        const myCar: MyCar = {
-          id: carData.id,
-          name: carData.name || '',
-          make: carData.brand,
-          model: carData.model,
-          year: carData.year,
-          color: carData.color || '',
-          power: carData.power || 0,
-          engine: carData.engine || '',
-          volume: carData.volume || '',
-          gearbox: carData.gearbox || '',
-          drive: carData.drive || '',
-          description: carData.description || '',
-          story: carData.story || '',
-          images: [], // Will be loaded separately
-          isMainVehicle: carData.is_main_vehicle || false,
-          isFormerCar: carData.is_former || false,
-          addedDate: carData.created_at,
-          ownerId: carData.owner_id
-        };
-        setCar(myCar);
-      } else {
-        setCar(null);
-      }
-    } catch (error) {
-      console.error('Error loading car:', error);
-      setCar(null);
+    if (entryId) {
+      getComments(entryId)
+        .then(commentsData => {
+          setComments(commentsData);
+        })
+        .catch(error => {
+          console.error('Error loading comments:', error);
+        });
     }
-  };
+  }, [entryId]);
 
-  const loadEntry = async () => {
-    try {
-      const entryData = await getLogbookEntry(entryId);
-      if (entryData) {
-        // Convert to LogbookEntry format
-        const logbookEntry: LogbookEntry = {
-          id: entryData.id,
-          car_id: entryData.car_id,
-          author_id: entryData.author_id,
-          title: entryData.title,
-          content: entryData.content,
-          allow_comments: entryData.allow_comments,
-          publish_date: entryData.publish_date,
-          created_at: entryData.created_at,
-          updated_at: entryData.updated_at,
-          author: entryData.author ? {
-            name: entryData.author.name,
-            handle: entryData.author.handle,
-            avatar_url: entryData.author.avatar_url
-          } : undefined,
-          // Legacy fields for backward compatibility
-          carId: entryData.car_id,
-          authorId: entryData.author_id,
-          publishDate: entryData.publish_date,
-          createdAt: entryData.created_at,
-          updatedAt: entryData.updated_at
-        };
-        setEntry(logbookEntry);
-      } else {
-        setEntry(null);
-      }
-    } catch (error) {
-      console.error('Error loading entry:', error);
-      setEntry(null);
-    } finally {
-      setIsLoading(false);
+  // Load comment profiles
+  useEffect(() => {
+    if (comments.length > 0) {
+      const loadProfiles = () => {
+        const profiles: Record<string, any> = {};
+        const profilePromises = comments
+          .filter(comment => !commentProfiles[comment.author_id])
+          .map(comment => 
+            getProfile(comment.author_id)
+              .then(profile => {
+                profiles[comment.author_id] = profile;
+              })
+              .catch(error => {
+                console.error('Error loading profile:', error);
+              })
+          );
+        
+        Promise.all(profilePromises).then(() => {
+          setCommentProfiles(prev => ({ ...prev, ...profiles }));
+        });
+      };
+      loadProfiles();
     }
-  };
+  }, [comments, commentProfiles]);
 
-  const loadComments = async () => {
-    try {
-      const commentsData = await getComments(entryId);
-      setComments(commentsData);
-    } catch (error) {
-      console.error('Error loading comments:', error);
-      setComments([]);
-    }
-  };
+  const handleAddComment = () => {
+    if (!user || !entry || !newComment.trim()) return;
 
-  const loadLikes = async () => {
-    if (!entry || !user) return;
-    
-    try {
-      const [count, liked] = await Promise.all([
-        getLogbookEntryLikes(entry.id),
-        hasUserLikedLogbookEntry(entry.id, user.id)
-      ]);
-      setLikesCount(count);
-      setHasLiked(liked);
-    } catch (error) {
-      console.error('Error loading likes:', error);
-    }
-  };
-
-  const loadCommentProfiles = () => {
-    const profiles: Record<string, { avatarUrl?: string | null; displayName?: string }> = {};
-    
-    comments.forEach(comment => {
-      if (comment.author && !commentProfiles[comment.author_id]) {
-        profiles[comment.author_id] = {
-          avatarUrl: comment.author.avatar_url,
-          displayName: comment.author.name || comment.author.handle || 'Unknown User'
-        };
-      }
-    });
-    
-    if (Object.keys(profiles).length > 0) {
-      setCommentProfiles(prev => ({ ...prev, ...profiles }));
-    }
-  };
-
-  const handleToggleLike = async () => {
-    if (!user || !entry) return;
-    
-    await toggleLogbookEntryLike(entry.id, user.id);
-    loadLikes(); // Reload likes
-  };
-
-  const handleAddComment = async (text: string, _images?: string[]) => { // TODO: Implement image handling
-    if (!user || !entry) return;
-
-    await addComment(entryId, text, user.id);
-    loadComments();
-  };
-
-  const handleAddReply = async (parentId: string, text: string, _images?: string[]) => { // TODO: Implement image handling
-    if (!user || !entry) return;
-
-    await addComment(entryId, text, user.id, parentId);
-    loadComments();
-  };
-
-  const handleEditComment = async (commentId: string, text: string) => {
-    await editComment(commentId, text);
-    loadComments();
-  };
-
-  const handleDeleteComment = async (commentId: string) => {
-    await deleteComment(commentId);
-    loadComments();
-  };
-
-  const handleLikeComment = async (commentId: string) => {
-    if (!user) return;
-    
-    await likeComment(commentId, user.id);
-    loadComments();
-  };
-
-  const handleLikeReply = async (parentId: string, replyId: string) => {
-    if (!user) return;
-    
-    await likeComment(replyId, user.id);
-    loadComments();
-  };
-
-  const handleEditReply = async (parentId: string, replyId: string, text: string) => {
-    await editComment(replyId, text);
-    loadComments();
-  };
-
-  const handleDeleteReply = async (parentId: string, replyId: string) => {
-    await deleteComment(replyId);
-    loadComments();
-  };
-
-  const handleEditEntry = () => {
-    if (!entry) return;
-    // Redirect to edit page (for now, we'll use the new page with pre-filled data)
-    router.push(`/logbuch/${entryId}/edit`);
-  };
-
-  const handleDeleteEntry = async () => {
-    if (!entry || !user || entry.author_id !== user.id) return;
-    
-    if (confirm('Möchten Sie diesen Logbuch-Eintrag wirklich löschen?')) {
-      const success = await deleteLogbookEntry(entryId);
-      if (success) {
-        // Show success message
-        alert('Eintrag wurde gelöscht');
-        // Redirect to car page
-        router.push(`/car/${carId}#logbook`);
-      } else {
-        alert('Fehler beim Löschen des Eintrags');
-      }
-    }
-  };
-
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: entry?.title || 'Logbuch-Eintrag',
-        text: entry?.content || '',
-        url: window.location.href
+    addComment(entryId, newComment.trim(), user.id)
+      .then(comment => {
+        if (comment) {
+          setComments(prev => [...prev, comment]);
+        }
+        setNewComment('');
+        setShowCommentForm(false);
+      })
+      .catch(error => {
+        console.error('Error adding comment:', error);
       });
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      alert('Link in die Zwischenablage kopiert!');
+  };
+
+  const handleEditComment = (commentId: string, newText: string) => {
+    if (!newText.trim()) return;
+
+    // Временно отключено - нет функции updateComment
+    console.log('Edit comment:', commentId, newText);
+  };
+
+  const handleDeleteComment = (commentId: string) => {
+    deleteComment(commentId)
+      .then(() => {
+        setComments(prev => prev.filter(c => c.id !== commentId));
+      })
+      .catch(error => {
+        console.error('Error deleting comment:', error);
+      });
+  };
+
+  const handleLikeComment = (commentId: string) => {
+    if (!user) return;
+
+    // Временно отключено - нет функции likeComment
+    console.log('Like comment:', commentId);
+  };
+
+  const handleDeleteEntry = () => {
+    if (!user || !entry || entry.author_id !== user.id) return;
+
+    if (confirm('Möchten Sie diesen Eintrag wirklich löschen?')) {
+      deleteLogbookEntry(entryId)
+        .then(() => {
+          router.push(`/cars/${car?.make}/${car?.model}/${carId}`);
+        })
+        .catch(error => {
+          console.error('Error deleting entry:', error);
+        });
     }
   };
 
   if (isLoading) {
     return (
-      <main className="pb-12">
-        <div className="section text-center py-16">
-          <div className="text-xl">Lade...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Lade Eintrag...</p>
         </div>
-      </main>
+      </div>
     );
   }
 
-  if (!car || !entry) {
+  if (error || !car || !entry) {
     return (
-      <main className="pb-12">
-        <div className="section text-center py-16">
-          <div className="text-xl">Eintrag nicht gefunden</div>
-        </div>
-      </main>
-    );
-  }
-
-  // const isOwner = user && car && isCarOwnerByCar(car, user.id, user.email); // TODO: Use isOwner if needed
-  const isEntryAuthor = user && entry && entry.author_id === user.id;
-
-  return (
-    <main className="pb-12">
-      <section className="space-y-4">
-        <div className="section">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-foreground mb-4">Eintrag nicht gefunden</h1>
+          <p className="text-muted-foreground mb-4">
+            {error || 'Der angeforderte Eintrag konnte nicht geladen werden.'}
+          </p>
           <button
             onClick={() => router.back()}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            className="btn-primary"
           >
-            <ArrowLeft size={20} />
+            Zurück
           </button>
-          <div className="flex-1">
-            <h1 className="h1">{entry.title}</h1>
-            <p className="opacity-70 text-sm">
-              {car.make} {car.model} • {car.year}
-            </p>
-          </div>
-          <div className="flex gap-2">
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="max-w-4xl mx-auto p-6">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
             <button
-              onClick={handleShare}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-              title="Teilen"
+              onClick={() => router.back()}
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              <Share2 size={20} />
+              ← Zurück
             </button>
-            {isEntryAuthor && (
-              <div className="flex gap-2">
-                <button
-                  onClick={handleEditEntry}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                  title="Bearbeiten"
-                >
-                  <Edit size={20} />
-                </button>
-                <button
-                  onClick={handleDeleteEntry}
-                  className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-red-400"
-                  title="Löschen"
-                >
-                  <Trash2 size={20} />
-                </button>
-              </div>
+            
+            {user && user.id === entry.author_id && (
+              <button
+                onClick={handleDeleteEntry}
+                className="text-destructive hover:text-destructive/80 transition-colors"
+              >
+                Löschen
+              </button>
             )}
+          </div>
+          
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            {entry.title}
+          </h1>
+          
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span>
+              {new Date(entry.created_at).toLocaleDateString('de-DE')}
+            </span>
+            <span>•</span>
+            <span>{car.make} {car.model}</span>
           </div>
         </div>
 
-        {/* Entry Content */}
-        <div className="bg-white/5 rounded-lg p-6 border border-white/10 mb-6">
-          {/* Author and Meta */}
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-accent text-black px-2 py-1 rounded-full text-sm font-medium">
-                @{/* TODO: Replace with proper author name lookup */}
-                {(entry as unknown as { author?: string }).author || 'Unknown'}
-              </div>
-              <span className="text-sm opacity-70">
-                {/* TODO: Replace with proper timestamp formatting */}
-                {(entry as unknown as { timestamp?: string }).timestamp || entry.publish_date}
-              </span>
-              <span className="text-xs opacity-50 bg-white/10 px-2 py-1 rounded-full">
-                {/* TODO: Replace with proper topic mapping */}
-                {(() => {
-                  const legacyEntry = entry as unknown as { 
-                    topic?: string; 
-                    type?: string; 
-                  };
-                  if (legacyEntry.topic === 'maintenance') return 'Wartung';
-                  if (legacyEntry.topic === 'repair') return 'Reparatur';
-                  if (legacyEntry.topic === 'tuning') return 'Tuning';
-                  if (legacyEntry.topic === 'trip') return 'Fahrt';
-                  if (legacyEntry.topic === 'event') return 'Event';
-                  if (legacyEntry.topic === 'general') return 'Allgemein';
-                  if (legacyEntry.type === 'maintenance') return 'Wartung';
-                  if (legacyEntry.type === 'event') return 'Event';
-                  if (legacyEntry.type === 'general') return 'Allgemein';
-                  return 'Allgemein';
-                })()}
-              </span>
-              {/* TODO: Replace with proper pinOnCar field */}
-              {(entry as unknown as { pinOnCar?: boolean }).pinOnCar && (
-                <span className="text-xs bg-accent text-black px-2 py-1 rounded-full font-medium">
-                  Angepinnt
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Images */}
-          {/* TODO: Replace with proper media handling when LogbookMedia is implemented */}
-          {(() => {
-            const legacyEntry = entry as unknown as { images?: string[] };
-            return legacyEntry.images && legacyEntry.images.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                {legacyEntry.images.map((image: string, index: number) => (
-                  <div key={index} className="aspect-video bg-white/5 rounded-lg overflow-hidden">
-                    {/* TODO: Replace with Next.js Image component for optimization */}
-                    <img 
-                      src={image} 
-                      alt={`${entry.title} ${index + 1}`} 
-                      className="w-full h-full object-cover" 
-                    />
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-
-          {/* Additional Info */}
-          {/* TODO: Replace with proper mileage and cost fields when implemented */}
-          {(() => {
-            const legacyEntry = entry as unknown as { 
-              mileage?: number; 
-              cost?: number; 
-              mileageUnit?: string; 
-              currency?: string; 
-            };
-            return (legacyEntry.mileage || legacyEntry.cost) && (
-              <div className="flex flex-wrap gap-3 mb-6 text-sm">
-                {legacyEntry.mileage && (
-                  <div className="bg-white/10 px-3 py-2 rounded-lg border border-white/20">
-                    <span className="opacity-70">📏 Kilometerstand:</span>
-                    <span className="ml-2 font-medium">
-                      {legacyEntry.mileage.toLocaleString()} {legacyEntry.mileageUnit || 'km'}
-                    </span>
-                  </div>
-                )}
-                {legacyEntry.cost && (
-                  <div className="bg-white/10 px-3 py-2 rounded-lg border border-white/20">
-                    <span className="opacity-70">💰 Kosten:</span>
-                    <span className="ml-2 font-medium">
-                      {legacyEntry.cost} {legacyEntry.currency || 'EUR'}
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
-          {/* Poll */}
-          {/* TODO: Replace with proper poll handling when implemented */}
-          {(() => {
-            const legacyEntry = entry as unknown as { 
-              poll?: { 
-                question: string; 
-                options: string[]; 
-              }; 
-            };
-            return legacyEntry.poll && (
-              <div className="bg-white/10 rounded-lg p-4 mb-6 border border-white/20">
-                <h3 className="font-medium mb-3">{legacyEntry.poll.question}</h3>
-                <div className="space-y-2">
-                  {legacyEntry.poll.options.map((option: string, index: number) => (
-                    <div key={index} className="text-sm opacity-80">
-                      • {option}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Text Content */}
-          <div className="prose prose-sm max-w-none dark:prose-invert mb-6">
-            {(() => {
-              const legacyEntry = entry as unknown as { text?: string };
-              const content = legacyEntry.text || entry.content || '';
-              return content.split('\n').map((line: string, index: number) => {
-              // Simple markdown parsing
-              if (line.startsWith('![') && line.includes('](') && line.includes(')')) {
-                const match = line.match(/!\[([^\]]*)\]\(([^)]+)\)/);
-                if (match) {
-                  return (
-                    <div key={index} className="my-4">
-                      {/* TODO: Replace with Next.js Image component for optimization */}
-                      <img 
-                        src={match[2]} 
-                        alt={match[1]} 
-                        className="max-w-full h-auto rounded-lg" 
-                      />
-                    </div>
-                  );
-                }
-              }
-              if (line.startsWith('**') && line.endsWith('**')) {
-                return (
-                  <p key={index} className="font-bold text-lg">
-                    {line.slice(2, -2)}
-                  </p>
-                );
-              }
-              if (line.startsWith('*') && line.endsWith('*') && !line.startsWith('**')) {
-                return (
-                  <p key={index} className="italic">
-                    {line.slice(1, -1)}
-                  </p>
-                );
-              }
-              if (line.includes('[') && line.includes('](') && line.includes(')')) {
-                const match = line.match(/\[([^\]]+)\]\(([^)]+)\)/);
-                if (match) {
-                  return (
-                    <p key={index}>
-                      <a href={match[2]} className="text-accent hover:underline">
-                        {match[1]}
-                      </a>
-                    </p>
-                  );
-                }
-              }
-              return <p key={index} className="leading-relaxed">{line}</p>;
-              });
-            })()}
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-between pt-4 border-t border-white/10">
-            <div className="flex items-center gap-6">
-              <button
-                onClick={handleToggleLike}
-                className={`flex items-center gap-2 transition-all hover:scale-105 ${
-                  hasLiked 
-                    ? 'opacity-100 text-accent' 
-                    : 'opacity-70 hover:opacity-100'
-                }`}
-              >
-                <Heart className={`w-5 h-5 ${hasLiked ? 'fill-current' : ''}`} />
-                <span className="font-medium">{likesCount}</span>
-              </button>
-              
-              {entry.allow_comments && (
-                <div className="flex items-center gap-2 opacity-70">
-                  <MessageCircle className="w-5 h-5" />
-                  <span className="font-medium">{comments.length}</span>
-                </div>
-              )}
-            </div>
-            
-            <div className="text-sm opacity-50">
-              {/* TODO: Replace with proper language field when implemented */}
-              {(entry as unknown as { language?: string }).language || 'Deutsch'} • {entry.publish_date ? new Date(entry.publish_date).toLocaleDateString('de-DE') : 'Unbekannt'}
+        {/* Content */}
+        <div className="bg-card rounded-lg p-6 mb-6">
+          <div className="prose prose-gray max-w-none">
+            <div className="whitespace-pre-wrap text-foreground">
+              {entry.content}
             </div>
           </div>
         </div>
 
         {/* Comments Section */}
-        {entry.allow_comments && (
-          <CommentsList
-            comments={comments}
-            onAddComment={handleAddComment}
-            onLikeComment={handleLikeComment}
-            onEditComment={handleEditComment}
-            onDeleteComment={handleDeleteComment}
-            onAddReply={handleAddReply}
-            onLikeReply={handleLikeReply}
-            onEditReply={handleEditReply}
-            onDeleteReply={handleDeleteReply}
-            title="Kommentare"
-          />
-        )}
+        <div className="bg-card rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-foreground">
+              Kommentare ({comments.length})
+            </h2>
+            
+            {user && (
+              <button
+                onClick={() => setShowCommentForm(!showCommentForm)}
+                className="btn-primary"
+              >
+                {showCommentForm ? 'Abbrechen' : 'Kommentieren'}
+              </button>
+            )}
+          </div>
+
+          {/* Comment Form */}
+          {showCommentForm && user && (
+            <div className="mb-6">
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Schreiben Sie einen Kommentar..."
+                className="w-full p-3 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                rows={3}
+              />
+              <div className="flex justify-end gap-2 mt-2">
+                <button
+                  onClick={() => setShowCommentForm(false)}
+                  className="btn-secondary"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  onClick={handleAddComment}
+                  disabled={!newComment.trim()}
+                  className="btn-primary disabled:opacity-50"
+                >
+                  Kommentieren
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Comments List */}
+          <div className="space-y-4">
+            {comments.map((comment) => (
+              <div key={comment.id} className="border-b border-border pb-4 last:border-b-0">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-medium">
+                    {commentProfiles[comment.author_id]?.name?.charAt(0) || '?'}
+                  </div>
+                  
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-foreground">
+                        {commentProfiles[comment.author_id]?.name || 'Unbekannt'}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(comment.created_at).toLocaleDateString('de-DE')}
+                      </span>
+                    </div>
+                    
+                    <p className="text-foreground mb-2">{comment.text}</p>
+                    
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => handleLikeComment(comment.id)}
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        👍 0
+                      </button>
+                      
+                      {user && user.id === comment.author_id && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              const newText = prompt('Kommentar bearbeiten:', comment.text);
+                              if (newText && newText !== comment.text) {
+                                handleEditComment(comment.id, newText);
+                              }
+                            }}
+                            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            Bearbeiten
+                          </button>
+                          <button
+                            onClick={() => handleDeleteComment(comment.id)}
+                            className="text-sm text-destructive hover:text-destructive/80 transition-colors"
+                          >
+                            Löschen
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {comments.length === 0 && (
+              <p className="text-muted-foreground text-center py-8">
+                Noch keine Kommentare. Seien Sie der Erste!
+              </p>
+            )}
+          </div>
         </div>
-      </section>
-    </main>
+      </div>
+    </div>
   );
 }

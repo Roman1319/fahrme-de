@@ -9,7 +9,7 @@ import Guard from '@/components/auth/Guard';
 import { Loader2 } from 'lucide-react';
 
 type Errors = Partial<Record<
-  'handle'|'name'|'about',
+  'handle'|'name'|'about'|'country'|'city'|'birth_date',
   string
 >>;
 
@@ -28,28 +28,32 @@ export default function ProfilePage() {
     loadProfile();
   }, [user]); // TODO: Add loadProfile to deps when stable
 
-  const loadProfile = async () => {
+  const loadProfile = () => {
     if (!user) return;
     
     try {
       setLoading(true);
-      const profileData = await getProfile(user.id);
-      if (profileData) {
-        setProfile(profileData);
-        setAvatar(profileData.avatar_url || null);
-      } else {
-        // Create a basic profile if none exists
-        const basicProfile: Profile = {
-          id: user.id,
-          email: user.email,
-          name: user.name || '',
-          handle: user.email?.split('@')[0] || '',
-          about: '',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        setProfile(basicProfile);
-      }
+      getProfile(user.id)
+        .then((profileData) => {
+          if (profileData) {
+            setProfile(profileData);
+            setAvatar(profileData.avatar_url || null);
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          // Create a basic profile if none exists
+          const basicProfile: Profile = {
+            id: user.id,
+            email: user.email,
+            name: user.name || '',
+            handle: user.email?.split('@')[0] || '',
+            about: '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          setProfile(basicProfile);
+        });
     } catch (error) {
       console.error('Error loading profile:', error);
     } finally {
@@ -77,31 +81,38 @@ export default function ProfilePage() {
     const handle = next.handle ?? profile?.handle ?? '';
     const name = next.name ?? profile?.name ?? '';
     const about = next.about ?? profile?.about ?? '';
+    const country = next.country ?? profile?.country ?? '';
+    const city = next.city ?? profile?.city ?? '';
+    const birth_date = next.birth_date ?? profile?.birth_date ?? '';
 
     if (handle.length > MAX_HANDLE) e.handle = `Max. ${MAX_HANDLE} Zeichen.`;
     if (handle && !latinOnly(handle)) e.handle = 'Nur lateinische Zeichen, Ziffern und .-_';
     if (name.length > MAX_NAME) e.name = `Max. ${MAX_NAME} Zeichen.`;
     if (about && about.length > 1000) e.about = `Max. 1000 Zeichen.`;
+    if (country && country.length > 50) e.country = `Max. 50 Zeichen.`;
+    if (city && city.length > 50) e.city = `Max. 50 Zeichen.`;
+    if (birth_date && isNaN(Date.parse(birth_date))) e.birth_date = 'Ungültiges Datum.';
 
     setErrors(e);
   }
 
-  const checkHandle = async (handle: string) => {
+  const checkHandle = (handle: string) => {
     if (!handle || !profile) return;
     
-    try {
-      const isAvailable = await checkHandleAvailability(handle, profile.id);
-      if (!isAvailable) {
-        setErrors(prev => ({ ...prev, handle: 'Dieser Handle ist bereits vergeben' }));
-      } else {
-        setErrors(prev => ({ ...prev, handle: undefined }));
-      }
-    } catch (error) {
-      console.error('Error checking handle availability:', error);
-    }
+    checkHandleAvailability(handle, profile.id)
+      .then((isAvailable) => {
+        if (!isAvailable) {
+          setErrors(prev => ({ ...prev, handle: 'Dieser Handle ist bereits vergeben' }));
+        } else {
+          setErrors(prev => ({ ...prev, handle: undefined }));
+        }
+      })
+      .catch(error => {
+        console.error('Error checking handle availability:', error);
+      });
   };
 
-  async function onSave() {
+  function onSave() {
     if (!profile || !user) {
       alert('Keine Profildaten zum Speichern');
       return;
@@ -114,37 +125,69 @@ export default function ProfilePage() {
     
     setSaving(true);
     
-    try {
+    const saveProfile = () => {
       let avatarUrl = profile.avatar_url;
       
       // Upload avatar if changed
       if (avatar && avatar !== profile.avatar_url) {
+        console.log('Uploading new avatar...');
         // Convert data URL to File
-        const response = await fetch(avatar);
-        const blob = await response.blob();
-        const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
-        
-        avatarUrl = await uploadAvatar(user.id, file);
+        fetch(avatar)
+          .then(response => response.blob())
+          .then(blob => {
+            const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+            return uploadAvatar(user.id, file);
+          })
+          .then(uploadedUrl => {
+            avatarUrl = uploadedUrl;
+            console.log('Avatar uploaded successfully:', avatarUrl);
+            updateProfileData(avatarUrl);
+          })
+          .catch(uploadError => {
+            console.error('Avatar upload failed:', uploadError);
+            alert('Fehler beim Hochladen des Avatars: ' + uploadError);
+            setSaving(false);
+          });
+      } else {
+        updateProfileData(avatarUrl || '');
       }
       
-      // Update profile
-      const updatedProfile = await updateProfile(user.id, {
-        name: profile.name,
-        handle: profile.handle,
-        about: profile.about,
-        avatar_url: avatarUrl
-      });
-      
-      setProfile(updatedProfile);
-      setAvatar(avatarUrl || null);
-      
-      alert('Profil erfolgreich gespeichert!');
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      alert('Fehler beim Speichern des Profils: ' + error);
-    } finally {
-      setSaving(false);
-    }
+      function updateProfileData(avatarUrl: string) {
+        if (!user || !profile) return;
+        
+        console.log('Updating profile...');
+        updateProfile(user.id, {
+          name: profile.name,
+          handle: profile.handle,
+          about: profile.about,
+          avatar_url: avatarUrl,
+          country: profile.country,
+          city: profile.city,
+          gender: profile.gender,
+          birth_date: profile.birth_date
+        })
+        .then(updatedProfile => {
+          setProfile(updatedProfile);
+          setAvatar(avatarUrl || null);
+        
+          // Notify other components about profile update
+          window.dispatchEvent(new CustomEvent('profileUpdated', { 
+            detail: { avatar_url: avatarUrl, name: updatedProfile.name } 
+          }));
+          
+          alert('Profil erfolgreich gespeichert!');
+        })
+        .catch(error => {
+          console.error('Error saving profile:', error);
+          alert('Fehler beim Speichern des Profils: ' + error);
+        })
+        .finally(() => {
+          setSaving(false);
+        });
+      }
+    };
+    
+    saveProfile();
   }
 
   if (loading) {
@@ -240,6 +283,59 @@ export default function ProfilePage() {
                 onChange={(e) => { set('about', e.target.value); validate({ about: e.target.value }); }}
               />
               {errors.about && <span className="form-error">{errors.about}</span>}
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Land</span>
+              <input
+                className="form-input"
+                maxLength={50}
+                placeholder="z.B. Deutschland"
+                value={profile.country || ''}
+                onChange={(e) => { set('country', e.target.value); validate({ country: e.target.value }); }}
+              />
+              {errors.country && <span className="form-error">{errors.country}</span>}
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Stadt</span>
+              <input
+                className="form-input"
+                maxLength={50}
+                placeholder="z.B. Berlin"
+                value={profile.city || ''}
+                onChange={(e) => { set('city', e.target.value); validate({ city: e.target.value }); }}
+              />
+              {errors.city && <span className="form-error">{errors.city}</span>}
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Geschlecht</span>
+              <select
+                className="form-input"
+                value={profile.gender || ''}
+                onChange={(e) => { set('gender', e.target.value as 'male' | 'female' | 'other' | undefined); validate({ gender: e.target.value as 'male' | 'female' | 'other' | undefined }); }}
+              >
+                <option value="">Bitte wählen...</option>
+                <option value="male">Männlich</option>
+                <option value="female">Weiblich</option>
+                <option value="other">Andere</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Geburtsdatum</span>
+              <input
+                type="date"
+                className="form-input"
+                value={profile.birth_date ? profile.birth_date.split('T')[0] : ''}
+                onChange={(e) => { 
+                  const date = e.target.value ? new Date(e.target.value).toISOString() : undefined;
+                  set('birth_date', date); 
+                  validate({ birth_date: date }); 
+                }}
+              />
+              {errors.birth_date && <span className="form-error">{errors.birth_date}</span>}
             </label>
           </div>
         </section>

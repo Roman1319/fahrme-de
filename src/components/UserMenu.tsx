@@ -3,7 +3,7 @@
 import { useAuth } from "./AuthProvider";
 import { User, LogOut, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
-import { readProfile } from "@/lib/profile";
+import { getProfile } from "@/lib/profiles";
 // import AvatarButton from "./ui/AvatarButton"; // TODO: Use AvatarButton if needed
 import AvatarTooltip from "./ui/AvatarTooltip";
 
@@ -19,14 +19,19 @@ export default function UserMenu(){
   },[]);
 
   useEffect(() => {
-    const p = readProfile();
-    if (p) {
-      setProfile({
-        avatarUrl: p.avatarUrl,
-        displayName: p.displayName
-      });
-    }
-  }, []);
+    if (!user) return;
+    
+    const loadProfile = async () => {
+      const p = await getProfile(user.id);
+      if (p) {
+        setProfile({
+          avatarUrl: p.avatar_url,
+          displayName: p.name
+        });
+      }
+    };
+    loadProfile();
+  }, [user?.id]);
 
   if(!user) return null;
 

@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Heart, MessageCircle, ChevronLeft, ChevronRight, X, Loader2, Plus, Edit } from 'lucide-react';
-import { Car, LogbookEntry, Comment } from '@/lib/types';
+import { Car, LogbookEntry, Comment, MyCar } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
 import { getCar, getCarPhotos, getCarPhotoUrl, updateCarWithPhotos } from '@/lib/cars';
 import { getLogbookEntries, getComments, createComment, togglePostLike, getPostLikes, countPostLikes, hasLikedPost } from '@/lib/logbook';
@@ -60,137 +60,123 @@ export default function CarPage() {
     }
   }, [car]);
 
-  async function loadCar() {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const carData = await getCar(carId);
-      if (carData) {
-        setCar(carData);
-      } else {
-        setError('Auto nicht gefunden');
-      }
-    } catch (err) {
-      console.error('Error loading car:', err);
-      setError('Fehler beim Laden des Autos');
-    } finally {
-      setIsLoading(false);
-    }
+  function loadCar() {
+    setIsLoading(true);
+    setError(null);
+    getCar(carId)
+      .then(carData => {
+        if (carData) {
+          setCar(carData);
+        } else {
+          setError('Auto nicht gefunden');
+        }
+      })
+      .catch(err => {
+        console.error('Error loading car:', err);
+        setError('Fehler beim Laden des Autos');
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }
 
-  async function loadPhotos() {
+  function loadPhotos() {
     if (!car) return;
     
-    try {
-      setPhotosLoading(true);
-      const carPhotos = await getCarPhotos(car.id);
-      const photoUrls = carPhotos.map(photo => getCarPhotoUrl(photo.storage_path));
-      setPhotos(photoUrls);
-    } catch (error) {
-      console.error('Error loading car photos:', error);
-    } finally {
-      setPhotosLoading(false);
-    }
+    setPhotosLoading(true);
+    getCarPhotos(car.id)
+      .then(carPhotos => {
+        const photoUrls = carPhotos.map(photo => getCarPhotoUrl(photo.storage_path));
+        setPhotos(photoUrls);
+      })
+      .catch(error => {
+        console.error('Error loading car photos:', error);
+      })
+      .finally(() => {
+        setPhotosLoading(false);
+      });
   }
 
-  async function loadComments() {
-    try {
-      const commentsData = await getComments(carId);
-      setComments(commentsData);
-    } catch (error) {
-      console.error('Error loading comments:', error);
-    }
+  function loadComments() {
+    getComments(carId)
+      .then(commentsData => {
+        setComments(commentsData);
+      })
+      .catch(error => {
+        console.error('Error loading comments:', error);
+      });
   }
 
-  async function loadLogbookEntries() {
-    try {
-      const entries = await getLogbookEntries(carId);
-      setLogbookEntries(entries);
-      
-      // Load likes for each entry
-      if (user) {
-        const likesPromises = entries.map(async (entry) => {
-          const [count, isLiked] = await Promise.all([
-            countPostLikes(entry.id),
-            hasLikedPost(entry.id, user.id)
-          ]);
-          return { entryId: entry.id, count, isLiked };
-        });
+  function loadLogbookEntries() {
+    getLogbookEntries(carId)
+      .then(entries => {
+        setLogbookEntries(entries);
         
-        const likesResults = await Promise.all(likesPromises);
-        const likesMap: Record<string, { count: number; isLiked: boolean }> = {};
-        likesResults.forEach(({ entryId, count, isLiked }) => {
-          likesMap[entryId] = { count, isLiked };
-        });
-        setEntryLikes(likesMap);
-      }
-    } catch (error) {
-      console.error('Error loading logbook entries:', error);
-    }
+        // Load likes for each entry (temporarily disabled)
+        if (user) {
+          const likesMap: Record<string, { count: number; isLiked: boolean }> = {};
+          entries.forEach(entry => {
+            likesMap[entry.id] = { count: 0, isLiked: false };
+          });
+          setEntryLikes(likesMap);
+        }
+      })
+      .catch(error => {
+        console.error('Error loading logbook entries:', error);
+      });
   }
 
-  async function loadCarStats() {
-    try {
-      const likes = await getPostLikes(carId);
-      setCarStats({ followers: 0, likes: likes.length }); // TODO: implement followers
-    } catch (error) {
-      console.error('Error loading car stats:', error);
-    }
+  function loadCarStats() {
+    // Временно отключено из-за проблем с post_likes таблицей
+    setCarStats({ followers: 0, likes: 0 });
   }
 
-  async function loadUserInteraction() {
+  function loadUserInteraction() {
     if (!user) return;
     
-    try {
-      // TODO: implement user interaction tracking
-      setUserInteraction({ isFollowing: false, isLiked: false });
-    } catch (error) {
-      console.error('Error loading user interaction:', error);
-    }
+    // Временно отключено из-за проблем с post_likes таблицей
+    setUserInteraction({ isFollowing: false, isLiked: false });
   }
 
-  async function loadOwnerProfile() {
+  function loadOwnerProfile() {
     if (!car) return;
     
-    try {
-      const profile = await getProfile(car.owner_id);
-      if (profile) {
-        setOwnerProfile({
-          avatarUrl: profile.avatar_url,
-          name: profile.name
-        });
-      }
-    } catch (error) {
-      console.error('Error loading owner profile:', error);
-    }
+    getProfile(car.owner_id)
+      .then(profile => {
+        if (profile) {
+          setOwnerProfile({
+            avatarUrl: profile.avatar_url,
+            name: profile.name
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Error loading owner profile:', error);
+      });
   }
 
-  const handleAddComment = async (text: string) => {
+  const handleAddComment = (text: string) => {
     if (!user || !car) return;
 
-    try {
-      await createComment({
-        entry_id: carId,
-        text: text
-      }, user.id);
-      loadComments();
-      setNewComment('');
-    } catch (error) {
-      console.error('Error adding comment:', error);
-      alert('Fehler beim Hinzufügen des Kommentars');
-    }
+    createComment({
+      entry_id: carId,
+      text: text
+    }, user.id)
+      .then(() => {
+        loadComments();
+        setNewComment('');
+      })
+      .catch(error => {
+        console.error('Error adding comment:', error);
+        alert('Fehler beim Hinzufügen des Kommentars');
+      });
   };
 
-  const handleToggleLike = async () => {
+  const handleToggleLike = () => {
     if (!user || !car) return;
     
-    try {
-      await togglePostLike(carId, user.id);
-      loadCarStats();
-      loadUserInteraction();
-    } catch (error) {
-      console.error('Error toggling like:', error);
-    }
+    // Временно отключено из-за проблем с post_likes таблицей
+    console.log('Like functionality temporarily disabled');
   };
 
   const handlePostCreated = (entryId: string) => {
@@ -207,35 +193,35 @@ export default function CarPage() {
     setShowEditCar(true);
   };
 
-  const handleSaveCar = async (updatedCar: any) => {
+  const handleSaveCar = (updatedCar: Partial<MyCar>) => {
     if (!car || !user) return;
     
-    try {
-      setIsSavingCar(true);
-      
-      // Prepare car data for API
-      const carUpdateData = {
-        id: car.id,
-        brand: updatedCar.make,
-        model: updatedCar.model,
-        year: updatedCar.year,
-        name: updatedCar.name,
-        color: updatedCar.color,
-        power: updatedCar.power,
-        engine: updatedCar.engine,
-        volume: updatedCar.volume,
-        gearbox: updatedCar.gearbox,
-        drive: updatedCar.drive,
-        description: updatedCar.description,
-        story: updatedCar.story
-      };
+    setIsSavingCar(true);
+    
+    // Prepare car data for API
+    const carUpdateData = {
+      id: car.id,
+      brand: updatedCar.make,
+      model: updatedCar.model,
+      year: updatedCar.year,
+      name: updatedCar.name,
+      color: updatedCar.color,
+      power: updatedCar.power,
+      engine: updatedCar.engine,
+      volume: updatedCar.volume,
+      gearbox: updatedCar.gearbox,
+      drive: updatedCar.drive,
+      description: updatedCar.description,
+      story: updatedCar.story
+    };
 
-      // Get new images (base64 strings) and deleted images
-      const newImages = updatedCar.images || [];
-      const deletedImages = updatedCar.deletedImages || [];
-      
-      // Update car with photos
-      await updateCarWithPhotos(carUpdateData, newImages, deletedImages, user.id);
+    // Get new images (base64 strings) and deleted images
+    const newImages = (updatedCar as MyCar & { images?: string[] }).images || [];
+    const deletedImages = (updatedCar as MyCar & { deletedImages?: string[] }).deletedImages || [];
+    
+    // Update car with photos
+    updateCarWithPhotos(carUpdateData, newImages, deletedImages, user.id)
+      .then(() => {
       
       // Show success message
       const deletedCount = deletedImages.length;
@@ -268,14 +254,16 @@ export default function CarPage() {
         } : null);
       }
       
-      // Reload photos in background (less critical)
-      loadPhotos();
-    } catch (error) {
-      console.error('Error saving car:', error);
-      alert('Ошибка при сохранении автомобиля: ' + (error as Error).message);
-    } finally {
-      setIsSavingCar(false);
-    }
+        // Reload photos in background (less critical)
+        loadPhotos();
+      })
+      .catch(error => {
+        console.error('Error saving car:', error);
+        alert('Ошибка при сохранении автомобиля: ' + (error as Error).message);
+      })
+      .finally(() => {
+        setIsSavingCar(false);
+      });
   };
 
   const nextImage = () => {
@@ -592,10 +580,34 @@ export default function CarPage() {
               <span className="text-accent">•</span>
               <span className="opacity-80">{car.year} • {car.brand} {car.model}</span>
             </div>
-            {car.color && (
+            {car.engine && (
               <div className="flex items-center gap-2">
                 <span className="text-accent">•</span>
-                <span className="opacity-80">Farbe: {car.color}</span>
+                <span className="opacity-80">Motor: {car.engine}</span>
+              </div>
+            )}
+            {car.volume && (
+              <div className="flex items-center gap-2">
+                <span className="text-accent">•</span>
+                <span className="opacity-80">Hubraum: {car.volume}</span>
+              </div>
+            )}
+            {car.gearbox && (
+              <div className="flex items-center gap-2">
+                <span className="text-accent">•</span>
+                <span className="opacity-80">Getriebe: {car.gearbox}</span>
+              </div>
+            )}
+            {car.drive && (
+              <div className="flex items-center gap-2">
+                <span className="text-accent">•</span>
+                <span className="opacity-80">Antrieb: {car.drive}</span>
+              </div>
+            )}
+            {car.power && car.power > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-accent">•</span>
+                <span className="opacity-80">Leistung: {car.power} PS</span>
               </div>
             )}
           </div>
@@ -616,16 +628,19 @@ export default function CarPage() {
             <div className="flex gap-1.5">
               {isOwner && (
                 <button 
-                  onClick={() => setShowLogbook(true)}
-                  className="btn-accent px-1.5 py-1 text-xs"
+                  onClick={() => {
+                    window.location.href = `/cars/${car.brand.toLowerCase()}/${car.model.toLowerCase()}/${car.id}/logbook/new`;
+                  }}
+                  className="btn-accent px-1.5 py-1 text-xs flex items-center gap-1"
                 >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Neuer Post
+                  <Plus className="w-3 h-3" />
+                  <span className="hidden sm:inline">Neuer Post</span>
+                  <span className="sm:hidden">Neu</span>
                 </button>
               )}
               <button 
                 onClick={() => setShowLogbook(true)}
-                className="btn-primary px-1.5 py-1 text-xs"
+                className="btn-secondary px-1.5 py-1 text-xs"
               >
                 <span className="hidden sm:inline">alle Einträge</span>
                 <span className="sm:hidden">alle</span>
@@ -951,7 +966,9 @@ export default function CarPage() {
             story: car.story || '',
             images: photos || [],
             isMainVehicle: car.is_main_vehicle || false,
-            isFormerCar: car.is_former || false
+            isFormerCar: car.is_former || false,
+            addedDate: car.created_at || new Date().toISOString(),
+            ownerId: car.owner_id || ''
           }}
           isOpen={showEditCar}
           onClose={() => setShowEditCar(false)}

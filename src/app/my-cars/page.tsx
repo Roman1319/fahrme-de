@@ -289,7 +289,12 @@ export default function MyCarsPage() {
                 isFormerCar: editingCar.is_former,
                 isMainVehicle: editingCar.is_main_vehicle,
                 addedDate: editingCar.created_at,
-                ownerId: editingCar.owner_id
+                ownerId: editingCar.owner_id,
+                power: editingCar.power,
+                engine: editingCar.engine,
+                volume: editingCar.volume,
+                gearbox: editingCar.gearbox,
+                drive: editingCar.drive
               }}
               isOpen={!!editingCar}
               onClose={() => setEditingCar(null)}
@@ -625,6 +630,7 @@ function AddCarForm({
                 />
               </div>
             </div>
+
 
             {/* Schalter */}
             <div className="space-y-3">

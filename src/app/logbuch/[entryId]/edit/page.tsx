@@ -7,9 +7,9 @@ import { LogbookEntry } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
 import { 
   getLogbookEntryById, 
-  updateLogbookEntry, 
+  updateLogbookEntryById, 
   isEntryOwner 
-} from '@/lib/logbook-detail';
+} from '@/lib/logbook-detail-supabase';
 import RichTextEditor from '@/components/ui/RichTextEditor';
 
 export default function EditLogbookEntryPage() {
@@ -34,45 +34,46 @@ export default function EditLogbookEntryPage() {
   }, [entryId]); // TODO: Add loadEntry to deps when stable
 
   const loadEntry = () => {
-    const foundEntry = getLogbookEntryById(entryId);
-    if (foundEntry) {
-      setEntry(foundEntry);
-      // TODO: Replace with proper legacy field mapping when adapters are implemented
-      const legacyEntry = foundEntry as unknown as {
-        text?: string;
-        images?: string[];
-      };
-      
-      setFormData({
-        title: foundEntry.title || '',
-        text: legacyEntry.text || foundEntry.content || '',
-        type: 'general', // Always use 'general' for compatibility
-        images: legacyEntry.images || []
-      });
-    }
-    setIsLoading(false);
+    getLogbookEntryById(entryId)
+        .then((foundEntry) => {
+          if (foundEntry) {
+            setEntry(foundEntry);
+            // TODO: Replace with proper legacy field mapping when adapters are implemented
+            const legacyEntry = foundEntry as unknown as {
+              text?: string;
+              images?: string[];
+            };
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!entry || !user || !isEntryOwner(entry, user.id)) return;
     
     setIsSaving(true);
     
     try {
-      const updated = updateLogbookEntry(entryId, {
+      updateLogbookEntryById(entryId, {
         title: formData.title,
         // text: formData.text, // TODO: Add text field to LogbookEntry or use content
         // type: formData.type, // TODO: Add type field to LogbookEntry interface
         // images: formData.images, // TODO: Add images field to LogbookEntry interface
         updated_at: new Date().toISOString()
+      })
+      .then((updated) => {
+        if (updated) {
+          console.info('Eintrag erfolgreich aktualisiert');
+          router.push(`/logbuch/${entryId}`);
+        } else {
+          console.warn('Fehler beim Aktualisieren des Eintrags');
+        }
+      })
+      .catch(error => {
+        console.error('Error updating entry:', error);
       });
-      
-      if (updated) {
-        console.info('Eintrag erfolgreich aktualisiert');
-        router.push(`/logbuch/${entryId}`);
-      } else {
-        console.warn('Fehler beim Aktualisieren des Eintrags');
-      }
     } catch (error) {
       console.error('Fehler beim Speichern:', error);
     } finally {

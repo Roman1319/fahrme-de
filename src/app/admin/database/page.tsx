@@ -90,7 +90,7 @@ export default function AdminDatabase() {
     }
   };
 
-  const convertToCSV = (data: any[]) => {
+  const convertToCSV = (data: Record<string, unknown>[]) => {
     if (data.length === 0) return '';
     
     const headers = Object.keys(data[0]);

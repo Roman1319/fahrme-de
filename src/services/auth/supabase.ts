@@ -1,14 +1,50 @@
 "use client";
 
-import { 
-  AuthService, 
-  User, 
-  Session, 
-  LoginCredentials, 
-  RegisterCredentials, 
-  AuthResult, 
-  AuthStateChangeCallback 
-} from './types';
+// Define types inline since types.ts doesn't exist
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  createdAt: number;
+}
+
+export interface Session {
+  user: User;
+  token: string;
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegisterCredentials {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface AuthResult {
+  success: boolean;
+  user?: User;
+  error?: string;
+}
+
+export type AuthStateChangeCallback = (user: User | null) => void;
+
+export interface AuthService {
+  getCurrentUser(): User | null;
+  login(credentials: LoginCredentials): Promise<AuthResult>;
+  register(credentials: RegisterCredentials): Promise<AuthResult>;
+  logout(): Promise<void>;
+  getSession(): Session | null;
+  setSession(): void;
+  clearSession(): void;
+  getUsers(): User[];
+  saveUsers(): void;
+  onAuthStateChanged(callback: AuthStateChangeCallback): () => void;
+}
 import { supabase } from '@/lib/supabaseClient';
 // Profile functionality moved to Supabase
 
@@ -36,7 +72,7 @@ export class SupabaseAuthService implements AuthService {
   }
 
   // 1) помощник: дождаться сессии — иначе запрос уйдёт как anon
-  private async waitForSession(maxMs = 4000): Promise<any> {
+  private async waitForSession(maxMs = 4000): Promise<unknown | null> {
     console.log('[supabase-auth] Waiting for session...');
     const start = Date.now();
     while (Date.now() - start < maxMs) {
@@ -81,12 +117,12 @@ export class SupabaseAuthService implements AuthService {
           console.error('Error keys:', Object.keys(error));
           console.error('Error stringified:', JSON.stringify(error, null, 2));
           console.error('Error details:', {
-            code: (error as any)?.code,
-            message: (error as any)?.message,
-            details: (error as any)?.details,
-            hint: (error as any)?.hint,
-            status: (error as any)?.status,
-            statusText: (error as any)?.statusText,
+            code: (error as Error & { code?: string })?.code,
+            message: (error as Error)?.message,
+            details: (error as Error & { details?: string })?.details,
+            hint: (error as Error & { hint?: string })?.hint,
+            status: (error as Error & { status?: number })?.status,
+            statusText: (error as Error & { statusText?: string })?.statusText,
           });
           throw error;
         }
@@ -105,7 +141,7 @@ export class SupabaseAuthService implements AuthService {
       console.error('Raw error object:', e);
       console.error('Error type:', typeof e);
       console.error('Error stringified:', JSON.stringify(e, null, 2));
-      console.error('Error stack:', (e as any)?.stack);
+      console.error('Error stack:', (e as Error)?.stack);
       return {
         id: userId,
         email: email,

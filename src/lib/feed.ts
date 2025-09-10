@@ -6,6 +6,7 @@ export interface FeedEntry {
   author_id: string;
   title: string;
   content: string;
+  topic?: string;
   allow_comments: boolean;
   publish_date: string;
   created_at: string;
@@ -29,6 +30,7 @@ export interface FeedFilters {
   car_model?: string;
   year_from?: number;
   year_to?: number;
+  topic?: string;
 }
 
 export async function getExploreFeed(filters: FeedFilters = {}): Promise<FeedEntry[]> {
@@ -39,14 +41,14 @@ export async function getExploreFeed(filters: FeedFilters = {}): Promise<FeedEnt
       car_brand,
       car_model,
       year_from,
-      year_to
+      year_to,
+      topic
     } = filters;
 
     let query = supabase
       .from('logbook_entries')
       .select(`
         *,
-        profiles!logbook_entries_author_id_fkey(handle, avatar_url),
         cars!logbook_entries_car_id_fkey(brand, model, year, name)
       `)
       .order('publish_date', { ascending: false })
@@ -65,6 +67,9 @@ export async function getExploreFeed(filters: FeedFilters = {}): Promise<FeedEnt
     if (year_to) {
       query = query.lte('cars.year', year_to);
     }
+    if (topic) {
+      query = query.eq('topic', topic);
+    }
 
     const { data, error } = await query;
 
@@ -73,51 +78,67 @@ export async function getExploreFeed(filters: FeedFilters = {}): Promise<FeedEnt
       throw error;
     }
 
-    // Transform the data to match our interface
-    const transformedData = (data || []).map(entry => ({
-      id: entry.id,
-      car_id: entry.car_id,
-      author_id: entry.author_id,
-      title: entry.title,
-      content: entry.content,
-      allow_comments: entry.allow_comments,
-      publish_date: entry.publish_date,
-      created_at: entry.created_at,
-      updated_at: entry.updated_at,
-      author_handle: entry.profiles?.handle || 'Unknown',
-      author_avatar_url: entry.profiles?.avatar_url || '',
-      car_brand: entry.cars?.brand || 'Unknown',
-      car_model: entry.cars?.model || 'Unknown',
-      car_year: entry.cars?.year || 0,
-      car_name: entry.cars?.name || '',
-      like_count: 0, // Will be populated separately
-      comment_count: 0 // Will be populated separately
-    }));
+    // Batch load profiles
+    const authorIds = [...new Set((data || []).map(entry => entry.author_id))];
+    let profilesMap = new Map<string, { handle: string; avatar_url: string }>();
+    
+    if (authorIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, handle, avatar_url')
+        .in('id', authorIds);
 
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        // Continue without profiles data
+      } else {
+        profiles?.forEach(profile => {
+          profilesMap.set(profile.id, {
+            handle: profile.handle || 'Unknown',
+            avatar_url: profile.avatar_url || ''
+          });
+        });
+      }
+    }
+
+    // Transform the data to match our interface
+    const transformedData = (data || []).map(entry => {
+      const profile = profilesMap.get(entry.author_id);
+      return {
+        id: entry.id,
+        car_id: entry.car_id,
+        author_id: entry.author_id,
+        title: entry.title,
+        content: entry.content,
+        topic: entry.topic,
+        allow_comments: entry.allow_comments,
+        publish_date: entry.publish_date,
+        created_at: entry.created_at,
+        updated_at: entry.updated_at,
+        author_handle: profile?.handle || 'Unknown',
+        author_avatar_url: profile?.avatar_url || '',
+        car_brand: entry.cars?.brand || 'Unknown',
+        car_model: entry.cars?.model || 'Unknown',
+        car_year: entry.cars?.year || 0,
+        car_name: entry.cars?.name || '',
+        like_count: 0, // Will be populated separately
+        comment_count: 0 // Will be populated separately
+      };
+    });
+
+    // Временно отключено из-за проблем с post_likes таблицей
     // Get like and comment counts for each entry
     const entryIds = transformedData.map(entry => entry.id);
     
     if (entryIds.length > 0) {
-      // Get like counts
-      const { data: likeCounts } = await supabase
-        .from('post_likes')
-        .select('entry_id')
-        .in('entry_id', entryIds);
-
-      // Get comment counts
+      // Get comment counts only
       const { data: commentCounts } = await supabase
         .from('comments')
         .select('entry_id')
         .in('entry_id', entryIds);
 
       // Aggregate counts
-      const likeCountMap = new Map<string, number>();
       const commentCountMap = new Map<string, number>();
-
-      likeCounts?.forEach(like => {
-        const count = likeCountMap.get(like.entry_id) || 0;
-        likeCountMap.set(like.entry_id, count + 1);
-      });
 
       commentCounts?.forEach(comment => {
         const count = commentCountMap.get(comment.entry_id) || 0;
@@ -126,7 +147,7 @@ export async function getExploreFeed(filters: FeedFilters = {}): Promise<FeedEnt
 
       // Update the data with counts
       transformedData.forEach(entry => {
-        entry.like_count = likeCountMap.get(entry.id) || 0;
+        entry.like_count = 0; // Временно отключено
         entry.comment_count = commentCountMap.get(entry.id) || 0;
       });
     }
@@ -159,16 +180,22 @@ export async function getCarBrands(): Promise<string[]> {
 
 export async function getCarModels(brand?: string): Promise<string[]> {
   try {
-    let query = supabase
-      .from('car_models')
-      .select('name')
-      .order('name');
-
+    let query;
+    
     if (brand) {
-      query = query.eq('brands.name', brand).select(`
-        name,
-        brands!inner(name)
-      `);
+      query = supabase
+        .from('car_models')
+        .select(`
+          name,
+          brands!inner(name)
+        `)
+        .eq('brands.name', brand)
+        .order('name');
+    } else {
+      query = supabase
+        .from('car_models')
+        .select('name')
+        .order('name');
     }
 
     const { data, error } = await query;

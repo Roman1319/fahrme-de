@@ -28,7 +28,7 @@ export default function CreatePostModal({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadingMedia, setUploadingMedia] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim() || isSubmitting) return;
 
@@ -43,16 +43,32 @@ export default function CreatePostModal({
         allow_comments: allowComments
       };
 
-      const entry = await createLogbookEntry(entryData, authorId);
-      
-      // Upload media if any
-      if (selectedFiles.length > 0) {
-        setUploadingMedia(true);
-        await addMedia(entry.id, selectedFiles, authorId);
-      }
-
-      onPostCreated(entry.id);
-      handleClose();
+      createLogbookEntry(entryData, authorId)
+        .then((entry) => {
+          // Upload media if any
+          if (selectedFiles.length > 0) {
+            setUploadingMedia(true);
+            addMedia(entry.id, selectedFiles, authorId)
+              .then(() => {
+                setUploadingMedia(false);
+                onPostCreated(entry.id);
+                handleClose();
+              })
+              .catch(error => {
+                console.error('Error uploading media:', error);
+                setUploadingMedia(false);
+                onPostCreated(entry.id);
+                handleClose();
+              });
+          } else {
+            onPostCreated(entry.id);
+            handleClose();
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          setUploadingMedia(false);
+        });
     } catch (err: unknown) {
       console.error('Error creating post:', err);
       if (err && typeof err === 'object' && 'code' in err && err.code === '42501') {

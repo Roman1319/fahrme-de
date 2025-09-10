@@ -487,7 +487,7 @@ export async function updateCarWithPhotos(
                 const file = new File([blob], `image_${Date.now()}_${index}.jpg`, { type: 'image/jpeg' });
                 
                 // Upload the photo
-                return await uploadCarPhoto(carData.id, file, ownerId);
+                return await uploadCarPhoto(file, carData.id, ownerId);
               } catch (error) {
                 console.error(`Error uploading image ${index}:`, error);
                 return null;
