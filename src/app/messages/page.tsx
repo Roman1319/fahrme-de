@@ -11,7 +11,11 @@ export default function MessagesPage(){
   const [text, setText] = useState("");
 
   const load = ()=> setThreads(M.allThreads());
-  useEffect(()=>{ load(); },[]);
+  useEffect(()=>{ 
+    if (process.env.NEXT_PUBLIC_DEBUG === '1') {
+      load(); 
+    }
+  },[]);
   useEffect(()=>{ if(active) M.markThreadRead(active); },[active]);
 
   const current = threads.find(t=>t.with===active) || threads[0];

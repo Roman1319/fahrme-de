@@ -5,6 +5,7 @@ import { Heart, MoreVertical, Edit, Trash2, X } from 'lucide-react';
 import { Comment } from '@/lib/types';
 import AvatarTooltip from './AvatarTooltip';
 import Image from 'next/image';
+import { profileDisplayName } from '@/lib/format';
 
 interface CommentBlockProps {
   comment: Comment;
@@ -145,11 +146,11 @@ export default function CommentBlock({
         <div className="flex-shrink-0">
           <AvatarTooltip
             src={null}
-            name={(comment as unknown as { author?: string }).author || 'Unknown'}
+            name={profileDisplayName(comment.author)}
             size={32}
             userInfo={{
-              displayName: (comment as unknown as { author?: string }).author || 'Unknown',
-              fullName: (comment as unknown as { author?: string }).author || 'Unknown',
+              displayName: profileDisplayName(comment.author),
+              fullName: profileDisplayName(comment.author),
               city: 'Мюнхен', // TODO: Получать из профиля
               about: 'Пользователь'
             }}
@@ -162,7 +163,7 @@ export default function CommentBlock({
           {/* Информация о пользователе и автомобиле */}
           <div className="mb-1">
             {/* TODO: Replace with proper author field when profile system is updated */}
-            <span className="font-semibold text-sm text-white/90">{(comment as unknown as { author?: string }).author || 'Unknown'}</span>
+            <span className="font-semibold text-sm text-white/90">{profileDisplayName(comment.author)}</span>
             <span className="text-xs text-white/60 ml-2">
               Ich fahre BMW 3 Series (G20) {/* TODO: Получать из профиля пользователя */}
             </span>
@@ -259,7 +260,7 @@ export default function CommentBlock({
                   onClick={() => setIsReplying(true)}
                   className="text-white/60 hover:text-white/80 transition-colors"
                 >
-                  {level === 0 ? 'Antworten' : 'Antworten auf ' + (comment as unknown as { author?: string }).author}
+                  {level === 0 ? 'Antworten' : 'Antworten auf ' + profileDisplayName(comment.author)}
                 </button>
               )}
 

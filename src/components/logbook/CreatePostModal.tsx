@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { createLogbookEntry, addMedia } from '@/lib/logbook';
 import { CreateLogbookEntryData } from '@/lib/logbook';
 
 interface CreatePostModalProps {
@@ -43,12 +42,28 @@ export default function CreatePostModal({
         allow_comments: allowComments
       };
 
-      createLogbookEntry(entryData, authorId)
+      // Create logbook entry via API
+      fetch('/api/logbook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ...entryData, authorId }),
+      })
+        .then(response => response.json())
         .then((entry) => {
           // Upload media if any
           if (selectedFiles.length > 0) {
             setUploadingMedia(true);
-            addMedia(entry.id, selectedFiles, authorId)
+            const formData = new FormData();
+            selectedFiles.forEach(file => formData.append('files', file));
+            formData.append('entryId', entry.id);
+            formData.append('authorId', authorId);
+            
+            fetch('/api/logbook/media', {
+              method: 'POST',
+              body: formData,
+            })
               .then(() => {
                 setUploadingMedia(false);
                 onPostCreated(entry.id);

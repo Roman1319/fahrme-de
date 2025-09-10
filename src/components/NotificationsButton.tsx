@@ -10,7 +10,12 @@ export default function NotificationsButton(){
 
   const refresh = () => { setUnread(N.unreadCount()); setItems(N.all()); };
 
-  useEffect(()=>{ N.seedDemo(); refresh(); },[]);
+  useEffect(()=>{ 
+    if (process.env.NEXT_PUBLIC_DEBUG === '1') {
+      N.seedDemo(); 
+      refresh(); 
+    }
+  },[]);
   useEffect(()=>{ if(!open) return; const h=(e:MouseEvent)=>{ const t=e.target as HTMLElement; if(!t.closest?.("#notif-popover")) setOpen(false); }; document.addEventListener("click",h); return ()=>document.removeEventListener("click",h); },[open]);
 
   return (

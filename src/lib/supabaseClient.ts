@@ -16,8 +16,6 @@ if (supabaseAnonKey && supabaseAnonKey.startsWith(' ')) {
 
 console.log('[supabase] URL:', supabaseUrl ? 'Set' : 'Missing')
 console.log('[supabase] Key:', supabaseAnonKey ? 'Set' : 'Missing')
-console.log('[supabase] URL value:', JSON.stringify(supabaseUrl))
-console.log('[supabase] Key value:', JSON.stringify(supabaseAnonKey))
 
 if (!supabaseUrl) {
   throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')

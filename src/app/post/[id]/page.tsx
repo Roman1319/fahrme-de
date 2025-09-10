@@ -4,27 +4,16 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Heart, MessageCircle, User, Trash2, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
-import { 
-  getLogbookEntry, 
-  deleteLogbookEntry, 
-  listMedia, 
-  addMedia, 
-  deleteLogbookMedia, 
-  getLogbookMediaUrl,
-  listComments,
-  addComment,
-  updateComment,
-  deleteComment,
-  likePost,
-  unlikePost,
-  hasLikedPost,
-  countPostLikes,
-  // toggleCommentLike // TODO: Use toggleCommentLike if needed
-} from '@/lib/logbook';
-import { getCar } from '@/lib/cars';
-import { getProfile } from '@/lib/profiles';
 import { getTopicLabel, getTopicIcon, getTopicColor } from '@/lib/logbook-topics';
 import { LogbookEntry, LogbookMedia, Comment, Car as CarType, Profile } from '@/lib/types';
+import ErrorBoundaryClient from '@/components/ErrorBoundaryClient';
+
+// Helper function to get media URL
+function getLogbookMediaUrl(storagePath: string): string {
+  // This should be replaced with actual Supabase storage URL generation
+  // For now, return a placeholder or construct the URL
+  return `https://your-supabase-project.supabase.co/storage/v1/object/public/logbook/${storagePath}`;
+}
 
 export default function PostPage() {
   const params = useParams();
@@ -55,7 +44,8 @@ export default function PostPage() {
     setIsLoading(true);
     setError(null);
     
-    getLogbookEntry(entryId)
+    fetch(`/api/logbook/${entryId}`)
+      .then(response => response.json())
       .then(async (fetchedEntry) => {
         if (!fetchedEntry) {
           setError('Post not found');
@@ -65,10 +55,10 @@ export default function PostPage() {
 
         // Fetch all data in parallel
         Promise.all([
-          getCar(fetchedEntry.car_id),
-          getProfile(fetchedEntry.author_id),
-          listMedia(entryId),
-          listComments(entryId)
+          fetch(`/api/cars/${fetchedEntry.car_id}`).then(r => r.json()),
+          fetch(`/api/profiles/${fetchedEntry.author_id}`).then(r => r.json()),
+          fetch(`/api/logbook/${entryId}/media`).then(r => r.json()),
+          fetch(`/api/logbook/${entryId}/comments`).then(r => r.json())
         ]).then(([fetchedCar, fetchedAuthor, fetchedMedia, fetchedComments]) => {
 
           setCar(fetchedCar);
@@ -103,10 +93,17 @@ export default function PostPage() {
   const handleAddComment = () => {
     if (!user || !entry || !newComment.trim()) return;
 
-    addComment({
-      entry_id: entryId,
-      text: newComment.trim()
-    }, user.id)
+    fetch(`/api/logbook/${entryId}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text: newComment.trim(),
+        authorId: user.id
+      }),
+    })
+      .then(response => response.json())
       .then(comment => {
         setComments(prev => [...prev, comment]);
         setCommentCount(prev => prev + 1);
@@ -121,10 +118,16 @@ export default function PostPage() {
   const handleEditComment = (commentId: string) => {
     if (!editingCommentText.trim()) return;
 
-    updateComment({
-      id: commentId,
-      text: editingCommentText.trim()
+    fetch(`/api/comments/${commentId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text: editingCommentText.trim()
+      }),
     })
+      .then(response => response.json())
       .then(updatedComment => {
         setComments(prev => prev.map(c => c.id === commentId ? updatedComment : c));
         setEditingComment(null);
@@ -136,7 +139,9 @@ export default function PostPage() {
   };
 
   const handleDeleteComment = (commentId: string) => {
-    deleteComment(commentId)
+    fetch(`/api/comments/${commentId}`, {
+      method: 'DELETE',
+    })
       .then(() => {
         setComments(prev => prev.filter(c => c.id !== commentId));
         setCommentCount(prev => prev - 1);
@@ -162,7 +167,16 @@ export default function PostPage() {
 
     setUploadingMedia(true);
     const fileArray = Array.from(files);
-    addMedia(entryId, fileArray, user.id)
+    const formData = new FormData();
+    fileArray.forEach(file => formData.append('files', file));
+    formData.append('entryId', entryId);
+    formData.append('authorId', user.id);
+    
+    fetch('/api/logbook/media', {
+      method: 'POST',
+      body: formData,
+    })
+      .then(response => response.json())
       .then(uploadedMedia => {
         setMedia(prev => [...prev, ...uploadedMedia]);
         setShowMediaUpload(false);
@@ -176,7 +190,9 @@ export default function PostPage() {
   };
 
   const handleDeleteMedia = (mediaId: string) => {
-    deleteLogbookMedia(mediaId)
+    fetch(`/api/logbook/media/${mediaId}`, {
+      method: 'DELETE',
+    })
       .then(() => {
         setMedia(prev => prev.filter(m => m.id !== mediaId));
       })
@@ -189,7 +205,9 @@ export default function PostPage() {
     if (!entry || !user || entry.author_id !== user.id) return;
 
     if (confirm('Are you sure you want to delete this post?')) {
-      deleteLogbookEntry(entryId)
+      fetch(`/api/logbook/${entryId}`, {
+        method: 'DELETE',
+      })
         .then(() => {
           router.push(`/car/${entry.car_id}`);
         })
@@ -230,8 +248,9 @@ export default function PostPage() {
   const canComment = entry.allow_comments;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+    <ErrorBoundaryClient>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-start justify-between mb-4">
@@ -482,7 +501,8 @@ export default function PostPage() {
             <p className="text-gray-500 dark:text-gray-400">Comments are disabled for this post.</p>
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </ErrorBoundaryClient>
   );
 }

@@ -5,8 +5,12 @@ import { useEffect, useState } from "react";
 import Guard from "@/components/auth/Guard";
 
 export default function NotificationsPage(){
-  const [items, setItems] = useState(N.all());
-  useEffect(()=>{ setItems(N.all()); },[]);
+  const [items, setItems] = useState(process.env.NEXT_PUBLIC_DEBUG === '1' ? N.all() : []);
+  useEffect(()=>{ 
+    if (process.env.NEXT_PUBLIC_DEBUG === '1') {
+      setItems(N.all()); 
+    }
+  },[]);
   return (
     <Guard>
       <main className="container pb-12">

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Heart, MessageCircle, Edit2, Trash2, Reply } from 'lucide-react';
 import { Comment } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
+import { profileDisplayName } from '@/lib/format';
 
 interface CommentsSectionProps {
   comments: Comment[];
@@ -140,7 +141,7 @@ export default function CommentsSection({
           <div key={comment.id} className="flex gap-3">
             <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-white font-semibold">
               {/* TODO: Replace with proper author field when profile system is updated */}
-              {(comment as unknown as { author?: string }).author?.charAt(0).toUpperCase() || 'U'}
+              {profileDisplayName(comment.author).charAt(0).toUpperCase()}
             </div>
             
             <div className="flex-1">
@@ -148,7 +149,7 @@ export default function CommentsSection({
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     {/* TODO: Replace with proper author field when profile system is updated */}
-                    <span className="font-semibold text-white">{(comment as unknown as { author?: string }).author || 'Unknown'}</span>
+                    <span className="font-semibold text-white">{profileDisplayName(comment.author)}</span>
                     <span className="text-white/50 text-sm">
                       {formatTimeAgo(comment.created_at)}
                     </span>
@@ -278,13 +279,13 @@ export default function CommentsSection({
                     {legacyComment.replies.map((reply) => (
                     <div key={reply.id} className="flex gap-3 ml-4">
                       <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white font-semibold text-sm">
-                        {reply.author.charAt(0).toUpperCase()}
+                        {profileDisplayName(reply.author).charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1">
                         <div className="bg-white/5 rounded-lg p-3">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
-                              <span className="font-semibold text-white text-sm">{reply.author}</span>
+                              <span className="font-semibold text-white text-sm">{profileDisplayName(reply.author)}</span>
                               <span className="text-white/50 text-xs">
                                 {formatTimeAgo(reply.createdAt || reply.timestamp)}
                               </span>

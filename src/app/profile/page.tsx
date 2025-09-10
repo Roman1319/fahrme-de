@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Profile, getProfile, updateProfile, uploadAvatar, checkHandleAvailability } from '@/lib/profiles';
+import { Profile } from '@/lib/profiles';
 import DropzoneAvatar from '@/components/ui/DropzoneAvatar';
 // import { PillToggleGroup } from '@/components/ui/PillToggle'; // TODO: Use PillToggleGroup if needed
 import { useAuth } from '@/components/AuthProvider';
 import Guard from '@/components/auth/Guard';
 import { Loader2 } from 'lucide-react';
+import ErrorBoundaryClient from '@/components/ErrorBoundaryClient';
 
 type Errors = Partial<Record<
   'handle'|'name'|'about'|'country'|'city'|'birth_date',
@@ -33,7 +34,8 @@ export default function ProfilePage() {
     
     try {
       setLoading(true);
-      getProfile(user.id)
+      fetch(`/api/profiles/${user.id}`)
+        .then(response => response.json())
         .then((profileData) => {
           if (profileData) {
             setProfile(profileData);
@@ -99,8 +101,9 @@ export default function ProfilePage() {
   const checkHandle = (handle: string) => {
     if (!handle || !profile) return;
     
-    checkHandleAvailability(handle, profile.id)
-      .then((isAvailable) => {
+    fetch(`/api/profiles/check-handle?handle=${encodeURIComponent(handle)}&userId=${profile.id}`)
+      .then(response => response.json())
+      .then(({ isAvailable }) => {
         if (!isAvailable) {
           setErrors(prev => ({ ...prev, handle: 'Dieser Handle ist bereits vergeben' }));
         } else {
@@ -136,7 +139,14 @@ export default function ProfilePage() {
           .then(response => response.blob())
           .then(blob => {
             const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
-            return uploadAvatar(user.id, file);
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', user.id);
+            
+            return fetch('/api/profiles/avatar', {
+              method: 'POST',
+              body: formData,
+            }).then(response => response.json()).then(data => data.url);
           })
           .then(uploadedUrl => {
             avatarUrl = uploadedUrl;
@@ -156,16 +166,23 @@ export default function ProfilePage() {
         if (!user || !profile) return;
         
         console.log('Updating profile...');
-        updateProfile(user.id, {
-          name: profile.name,
-          handle: profile.handle,
-          about: profile.about,
-          avatar_url: avatarUrl,
-          country: profile.country,
-          city: profile.city,
-          gender: profile.gender,
-          birth_date: profile.birth_date
+        fetch(`/api/profiles/${user.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: profile.name,
+            handle: profile.handle,
+            about: profile.about,
+            avatar_url: avatarUrl,
+            country: profile.country,
+            city: profile.city,
+            gender: profile.gender,
+            birth_date: profile.birth_date
+          }),
         })
+        .then(response => response.json())
         .then(updatedProfile => {
           setProfile(updatedProfile);
           setAvatar(avatarUrl || null);
@@ -216,9 +233,10 @@ export default function ProfilePage() {
   }
 
   return (
-    <Guard>
-      <main className="pb-12">
-        <div className="space-y-6">
+    <ErrorBoundaryClient>
+      <Guard>
+        <main className="pb-12">
+          <div className="space-y-6">
           <div className="section">
             <h1 className="h1">Mein Profil</h1>
           </div>
@@ -368,8 +386,9 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
-        </div>
-      </main>
-    </Guard>
+          </div>
+        </main>
+      </Guard>
+    </ErrorBoundaryClient>
   );
 }

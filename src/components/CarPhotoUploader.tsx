@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { uploadCarPhoto } from '@/lib/storage';
-import { addCarPhoto } from '@/lib/cars';
+// Removed server imports - using API calls instead
 import { CarPhoto } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -16,10 +15,17 @@ export function CarPhotoUploader({ carId, onAdded }: { carId: string; onAdded?: 
     if (!file || !user?.id) return;
     setBusy(true); setErr(null);
     
-    uploadCarPhoto(file, carId, user.id)
-      .then(({ storagePath, publicUrl }) => {
-        return addCarPhoto({ carId, userId: user.id, url: publicUrl, storagePath, isCover: false });
-      })
+    // Upload photo via API
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('carId', carId);
+    formData.append('userId', user.id);
+    
+    fetch('/api/cars/photos', {
+      method: 'POST',
+      body: formData,
+    })
+      .then(response => response.json())
       .then(row => {
         onAdded?.(row);
       })

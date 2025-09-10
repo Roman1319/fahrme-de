@@ -1,5 +1,8 @@
 import { supabase } from './supabaseClient';
 import { LogbookEntry, LogbookMedia, Comment, PostLike, CommentLike } from './types';
+import { logSb } from './supabaseDebug';
+
+const UUID_RX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export interface CreateLogbookEntryData {
   car_id: string;
@@ -64,26 +67,69 @@ export async function getLogbookEntries(carId: string): Promise<LogbookEntry[]> 
   return listEntriesByCar(carId);
 }
 
-export async function getLogbookEntry(entryId: string): Promise<LogbookEntry | null> {
+export async function getLogbookEntry(entryId: string) {
   try {
-    const { data, error } = await supabase
+    if (!UUID_RX.test(entryId)) return null;
+
+    // 1) Базовая запись без вложений
+    const entryResp = await supabase
       .from('logbook_entries')
-      .select('*')
+      .select(`
+        id, car_id, author_id,
+        title, content, topic,
+        mileage, mileage_unit, cost, currency,
+        allow_comments, pin_to_car, publish_date,
+        created_at, updated_at
+      `)
       .eq('id', entryId)
-      .single();
+      .maybeSingle();
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return null; // Entry not found
-      }
-      console.error('Error fetching logbook entry:', error);
-      throw error;
-    }
+    logSb('getLogbookEntry:entry', entryResp);
 
-    return data;
-  } catch (error) {
-    console.error('Error in getLogbookEntry:', error);
-    throw error;
+    if (entryResp.error || !entryResp.data) return null;
+    const entry = entryResp.data;
+
+    // 2) Автор
+    const authorResp = await supabase
+      .from('profiles')
+      .select('id, handle, avatar_url, display_name, name')
+      .eq('id', entry.author_id)
+      .maybeSingle();
+
+    logSb('getLogbookEntry:author', authorResp);
+
+    // 3) Машина
+    const carResp = await supabase
+      .from('cars')
+      .select('id, brand, model, year, name')
+      .eq('id', entry.car_id)
+      .maybeSingle();
+
+    logSb('getLogbookEntry:car', carResp);
+
+    // 4) Медиа
+    const mediaResp = await supabase
+      .from('logbook_media')
+      .select('id, storage_path, sort, created_at')
+      .eq('entry_id', entry.id)
+      .order('sort', { ascending: true });
+
+    logSb('getLogbookEntry:media', mediaResp);
+
+    return {
+      ...entry,
+      author: authorResp?.data || null,
+      car: carResp?.data || null,
+      media: Array.isArray(mediaResp?.data) ? mediaResp.data : [],
+    };
+  } catch (err: any) {
+    // eslint-disable-next-line no-console
+    console.error('[getLogbookEntry] Unexpected:', {
+      message: err?.message,
+      code: err?.code,
+      name: err?.name,
+    });
+    return null;
   }
 }
 
@@ -298,23 +344,86 @@ export function getLogbookMediaUrl(storagePath: string): string {
 }
 
 // Comments
-export async function getComments(entryId: string): Promise<Comment[]> {
+type RawComment = {
+  id: string;
+  entry_id: string;
+  author_id: string;
+  parent_id: string | null;
+  text: string;
+  created_at: string;
+  updated_at: string | null;
+};
+
+type Profile = {
+  id: string;
+  handle: string | null;
+  avatar_url: string | null;
+  display_name: string | null;
+  name: string | null;
+};
+
+export async function getComments(entryId: string) {
   try {
-    const { data, error } = await supabase
+    // 1) Комменты — без вложений
+    const commentsResp = await supabase
       .from('comments')
-      .select('*')
+      .select(
+        'id, entry_id, author_id, parent_id, text, created_at, updated_at'
+      )
       .eq('entry_id', entryId)
       .order('created_at', { ascending: true });
 
-    if (error) {
-      console.error('Error fetching comments:', error);
-      throw error;
+    logSb('getComments:comments', commentsResp);
+
+    if (commentsResp.error || !Array.isArray(commentsResp.data)) {
+      return [];
     }
 
-    return data || [];
-  } catch (error) {
-    console.error('Error in getComments:', error);
-    throw error;
+    const comments = commentsResp.data as RawComment[];
+    if (comments.length === 0) return [];
+
+    // 2) Уникальные author_id
+    const authorIds = Array.from(new Set(comments.map(c => c.author_id)));
+
+    // 3) Подтянуть профили пачкой
+    const profilesResp = await supabase
+      .from('profiles')
+      .select('id, handle, avatar_url, display_name, name')
+      .in('id', authorIds);
+
+    logSb('getComments:profiles', profilesResp);
+
+    const profilesMap = new Map<string, Profile>();
+    if (!profilesResp.error && Array.isArray(profilesResp.data)) {
+      for (const p of profilesResp.data as Profile[]) {
+        profilesMap.set(p.id, p);
+      }
+    }
+
+    // 4) Смаппить
+    const withAuthor = comments.map(c => {
+      const profile = profilesMap.get(c.author_id);
+      return {
+        ...c,
+        parent_id: c.parent_id || undefined,
+        updated_at: c.updated_at || c.created_at,
+        author: profile ? {
+          name: profile.name || undefined,
+          handle: profile.handle || undefined,
+          avatar_url: profile.avatar_url || undefined,
+        } : undefined,
+      };
+    });
+
+    return withAuthor as Comment[];
+  } catch (err: any) {
+    // eslint-disable-next-line no-console
+    console.error('[getComments] Unexpected:', {
+      message: err?.message,
+      code: err?.code,
+      name: err?.name,
+    });
+    return [];
   }
 }
 

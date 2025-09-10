@@ -31,9 +31,10 @@ export interface CarPhoto {
 export interface Profile {
   id: string;
   email: string;
-  name?: string;
-  handle?: string;
-  avatar_url?: string;
+  name?: string | null;
+  handle?: string | null;
+  avatar_url?: string | null;
+  display_name?: string | null;
   about?: string;
   country?: string;
   city?: string;
@@ -79,11 +80,7 @@ export interface LogbookEntry {
   publish_date: string;
   created_at: string;
   updated_at: string;
-  author?: {
-    name?: string;
-    handle?: string;
-    avatar_url?: string;
-  };
+  author: Profile | null;
   // Legacy fields for backward compatibility
   carId?: string;
   authorId?: string;
@@ -108,11 +105,7 @@ export interface Comment {
   text: string;
   created_at: string;
   updated_at: string;
-  author?: {
-    name?: string;
-    handle?: string;
-    avatar_url?: string;
-  };
+  author: Profile | null;
 }
 
 export interface PostLike {

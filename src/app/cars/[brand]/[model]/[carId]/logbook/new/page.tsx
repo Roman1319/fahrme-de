@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Send, Upload, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
-import { createLogbookEntry, uploadLogbookMedia } from '@/lib/logbook';
-import { getCar } from '@/lib/cars';
+import { supabase } from '@/lib/supabaseClient';
+// Removed server imports - using API calls instead
 import { LOGBOOK_TOPICS, getTopicLabel, getTopicIcon } from '@/lib/logbook-topics';
 import RichTextEditor from '@/components/ui/RichTextEditor';
 
@@ -31,13 +31,13 @@ export default function NewLogbookEntryPage() {
   // Load car data
   useEffect(() => {
     if (carId) {
-      getCar(carId)
-        .then(carData => {
-          setCar(carData);
-        })
-        .catch(error => {
-          console.error('Error loading car:', error);
-        });
+      // TODO: Implement API endpoint
+      // For now, set placeholder data
+      setCar({
+        brand: 'AC',
+        model: '1',
+        year: 2024
+      });
     }
   }, [carId]);
 
@@ -78,7 +78,7 @@ export default function NewLogbookEntryPage() {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.title.trim() || !formData.content.trim()) {
       alert('Bitte füllen Sie alle Pflichtfelder aus.');
       return;
@@ -86,40 +86,72 @@ export default function NewLogbookEntryPage() {
 
     setIsSaving(true);
     
-    createLogbookEntry({
-      car_id: carId,
-      title: formData.title,
-      content: formData.content,
-      topic: formData.topic || undefined,
-      allow_comments: formData.allow_comments
-    }, user.id)
-    .then(async (entry) => {
-        // Upload files if any
-        if (selectedFiles.length > 0) {
-          setUploadingFiles(true);
-          const uploadPromises = selectedFiles.map(file => 
-            uploadLogbookMedia(entry.id, file, user.id)
-          );
-          Promise.all(uploadPromises)
-            .then(() => {
-              setUploadingFiles(false);
-            })
-            .catch(error => {
-              console.error('Error uploading files:', error);
-              setUploadingFiles(false);
+    try {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No authentication token available');
+      }
+
+      // Create logbook entry via API
+      const response = await fetch('/api/logbook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          car_id: carId,
+          title: formData.title,
+          content: formData.content,
+          topic: formData.topic || undefined,
+          allow_comments: formData.allow_comments
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create logbook entry');
+      }
+
+      const entry = await response.json();
+
+      // Upload files if any
+      if (selectedFiles.length > 0) {
+        setUploadingFiles(true);
+        try {
+          const uploadPromises = selectedFiles.map(async (file) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('entryId', entry.id);
+            
+            const uploadResponse = await fetch('/api/logbook/media', {
+              method: 'POST',
+              body: formData,
             });
+            
+            if (!uploadResponse.ok) {
+              throw new Error('Failed to upload file');
+            }
+            
+            return uploadResponse.json();
+          });
+          
+          await Promise.all(uploadPromises);
+          setUploadingFiles(false);
+        } catch (error) {
+          console.error('Error uploading files:', error);
+          setUploadingFiles(false);
         }
+      }
 
       // Redirect to the new entry
       router.push(`/logbuch/${entry.id}`);
-    })
-    .catch(error => {
+    } catch (error) {
       console.error('Error creating logbook entry:', error);
       alert('Fehler beim Erstellen des Eintrags. Bitte versuchen Sie es erneut.');
-    })
-    .finally(() => {
+    } finally {
       setIsSaving(false);
-    });
+    }
   };
 
   return (

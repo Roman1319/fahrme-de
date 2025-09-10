@@ -169,7 +169,6 @@ export function isEntryOwner(entry: LogbookEntry, userId: string): boolean {
 }
 
 // Backward compatibility functions (deprecated - use Supabase functions directly)
-export const getComments = getCommentsForEntry;
 export const addComment = addCommentToEntry;
 export const editComment = editCommentInEntry;
 export const deleteComment = deleteCommentFromEntry;

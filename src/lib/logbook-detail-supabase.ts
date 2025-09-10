@@ -2,9 +2,9 @@
 import { LogbookEntry, Comment } from './types';
 import { 
   getLogbookEntry, 
+  getComments,
   updateLogbookEntry as updateLogbookEntryOriginal, 
   deleteLogbookEntry as deleteLogbookEntryOriginal,
-  getComments as getCommentsOriginal,
   createComment,
   updateComment,
   deleteComment as deleteCommentOriginal,
@@ -45,13 +45,9 @@ export async function getLogbookEntryLikes(entryId: string): Promise<number> {
 }
 
 // Comment system for logbook entries - Supabase version
-export async function getCommentsForEntry(entryId: string): Promise<Comment[]> {
-  try {
-    return await getCommentsOriginal(entryId);
-  } catch (error) {
-    console.error('Error getting comments:', error);
-    return [];
-  }
+export async function getCommentsForEntry(entryId: string) {
+  const comments = await getComments(entryId);
+  return comments ?? [];
 }
 
 export async function addCommentToEntry(
@@ -131,13 +127,10 @@ export function buildCommentTree(comments: Comment[]): Comment[] {
 }
 
 // Entry utilities - Supabase version
-export async function getLogbookEntryById(entryId: string): Promise<LogbookEntry | null> {
-  try {
-    return await getLogbookEntry(entryId);
-  } catch (error) {
-    console.error('Error getting logbook entry:', error);
-    return null;
-  }
+export async function getLogbookEntryById(entryId: string) {
+  const entry = await getLogbookEntry(entryId);
+  if (!entry) return null;
+  return entry;
 }
 
 export async function updateLogbookEntryById(entryId: string, updates: Partial<LogbookEntry>): Promise<boolean> {
@@ -169,7 +162,6 @@ export function isEntryOwner(entry: LogbookEntry, userId: string): boolean {
 }
 
 // Backward compatibility functions (deprecated - use Supabase functions directly)
-export const getComments = getCommentsForEntry;
 export const addComment = addCommentToEntry;
 export const editComment = editCommentInEntry;
 export const deleteComment = deleteCommentFromEntry;

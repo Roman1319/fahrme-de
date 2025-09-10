@@ -1,23 +1,7 @@
 // Supabase-based logbook operations
 
 import { supabase } from './supabaseClient';
-
-export interface LogbookEntry {
-  id: string;
-  car_id: string;
-  author_id: string;
-  title: string;
-  content: string;
-  allow_comments: boolean;
-  publish_date: string;
-  created_at: string;
-  updated_at: string;
-  author?: {
-    name?: string;
-    handle?: string;
-    avatar_url?: string;
-  };
-}
+import { LogbookEntry } from './types';
 
 export async function deleteLogbookEntry(entryId: string): Promise<boolean> {
   try {
@@ -70,8 +54,22 @@ export async function getLogbookEntry(entryId: string): Promise<LogbookEntry | n
 
     return {
       ...data,
-      author
-    };
+      author: author ? {
+        id: data.author_id,
+        email: '', // Not available in this query
+        name: author.name || null,
+        handle: author.handle || null,
+        avatar_url: author.avatar_url || null,
+        display_name: null, // Not available in this query
+        about: null,
+        country: null,
+        city: null,
+        gender: null,
+        birth_date: null,
+        created_at: '',
+        updated_at: ''
+      } : null
+    } as LogbookEntry;
   } catch (error) {
     console.error('Error in getLogbookEntry:', error);
     return null;

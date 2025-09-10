@@ -1,21 +1,7 @@
 // Supabase-based comments and logbook operations
 
 import { supabase } from './supabaseClient';
-
-export interface Comment {
-  id: string;
-  entry_id: string;
-  author_id: string;
-  parent_id?: string;
-  text: string;
-  created_at: string;
-  updated_at: string;
-  author?: {
-    name?: string;
-    handle?: string;
-    avatar_url?: string;
-  };
-}
+import { Comment } from './types';
 
 export async function addComment(entryId: string, text: string, authorId: string, parentId?: string): Promise<Comment | null> {
   try {
@@ -38,7 +24,10 @@ export async function addComment(entryId: string, text: string, authorId: string
       return null;
     }
 
-    return data;
+    return {
+      ...data,
+      author: null // Will be loaded separately if needed
+    } as Comment;
   } catch (error) {
     console.error('Error in addComment:', error);
     return null;
@@ -61,7 +50,24 @@ export async function getComments(entryId: string): Promise<Comment[]> {
       return [];
     }
 
-    return data || [];
+    return (data || []).map(c => ({
+      ...c,
+      author: c.author ? {
+        id: c.author_id,
+        email: '',
+        name: c.author.name || null,
+        handle: c.author.handle || null,
+        avatar_url: c.author.avatar_url || null,
+        display_name: null,
+        about: null,
+        country: null,
+        city: null,
+        gender: null,
+        birth_date: null,
+        created_at: '',
+        updated_at: ''
+      } : null
+    })) as Comment[];
   } catch (error) {
     console.error('Error in getComments:', error);
     return [];
