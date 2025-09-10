@@ -1,25 +1,24 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+// src/lib/supabase/server.ts
+import { cookies } from 'next/headers'
+import { createServerClient as createSupabaseServerClient, type CookieOptions } from '@supabase/ssr'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
-
-if (!supabaseUrl) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
-}
-
-if (!supabaseAnonKey) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable')
-}
-
-// Server-side Supabase client factory
-export function createServerClient() {
-  return createSupabaseClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
+export function createClient() {
+  const cookieStore = cookies()
+  return createSupabaseServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get: (name: string) => cookieStore.get(name)?.value,
+        set: (name: string, value: string, options: CookieOptions) => {
+          cookieStore.set({ name, value, ...options })
+        },
+        remove: (name: string, options: CookieOptions) => {
+          cookieStore.set({ name, value: '', ...options })
+        }
+      }
     }
-  })
+  )
 }
 
-// Alias for compatibility
-export const createClient = createServerClient
+export const createServerClient = createClient;

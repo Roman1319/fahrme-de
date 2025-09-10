@@ -107,7 +107,7 @@ CREATE POLICY "Users can delete photos for own cars" ON car_photos
 -- Create logbook_entries table
 CREATE TABLE IF NOT EXISTS logbook_entries (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  car_id UUID REFERENCES cars(id) ON DELETE CASCADE NOT NULL,
+  car_id UUID REFERENCES cars(id) ON DELETE CASCADE,
   author_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
@@ -125,22 +125,16 @@ ALTER TABLE logbook_entries ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Logbook entries are viewable by everyone" ON logbook_entries
   FOR SELECT USING (true);
 
--- Users can insert entries for their own cars
-CREATE POLICY "Users can insert entries for own cars" ON logbook_entries
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM cars 
-      WHERE cars.id = logbook_entries.car_id 
-      AND cars.owner_id = auth.uid()
-    )
-  );
+-- Authenticated users can insert logbook entries
+CREATE POLICY "Authenticated users can insert logbook entries" ON logbook_entries
+  FOR INSERT WITH CHECK (auth.uid() = author_id);
 
 -- Users can update their own entries
-CREATE POLICY "Users can update own entries" ON logbook_entries
+CREATE POLICY "Users can update own logbook entries" ON logbook_entries
   FOR UPDATE USING (auth.uid() = author_id);
 
 -- Users can delete their own entries
-CREATE POLICY "Users can delete own entries" ON logbook_entries
+CREATE POLICY "Users can delete own logbook entries" ON logbook_entries
   FOR DELETE USING (auth.uid() = author_id);
 
 -- Create logbook_media table

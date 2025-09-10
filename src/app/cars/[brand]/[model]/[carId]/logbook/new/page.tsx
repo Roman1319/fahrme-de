@@ -89,6 +89,8 @@ export default function NewLogbookEntryPage() {
     try {
       // Get auth token
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('Session data:', { hasSession: !!session, hasToken: !!session?.access_token });
+      console.log('Car ID from params:', carId);
       if (!session?.access_token) {
         throw new Error('No authentication token available');
       }
@@ -110,7 +112,9 @@ export default function NewLogbookEntryPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create logbook entry');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API Error:', errorData);
+        throw new Error(errorData.error || 'Failed to create logbook entry');
       }
 
       const entry = await response.json();

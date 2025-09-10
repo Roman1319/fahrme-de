@@ -80,7 +80,7 @@ export async function getExploreFeed(filters: FeedFilters = {}): Promise<FeedEnt
 
     // Batch load profiles
     const authorIds = [...new Set((data || []).map(entry => entry.author_id))];
-    let profilesMap = new Map<string, { handle: string; avatar_url: string }>();
+    const profilesMap = new Map<string, { handle: string; avatar_url: string }>();
     
     if (authorIds.length > 0) {
       const { data: profiles, error: profilesError } = await supabase

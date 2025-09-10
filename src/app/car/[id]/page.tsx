@@ -146,7 +146,7 @@ export default function CarPage() {
         if (profile) {
           setOwnerProfile({
             avatarUrl: profile.avatar_url,
-            name: profile.name
+            name: profile.name || undefined
           });
         }
       })

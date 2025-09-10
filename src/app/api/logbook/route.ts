@@ -1,71 +1,81 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { createLogbookEntry } from '@/lib/logbook';
 
-export async function POST(request: NextRequest) {
+export const runtime = 'nodejs';
+
+const CreateSchema = z.object({
+  title: z.string().min(1),
+  content: z.string().min(1),
+  car_id: z.string().uuid().nullable().optional(),
+  topic: z.string().optional(),
+  allow_comments: z.boolean().optional(),
+  mileage: z.number().int().nonnegative().nullable().optional(),
+  mileage_unit: z.enum(['km','mi']).nullable().optional(),
+  cost: z.number().nonnegative().nullable().optional(),
+  currency: z.string().length(3).nullable().optional(),
+});
+
+export async function POST(req: NextRequest) {
   try {
-    console.log('API: Starting logbook entry creation');
+    // Get authorization header
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Missing or invalid authorization header' }, { status: 401 });
+    }
+
+    const token = authHeader.split(' ')[1];
+    console.log('Received token:', token ? 'Present' : 'Missing');
     
     const supabase = createClient();
     
-    // Get authorization header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('API: Missing or invalid authorization header');
-      return NextResponse.json({ error: 'Missing or invalid authorization header' }, { status: 401 });
-    }
-    
-    const token = authHeader.substring(7);
-    console.log('API: Got token, length:', token.length);
-    
-    // Set the session with the token
+    // Try to verify the token directly
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
+    console.log('Auth result:', { user: user?.id, error: authError?.message });
+    
     if (authError || !user) {
-      console.log('API: Auth error:', authError);
+      console.error('Auth error:', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    console.log('API: User authenticated:', user.id);
-
-    const body = await request.json();
-    const { car_id, title, content, topic, allow_comments } = body;
-
-    console.log('API: Request body:', { car_id, title: title?.substring(0, 50), content: content?.substring(0, 50), topic, allow_comments });
-
-    if (!car_id || !title || !content) {
-      console.log('API: Missing required fields');
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    console.log('API: Calling createLogbookEntry...');
     
-    // Create entry directly with server client
+    // Проверяем, что пользователь аутентифицирован
+    console.log('User authenticated:', user.id);
+
+    const body = await req.json();
+    console.log('Request body:', body);
+    
+    const input = CreateSchema.parse(body);
+    console.log('Parsed input:', input);
+
+    const row = {
+      author_id: user.id,
+      car_id: input.car_id ?? null,
+      title: input.title,
+      content: input.content,
+      topic: input.topic ?? null,
+      allow_comments: input.allow_comments ?? true,
+      mileage: input.mileage ?? null,
+      mileage_unit: input.mileage_unit ?? null,
+      cost: input.cost ?? null,
+      currency: input.currency ?? null,
+    };
+    
+    console.log('Row to insert:', row);
+
     const { data, error } = await supabase
       .from('logbook_entries')
-      .insert({
-        car_id,
-        title,
-        content,
-        topic,
-        allow_comments: allow_comments ?? true,
-        author_id: user.id
-      })
+      .insert(row)
       .select()
       .single();
 
     if (error) {
-      console.error('API: Database error:', error);
-      throw error;
+      console.error('Supabase error:', error);
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
-
-    const entry = data;
-
-    console.log('API: Entry created successfully:', entry.id);
-    return NextResponse.json(entry);
-  } catch (error) {
-    console.error('API: Error creating logbook entry:', error);
-    console.error('API: Error stack:', error instanceof Error ? error.stack : 'No stack');
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(data, { status: 201 });
+  } catch (e: unknown) {
+    console.error('API error:', e);
+    return NextResponse.json({ error: (e as Error)?.message ?? 'Internal error' }, { status: 500 });
   }
 }

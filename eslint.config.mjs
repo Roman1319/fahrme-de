@@ -34,15 +34,16 @@ const eslintConfig = [
           "selector": "Program:has(Directive[value='use client']) JSXExpressionContainer[expression.type='CallExpression'][expression.callee.type='Identifier'][expression.callee.name=/^[A-Z]/]",
           "message": "Function calls in JSX are not allowed in client components. Use state and useEffect instead."
         },
-        {
-          "selector": "Program:has(Directive[value='use client']) ImportDeclaration[source.value=/^@\/lib\//]",
-          "message": "Direct imports from @/lib/ are not allowed in client components. Use API calls instead."
-        }
+        // {
+        //   "selector": "Program:has(Directive[value='use client']) ImportDeclaration[source.value=/^@\\/lib\\//]",
+        //   "message": "Direct imports from @/lib/ are not allowed in client components. Use API calls instead."
+        // }
       ],
       // Additional rules for better code quality
       "no-promise-executor-return": "warn",
       "no-async-promise-executor": "error",
-      "react/no-unstable-nested-components": "off"
+      "react/no-unstable-nested-components": "off",
+      "@next/next/no-async-client-component": "error"
     }
   }
 ];

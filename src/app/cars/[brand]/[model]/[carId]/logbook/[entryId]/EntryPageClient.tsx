@@ -284,7 +284,7 @@ export default function EntryPageClient({ entryId, initialEntry, initialComments
                 <h1 className="text-xl font-bold text-white">{entry.title}</h1>
                 {car && (
                   <p className="text-white/60 text-sm">
-                    {car.brand} {car.model} {car.year}
+                    {car.make} {car.model} {car.year}
                   </p>
                 )}
               </div>
