@@ -276,7 +276,7 @@ CREATE TRIGGER on_auth_user_created
 INSERT INTO storage.buckets (id, name, public) VALUES 
   ('avatars', 'avatars', true),
   ('car-photos', 'car-photos', true),
-  ('logbook-media', 'logbook-media', true)
+  ('logbook', 'logbook', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Create storage policies
@@ -325,11 +325,11 @@ CREATE POLICY "Users can delete car photos for their own cars" ON storage.object
   );
 
 CREATE POLICY "Logbook media is publicly accessible" ON storage.objects
-  FOR SELECT USING (bucket_id = 'logbook-media');
+  FOR SELECT USING (bucket_id = 'logbook');
 
 CREATE POLICY "Users can upload logbook media for their own entries" ON storage.objects
   FOR INSERT WITH CHECK (
-    bucket_id = 'logbook-media' 
+    bucket_id = 'logbook' 
     AND EXISTS (
       SELECT 1 FROM logbook_entries 
       WHERE logbook_entries.author_id = auth.uid() 
@@ -339,10 +339,169 @@ CREATE POLICY "Users can upload logbook media for their own entries" ON storage.
 
 CREATE POLICY "Users can delete logbook media for their own entries" ON storage.objects
   FOR DELETE USING (
-    bucket_id = 'logbook-media' 
+    bucket_id = 'logbook' 
     AND EXISTS (
       SELECT 1 FROM logbook_entries 
-      WHERE logbook_entries.author_id = auth.uid() 
+      WHERE logbook_entries.author_id = auth.uid()
       AND logbook_entries.id::text = (storage.foldername(name))[2]
     )
   );
+
+-- [RPC] feed_explore / feed_personal / get_table_stats
+
+-- Feed explore function - returns public logbook entries
+CREATE OR REPLACE FUNCTION feed_explore(p_limit int default 20, p_offset int default 0)
+RETURNS TABLE (
+  id uuid,
+  title text,
+  content text,
+  author_handle text,
+  author_avatar_url text,
+  car_brand text,
+  car_model text,
+  car_year int,
+  car_name text,
+  media_preview text,
+  likes_count bigint,
+  comments_count bigint,
+  publish_date timestamptz
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    le.id,
+    le.title,
+    le.content,
+    p.handle as author_handle,
+    p.avatar_url as author_avatar_url,
+    c.brand as car_brand,
+    c.model as car_model,
+    c.year as car_year,
+    c.name as car_name,
+    lm.storage_path as media_preview,
+    COALESCE(pl.likes_count, 0) as likes_count,
+    COALESCE(cc.comments_count, 0) as comments_count,
+    le.publish_date
+  FROM logbook_entries le
+  LEFT JOIN profiles p ON le.author_id = p.id
+  LEFT JOIN cars c ON le.car_id = c.id
+  LEFT JOIN LATERAL (
+    SELECT storage_path 
+    FROM logbook_media 
+    WHERE entry_id = le.id 
+    ORDER BY sort ASC, created_at ASC 
+    LIMIT 1
+  ) lm ON true
+  LEFT JOIN LATERAL (
+    SELECT COUNT(*) as likes_count
+    FROM post_likes 
+    WHERE entry_id = le.id
+  ) pl ON true
+  LEFT JOIN LATERAL (
+    SELECT COUNT(*) as comments_count
+    FROM comments 
+    WHERE entry_id = le.id
+  ) cc ON true
+  ORDER BY le.publish_date DESC
+  LIMIT p_limit OFFSET p_offset;
+END;
+$$;
+
+-- Feed personal function - returns logbook entries for authenticated user
+CREATE OR REPLACE FUNCTION feed_personal(p_limit int default 20, p_offset int default 0)
+RETURNS TABLE (
+  id uuid,
+  title text,
+  content text,
+  author_handle text,
+  author_avatar_url text,
+  car_brand text,
+  car_model text,
+  car_year int,
+  car_name text,
+  media_preview text,
+  likes_count bigint,
+  comments_count bigint,
+  liked_by_me boolean,
+  publish_date timestamptz
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    le.id,
+    le.title,
+    le.content,
+    p.handle as author_handle,
+    p.avatar_url as author_avatar_url,
+    c.brand as car_brand,
+    c.model as car_model,
+    c.year as car_year,
+    c.name as car_name,
+    lm.storage_path as media_preview,
+    COALESCE(pl.likes_count, 0) as likes_count,
+    COALESCE(cc.comments_count, 0) as comments_count,
+    COALESCE(ul.liked_by_me, false) as liked_by_me,
+    le.publish_date
+  FROM logbook_entries le
+  LEFT JOIN profiles p ON le.author_id = p.id
+  LEFT JOIN cars c ON le.car_id = c.id
+  LEFT JOIN LATERAL (
+    SELECT storage_path 
+    FROM logbook_media 
+    WHERE entry_id = le.id 
+    ORDER BY sort ASC, created_at ASC 
+    LIMIT 1
+  ) lm ON true
+  LEFT JOIN LATERAL (
+    SELECT COUNT(*) as likes_count
+    FROM post_likes 
+    WHERE entry_id = le.id
+  ) pl ON true
+  LEFT JOIN LATERAL (
+    SELECT COUNT(*) as comments_count
+    FROM comments 
+    WHERE entry_id = le.id
+  ) cc ON true
+  LEFT JOIN LATERAL (
+    SELECT EXISTS(
+      SELECT 1 FROM post_likes 
+      WHERE entry_id = le.id AND user_id = auth.uid()
+    ) as liked_by_me
+  ) ul ON true
+  ORDER BY le.publish_date DESC
+  LIMIT p_limit OFFSET p_offset;
+END;
+$$;
+
+-- Get table statistics function
+CREATE OR REPLACE FUNCTION get_table_stats()
+RETURNS TABLE (
+  table_name text,
+  row_count bigint
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    t.table_name::text,
+    COALESCE(s.n_tup_ins + s.n_tup_upd + s.n_tup_del, 0) as row_count
+  FROM information_schema.tables t
+  LEFT JOIN pg_stat_user_tables s ON s.relname = t.table_name
+  WHERE t.table_schema = 'public'
+  AND t.table_type = 'BASE TABLE'
+  ORDER BY t.table_name;
+END;
+$$;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION feed_explore(int, int) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION feed_personal(int, int) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_table_stats() TO anon, authenticated;
