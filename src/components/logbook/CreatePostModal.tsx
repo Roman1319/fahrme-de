@@ -48,7 +48,8 @@ export default function CreatePostModal({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ...entryData, authorId }),
+        credentials: 'include',     // 👈 это важно для Safari/edge-кейсов
+        body: JSON.stringify(entryData),
       })
         .then(response => response.json())
         .then((entry) => {
@@ -56,13 +57,13 @@ export default function CreatePostModal({
           if (selectedFiles.length > 0) {
             setUploadingMedia(true);
             const formData = new FormData();
-            selectedFiles.forEach(file => formData.append('files', file));
+            selectedFiles.forEach(file => formData.append('file', file));
             formData.append('entryId', entry.id);
-            formData.append('authorId', authorId);
             
             fetch('/api/logbook/media', {
               method: 'POST',
               body: formData,
+              credentials: 'include',
             })
               .then(() => {
                 setUploadingMedia(false);

@@ -87,21 +87,13 @@ export default function NewLogbookEntryPage() {
     setIsSaving(true);
     
     try {
-      // Get auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('Session data:', { hasSession: !!session, hasToken: !!session?.access_token });
-      console.log('Car ID from params:', carId);
-      if (!session?.access_token) {
-        throw new Error('No authentication token available');
-      }
-
       // Create logbook entry via API
       const response = await fetch('/api/logbook', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
         },
+        credentials: 'include',     // 👈 это важно для Safari/edge-кейсов
         body: JSON.stringify({
           car_id: carId,
           title: formData.title,
@@ -131,6 +123,7 @@ export default function NewLogbookEntryPage() {
             const uploadResponse = await fetch('/api/logbook/media', {
               method: 'POST',
               body: formData,
+              credentials: 'include',
             });
             
             if (!uploadResponse.ok) {

@@ -381,6 +381,12 @@ export function getCarPhotoUrl(storagePath: string): string {
   return data.publicUrl;
 }
 
+// Server-side version for use in API routes
+export function getCarPhotoUrlServer(storagePath: string): string {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  return `${supabaseUrl}/storage/v1/object/public/car-photos/${storagePath}`;
+}
+
 export async function addCarPhoto(params: {
   carId: string;
   userId: string;

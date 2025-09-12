@@ -175,6 +175,7 @@ export default function PostPage() {
     fetch('/api/logbook/media', {
       method: 'POST',
       body: formData,
+      credentials: 'include',
     })
       .then(response => response.json())
       .then(uploadedMedia => {

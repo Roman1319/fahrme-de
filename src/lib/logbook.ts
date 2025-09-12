@@ -498,13 +498,77 @@ export async function deleteComment(commentId: string): Promise<void> {
 
 // Likes
 export async function getPostLikes(entryId: string): Promise<PostLike[]> {
-  // Временно отключено из-за проблем с post_likes таблицей
-  return [];
+  try {
+    const { data, error } = await supabase
+      .from('post_likes')
+      .select('*')
+      .eq('entry_id', entryId);
+
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    console.error('Error in getPostLikes:', e);
+    return [];
+  }
+}
+
+export async function hasLikedPost(entryId: string, userId: string): Promise<boolean> {
+  try {
+    const { count, error } = await supabase
+      .from('post_likes')
+      .select('*', { head: true, count: 'exact' })
+      .eq('entry_id', entryId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    return (count ?? 0) > 0;
+  } catch (e) {
+    console.error('Error in hasLikedPost:', e);
+    return false;
+  }
+}
+
+export async function countPostLikes(entryId: string): Promise<number> {
+  try {
+    const { count, error } = await supabase
+      .from('post_likes')
+      .select('*', { head: true, count: 'exact' })
+      .eq('entry_id', entryId);
+
+    if (error) throw error;
+    return count ?? 0;
+  } catch (e) {
+    console.error('Error in countPostLikes:', e);
+    return 0;
+  }
 }
 
 export async function togglePostLike(entryId: string, userId: string): Promise<boolean> {
-  // Временно отключено из-за проблем с post_likes таблицей
-  return false;
+  try {
+    // Проверяем, есть ли лайк
+    const liked = await hasLikedPost(entryId, userId);
+
+    if (liked) {
+      const { error } = await supabase
+        .from('post_likes')
+        .delete()
+        .eq('entry_id', entryId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      return false; // стало «не лайкнуто»
+    } else {
+      const { error } = await supabase
+        .from('post_likes')
+        .insert({ entry_id: entryId, user_id: userId });
+
+      if (error) throw error;
+      return true; // стало «лайкнуто»
+    }
+  } catch (e) {
+    console.error('Error in togglePostLike:', e);
+    throw e;
+  }
 }
 
 export async function getCommentLikes(commentId: string): Promise<CommentLike[]> {
@@ -579,23 +643,11 @@ export async function toggleCommentLike(commentId: string, userId: string): Prom
 
 // Convenience functions for UI
 export async function likePost(entryId: string, userId: string): Promise<void> {
-  // Временно отключено из-за проблем с post_likes таблицей
-  return;
+  await togglePostLike(entryId, userId);
 }
 
 export async function unlikePost(entryId: string, userId: string): Promise<void> {
-  // Временно отключено из-за проблем с post_likes таблицей
-  return;
-}
-
-export async function hasLikedPost(entryId: string, userId: string): Promise<boolean> {
-  // Временно отключено из-за проблем с post_likes таблицей
-  return false;
-}
-
-export async function countPostLikes(entryId: string): Promise<number> {
-  // Временно отключено из-за проблем с post_likes таблицей
-  return 0;
+  await togglePostLike(entryId, userId);
 }
 
 export async function likeComment(commentId: string, userId: string): Promise<void> {

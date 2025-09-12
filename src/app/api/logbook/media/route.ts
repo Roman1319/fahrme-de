@@ -1,66 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
-export async function POST(request: NextRequest) {
+export const runtime = 'nodejs';
+
+export async function POST(req: NextRequest) {
+  const res = NextResponse.json(null, { status: 200 });
+
   try {
-    const supabase = createClient();
+    const supabase = createSupabaseServerClient(req, res);
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-    const entryId = formData.get('entryId') as string;
+    // допустим, multipart/form-data с entryId и файлом:
+    const form = await req.formData();
+    const entryId = String(form.get('entryId'));
+    const file = form.get('file') as File;
 
     if (!file || !entryId) {
       return NextResponse.json({ error: 'Missing file or entryId' }, { status: 400 });
     }
 
-    // Generate unique filename
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `logbook/${entryId}/${fileName}`;
-
-    // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('logbook')
-      .upload(filePath, file);
-
-    if (uploadError) {
-      console.error('Storage upload error:', uploadError);
-      return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
-    }
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('logbook')
-      .getPublicUrl(filePath);
-
-    // Save media record to database
-    const { data: mediaData, error: dbError } = await supabase
-      .from('logbook_media')
-      .insert({
-        entry_id: entryId,
-        file_path: filePath,
-        file_name: file.name,
-        file_size: file.size,
-        file_type: file.type,
-        public_url: urlData.publicUrl,
-        uploaded_by: user.id
-      })
-      .select()
+    // проверяем, что пост принадлежит пользователю
+    const { data: entry, error: entryErr } = await supabase
+      .from('logbook_entries')
+      .select('id, author_id')
+      .eq('id', entryId)
       .single();
 
-    if (dbError) {
-      console.error('Database error:', dbError);
-      return NextResponse.json({ error: 'Failed to save media record' }, { status: 500 });
+    if (entryErr || !entry || entry.author_id !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    return NextResponse.json(mediaData);
-  } catch (error) {
-    console.error('Error uploading logbook media:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const fileName = file.name || 'upload';
+    const filePath = `${user.id}/${entryId}/${fileName}`; // ВАЖНО: префикс userId
+
+    const { error: uploadErr } = await supabase.storage
+      .from('logbook')
+      .upload(filePath, file, { upsert: false });
+
+    if (uploadErr) {
+      console.error('[api/logbook/media] Upload error:', uploadErr);
+      return NextResponse.json({ error: 'Upload failed' }, { status: 400 });
+    }
+
+    // можно записать запись в logbook_media при желании
+    // await supabase.from('logbook_media').insert({ entry_id: entryId, url: filePath });
+
+    return NextResponse.json({ path: filePath }, { status: 201, headers: res.headers });
+  } catch (e) {
+    console.error('[api/logbook/media] Unexpected:', e);
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }
