@@ -7,13 +7,12 @@ import { useAuth } from '@/components/AuthProvider';
 import { getTopicLabel, getTopicIcon, getTopicColor } from '@/lib/logbook-topics';
 import { LogbookEntry, LogbookMedia, Comment, Car as CarType, Profile } from '@/lib/types';
 import ErrorBoundaryClient from '@/components/ErrorBoundaryClient';
+import { AuthBlockedButton } from '@/components/ui/AuthBlockedButton';
+import { getLogbookImage, getLogbookImages } from '@/lib/storage-helpers';
+import { StorageImage } from '@/components/ui/StorageImage';
+import LikeButton from '@/components/ui/LikeButton';
 
-// Helper function to get media URL
-function getLogbookMediaUrl(storagePath: string): string {
-  // This should be replaced with actual Supabase storage URL generation
-  // For now, return a placeholder or construct the URL
-  return `https://your-supabase-project.supabase.co/storage/v1/object/public/logbook/${storagePath}`;
-}
+// Удаляем старую функцию - теперь используем getLogbookImage из storage-helpers
 
 export default function PostPage() {
   const params = useParams();
@@ -67,11 +66,24 @@ export default function PostPage() {
           setComments(fetchedComments);
           setCommentCount(fetchedComments.length);
 
-          // Fetch like status and count (temporarily disabled)
+          // Fetch like status and count
           if (user) {
-            setIsLiked(false);
+            // Check if user liked this entry
+            fetch(`/api/logbook/${entryId}/like-status`)
+              .then(response => response.json())
+              .then(data => {
+                if (data.liked !== undefined) {
+                  setIsLiked(data.liked);
+                }
+              })
+              .catch(error => {
+                console.error('Error checking like status:', error);
+                setIsLiked(false);
+              });
           }
-          setLikeCount(0);
+          
+          // Get like count from RPC feed data
+          setLikeCount(fetchedEntry.likes_count || 0);
         });
       })
       .catch(err => {
@@ -83,11 +95,9 @@ export default function PostPage() {
       });
   }, [entryId, user]);
 
-  const handleLike = () => {
-    if (!user || !entry) return;
-
-    // Временно отключено из-за проблем с post_likes таблицей
-    console.log('Like functionality temporarily disabled');
+  const handleLikeChange = (liked: boolean, count: number) => {
+    setIsLiked(liked);
+    setLikeCount(count);
   };
 
   const handleAddComment = () => {
@@ -322,23 +332,28 @@ export default function PostPage() {
             <div className="mt-6">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">Media</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {media.map((item) => (
-                  <div key={item.id} className="relative group">
-                    <img
-                      src={getLogbookMediaUrl(item.storage_path)}
-                      alt="Post media"
-                      className="w-full h-32 object-cover rounded-lg"
-                    />
-                    {isOwner && (
-                      <button
-                        onClick={() => handleDeleteMedia(item.id)}
-                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                {media.map((item) => {
+                  const image = getLogbookImage(item.storage_path);
+                  return (
+                    <div key={item.id} className="relative group">
+                      <StorageImage
+                        image={image}
+                        width={200}
+                        height={128}
+                        className="w-full h-32 object-cover rounded-lg"
+                        alt="Post media"
+                      />
+                      {isOwner && (
+                        <button
+                          onClick={() => handleDeleteMedia(item.id)}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -363,25 +378,28 @@ export default function PostPage() {
           {/* Actions */}
           <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center space-x-4">
-              <button
-                onClick={handleLike}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                  isLiked 
-                    ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400' 
-                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-              >
-                <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-                <span>{likeCount}</span>
-              </button>
+              {user ? (
+                <LikeButton
+                  entryId={entryId}
+                  initialLiked={isLiked}
+                  initialCount={likeCount}
+                  onLikeChange={handleLikeChange}
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"
+                />
+              ) : (
+                <AuthBlockedButton className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600">
+                  <Heart className="w-4 h-4" />
+                  <span>{likeCount}</span>
+                </AuthBlockedButton>
+              )}
               
-              <button
+              <AuthBlockedButton
                 onClick={() => setShowCommentForm(!showCommentForm)}
                 className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
               >
                 <MessageCircle className="w-4 h-4" />
                 <span>{commentCount}</span>
-              </button>
+              </AuthBlockedButton>
             </div>
           </div>
         </div>

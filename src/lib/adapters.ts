@@ -88,7 +88,7 @@ export interface LegacyLogbookEntry {
   topic: 'repair' | 'tuning' | 'trip' | 'maintenance' | 'event' | 'general';
   photos: string[];
   mileage?: number;
-  mileageUnit?: 'km' | 'miles';
+  mileageUnit?: 'km' | 'mi';
   cost?: number;
   currency?: 'RUB' | 'UAH' | 'BYN' | 'KZT' | 'USD' | 'EUR';
   poll?: {

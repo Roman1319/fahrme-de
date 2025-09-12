@@ -8,6 +8,7 @@ import GlobalErrorHandler from "@/components/GlobalErrorHandler";
 import AsyncComponentDetector from "@/components/AsyncComponentDetector";
 import AsyncComponentDebugger from "@/components/AsyncComponentDebugger";
 import ComponentAnalyzer from "@/components/ComponentAnalyzer";
+import { ToastProvider } from "@/components/ui/Toast";
 
 const inter = Inter({ 
   subsets: ["latin"], 
@@ -26,16 +27,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="de" suppressHydrationWarning>
       <body className={`${inter.variable} min-h-dvh antialiased font-sans`}>
         <Providers>
-          <GlobalErrorHandler />
-          <AsyncComponentDetector />
-          <AsyncComponentDebugger />
-          <ComponentAnalyzer />
-          {/* ГЛОБАЛЬНЫЙ HEADER ДЛЯ ЗАЛОГИНЕННЫХ */}
-          <ClientHeader />
-          {/* Основной layout с навигацией для зарегистрированных пользователей */}
-          <MainLayout>
-            {children}
-          </MainLayout>
+          <ToastProvider>
+            <GlobalErrorHandler />
+            <AsyncComponentDetector />
+            <AsyncComponentDebugger />
+            <ComponentAnalyzer />
+            {/* ГЛОБАЛЬНЫЙ HEADER ДЛЯ ЗАЛОГИНЕННЫХ */}
+            <ClientHeader />
+            {/* Основной layout с навигацией для зарегистрированных пользователей */}
+            <MainLayout>
+              {children}
+            </MainLayout>
+          </ToastProvider>
         </Providers>
       </body>
     </html>

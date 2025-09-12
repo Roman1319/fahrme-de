@@ -46,3 +46,46 @@ export async function uploadCarPhoto(file: File, carId: string, userId: string) 
 
   return { storagePath: path, publicUrl: pub.publicUrl, photoData };
 }
+
+export async function deleteCarPhoto(storagePath: string, userId: string, carId: string) {
+  // Проверяем, есть ли у пользователя права на этот автомобиль
+  const { data: car, error: carError } = await supabase
+    .from('cars')
+    .select('id, owner_id')
+    .eq('id', carId)
+    .eq('owner_id', userId)
+    .single();
+
+  if (carError || !car) {
+    console.error('Car ownership check failed:', carError);
+    throw new Error('У вас нет прав на удаление фотографий этого автомобиля');
+  }
+
+  // Валидируем путь
+  if (!storagePath.startsWith(`${userId}/${carId}/`)) {
+    throw new Error('Недопустимый путь к файлу');
+  }
+
+  // Удаляем файл из Storage
+  const { error: deleteError } = await supabase.storage
+    .from('car-photos')
+    .remove([storagePath]);
+
+  if (deleteError) {
+    console.error('Delete error:', deleteError);
+    throw deleteError;
+  }
+
+  // Удаляем запись из таблицы car_photos
+  const { error: dbError } = await supabase
+    .from('car_photos')
+    .delete()
+    .eq('storage_path', storagePath);
+
+  if (dbError) {
+    console.error('Database delete error:', dbError);
+    throw new Error('Ошибка при удалении записи о фотографии');
+  }
+
+  return true;
+}

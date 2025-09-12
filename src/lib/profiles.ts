@@ -106,6 +106,30 @@ export function getAvatarUrl(storagePath: string): string {
   return data.publicUrl;
 }
 
+export async function deleteAvatar(storagePath: string, userId: string): Promise<boolean> {
+  try {
+    // Валидируем путь
+    if (!storagePath.startsWith(`${userId}/`)) {
+      throw new Error('Недопустимый путь к файлу аватара');
+    }
+
+    // Удаляем файл из Storage
+    const { error: deleteError } = await supabase.storage
+      .from('avatars')
+      .remove([storagePath]);
+
+    if (deleteError) {
+      console.error('Error deleting avatar:', deleteError);
+      throw new Error(`Failed to delete avatar: ${deleteError.message}`);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error in deleteAvatar:', error);
+    throw error;
+  }
+}
+
 export async function checkHandleAvailability(handle: string, currentUserId?: string): Promise<boolean> {
   try {
     let query = supabase

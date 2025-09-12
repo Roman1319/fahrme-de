@@ -13,6 +13,7 @@ import { getProfile } from '@/lib/profiles';
 import CreatePostModal from '@/components/logbook/CreatePostModal';
 import { CarPhotoUploader } from '@/components/CarPhotoUploader';
 import EditCarModal from '@/components/EditCarModal';
+import FollowButton from '@/components/ui/FollowButton';
 
 export default function CarPage() {
   const params = useParams();
@@ -33,6 +34,7 @@ export default function CarPage() {
   const [isSavingCar, setIsSavingCar] = useState(false);
   const [carStats, setCarStats] = useState({ followers: 0, likes: 0 });
   const [userInteraction, setUserInteraction] = useState<{ isFollowing: boolean; isLiked: boolean } | null>(null);
+  const [followStats, setFollowStats] = useState({ followersCount: 0, isLoading: true });
   const [ownerProfile, setOwnerProfile] = useState<{ avatarUrl?: string | null; name?: string } | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -53,6 +55,12 @@ export default function CarPage() {
     loadOwnerProfile();
     setCurrentImageIndex(0);
   }, [carId, user]);
+
+  useEffect(() => {
+    if (car) {
+      loadFollowStats();
+    }
+  }, [car]);
 
   useEffect(() => {
     if (car) {
@@ -129,6 +137,25 @@ export default function CarPage() {
   function loadCarStats() {
     // Временно отключено из-за проблем с post_likes таблицей
     setCarStats({ followers: 0, likes: 0 });
+  }
+
+  function loadFollowStats() {
+    if (!car) return;
+    
+    setFollowStats(prev => ({ ...prev, isLoading: true }));
+    
+    fetch(`/api/cars/${car.id}/stats`)
+      .then(response => response.json())
+      .then(data => {
+        setFollowStats({
+          followersCount: data.followersCount || 0,
+          isLoading: false
+        });
+      })
+      .catch(error => {
+        console.error('Error loading follow stats:', error);
+        setFollowStats(prev => ({ ...prev, isLoading: false }));
+      });
   }
 
   function loadUserInteraction() {
@@ -472,6 +499,11 @@ export default function CarPage() {
           {/* Action Buttons */}
           {!isOwner && (
             <div className="flex gap-1.5 flex-wrap mb-2">
+              <FollowButton 
+                carId={car.id}
+                size="sm"
+                showCount={true}
+              />
               <button 
                 onClick={handleToggleLike}
                 className={`px-2 py-1 text-xs ${userInteraction?.isLiked ? 'btn-accent' : 'btn-secondary'}`}
@@ -531,7 +563,9 @@ export default function CarPage() {
               <div className="text-xs opacity-50">insgesamt</div>
             </div>
             <div className="bg-white/5 rounded-lg p-2 text-center">
-              <div className="text-base font-bold text-accent">{carStats.followers}</div>
+              <div className="text-base font-bold text-accent">
+                {followStats.isLoading ? '...' : followStats.followersCount}
+              </div>
               <div className="text-xs opacity-70">Abonnenten</div>
               <div className="text-xs opacity-50">für das Auto</div>
             </div>

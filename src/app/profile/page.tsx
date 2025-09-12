@@ -8,6 +8,7 @@ import { useAuth } from '@/components/AuthProvider';
 import Guard from '@/components/auth/Guard';
 import { Loader2 } from 'lucide-react';
 import ErrorBoundaryClient from '@/components/ErrorBoundaryClient';
+import { safeApiCall, waitForAuth } from '@/lib/api-client';
 
 type Errors = Partial<Record<
   'handle'|'name'|'about'|'country'|'city'|'birth_date',
@@ -29,35 +30,33 @@ export default function ProfilePage() {
     loadProfile();
   }, [user]); // TODO: Add loadProfile to deps when stable
 
-  const loadProfile = () => {
+  const loadProfile = async () => {
     if (!user) return;
     
     try {
       setLoading(true);
-      fetch(`/api/profiles/${user.id}`)
-        .then(response => response.json())
-        .then((profileData) => {
-          if (profileData) {
-            setProfile(profileData);
-            setAvatar(profileData.avatar_url || null);
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          // Create a basic profile if none exists
-          const basicProfile: Profile = {
-            id: user.id,
-            email: user.email,
-            name: user.name || '',
-            handle: user.email?.split('@')[0] || '',
-            about: '',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
-          setProfile(basicProfile);
-        });
+      
+      // Ждем готовности аутентификации
+      await waitForAuth();
+      
+      const profileData = await safeApiCall(`/api/profiles/${user.id}`);
+      if (profileData) {
+        setProfile(profileData);
+        setAvatar(profileData.avatar_url || null);
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
+      // Create a basic profile if none exists
+      const basicProfile: Profile = {
+        id: user.id,
+        email: user.email,
+        name: user.name || '',
+        handle: user.email?.split('@')[0] || '',
+        about: '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      setProfile(basicProfile);
     } finally {
       setLoading(false);
     }

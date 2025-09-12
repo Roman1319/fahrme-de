@@ -1,6 +1,8 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { getAvatarImage } from '@/lib/storage-helpers';
+import { StorageImg } from './StorageImage';
 
 export default function SimpleAvatar({
   value,
@@ -53,7 +55,10 @@ export default function SimpleAvatar({
           style={{ width: size, height: size }}
         >
           {value ? (
-            <img src={value} alt="Avatar" className="h-full w-full object-cover" />
+            <StorageImg 
+              image={getAvatarImage(value)} 
+              className="h-full w-full object-cover" 
+            />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-xs text-neutral-500 dark:text-neutral-400">
               {loading ? 'Loading...' : 'No image'}

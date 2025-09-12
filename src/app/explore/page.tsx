@@ -1,62 +1,119 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Heart, MessageCircle, Eye, Filter } from 'lucide-react';
-import { FeedEntry, getExploreFeed, getCarBrands, getYearRange } from '@/lib/feed';
+import { supabase } from '@/lib/supabaseClient';
 import { LOGBOOK_TOPICS, getTopicLabel, getTopicIcon } from '@/lib/logbook-topics';
-import { FeedFilters } from '@/lib/feed';
+import { getLogbookImage } from '@/lib/storage-helpers';
+import { StorageImg } from '@/components/ui/StorageImage';
+import LikeButton from '@/components/ui/LikeButton';
+import ExploreFilters from '@/components/ExploreFilters';
+import { FilterState, filterPostsClientSide, hasActiveFilters, clearFilters, createFilterParams, createFiltersFromParams } from '@/lib/filter-utils';
+
+interface ExplorePost {
+  id: string;
+  title: string;
+  content: string;
+  author_handle: string;
+  author_avatar_url: string;
+  car_brand: string;
+  car_model: string;
+  car_year: number;
+  car_name: string;
+  media_preview: string;
+  likes_count: number;
+  comments_count: number;
+  publish_date: string;
+}
 
 export default function ExplorePage() {
-  const [entries, setEntries] = useState<FeedEntry[]>([]);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  const [entries, setEntries] = useState<ExplorePost[]>([]);
+  const [filteredEntries, setFilteredEntries] = useState<ExplorePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<FeedFilters>({
-    limit: 20,
-    offset: 0
-  });
-  const [showFilters, setShowFilters] = useState(false);
-  const [brands, setBrands] = useState<string[]>([]);
-  const [models, setModels] = useState<string[]>([]);
-  const [yearRange, setYearRange] = useState({ min: 1900, max: new Date().getFullYear() });
+  const [offset, setOffset] = useState(0);
+  const [exhausted, setExhausted] = useState(false);
+  const [filters, setFilters] = useState<FilterState>(() => 
+    createFiltersFromParams(searchParams)
+  );
 
   useEffect(() => {
-    loadFeed();
-    loadFilters();
-  }, [filters]);
+    loadFeed(true);
+  }, []);
 
-  const loadFeed = async () => {
+  // Применяем фильтры при изменении
+  useEffect(() => {
+    if (hasActiveFilters(filters)) {
+      const filtered = filterPostsClientSide(entries, filters);
+      setFilteredEntries(filtered);
+    } else {
+      setFilteredEntries(entries);
+    }
+  }, [filters, entries]);
+
+  const loadFeed = async (reset = false) => {
     try {
       setLoading(true);
       setError(null);
-      const feedData = await getExploreFeed(filters);
-      setEntries(feedData);
+      const currentOffset = reset ? 0 : offset;
+      
+      const { data, error } = await supabase.rpc('feed_explore', {
+        p_limit: 20,
+        p_offset: currentOffset
+      });
+
+      if (error) {
+        console.error('Error loading explore feed:', error);
+        setError('Fehler beim Laden der Feed-Daten');
+        return;
+      }
+
+      if (reset) {
+        setEntries(data || []);
+        setOffset(20);
+      } else {
+        setEntries(prev => [...prev, ...(data || [])]);
+        setOffset(prev => prev + 20);
+      }
+
+      // Check if we got less than 20 items (end of feed)
+      if (!data || data.length < 20) {
+        setExhausted(true);
+      }
     } catch (err) {
-      console.error('Error loading feed:', err);
+      console.error('Error loading explore feed:', err);
       setError('Fehler beim Laden der Feed-Daten');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadFilters = async () => {
-    try {
-      const [brandsData, yearRangeData] = await Promise.all([
-        getCarBrands(),
-        getYearRange()
-      ]);
-      setBrands(brandsData);
-      setYearRange(yearRangeData);
-    } catch (err) {
-      console.error('Error loading filters:', err);
-    }
+  const updateURL = (newFilters: FilterState) => {
+    const params = createFilterParams(newFilters);
+    const newURL = params.toString() ? `?${params.toString()}` : '/explore';
+    router.replace(newURL, { scroll: false });
   };
 
-  const handleFilterChange = (newFilters: Partial<FeedFilters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters, offset: 0 }));
+  const handleFilterChange = (newFilters: Partial<FilterState>) => {
+    const updatedFilters = { ...filters, ...newFilters };
+    setFilters(updatedFilters);
+    updateURL(updatedFilters);
+  };
+
+  const handleClearFilters = () => {
+    const clearedFilters = clearFilters();
+    setFilters(clearedFilters);
+    updateURL(clearedFilters);
   };
 
   const loadMore = () => {
-    setFilters(prev => ({ ...prev, offset: (prev.offset || 0) + (prev.limit || 20) }));
+    if (!loading && !exhausted) {
+      loadFeed(false);
+    }
   };
 
   const formatTimeAgo = (timestamp: string) => {
@@ -77,84 +134,19 @@ export default function ExplorePage() {
       <div className="space-y-6">
         {/* Header */}
         <div className="section">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="h1">Entdecken</h1>
-              <p className="opacity-70 text-sm mt-1">
-                Entdecke die faszinierende Welt der Auto-Logbücher unserer Community
-              </p>
-            </div>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <Filter size={16} />
-              Filter
-            </button>
+          <div className="mb-4">
+            <h1 className="h1">Entdecken</h1>
+            <p className="opacity-70 text-sm mt-1">
+              Entdecke die faszinierende Welt der Auto-Logbücher unserer Community
+            </p>
           </div>
 
           {/* Filters */}
-          {showFilters && (
-            <div className="bg-white/5 rounded-lg p-4 space-y-4">
-              <div className="grid gap-4 md:grid-cols-4">
-                <div>
-                  <label className="form-label">Marke</label>
-                  <select
-                    value={filters.car_brand || ''}
-                    onChange={(e) => handleFilterChange({ car_brand: e.target.value || undefined })}
-                    className="form-input"
-                  >
-                    <option value="">Alle Marken</option>
-                    {brands.map(brand => (
-                      <option key={brand} value={brand}>{brand}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="form-label">Modell</label>
-                  <select
-                    value={filters.car_model || ''}
-                    onChange={(e) => handleFilterChange({ car_model: e.target.value || undefined })}
-                    className="form-input"
-                    disabled={!filters.car_brand}
-                  >
-                    <option value="">Alle Modelle</option>
-                    {models.map(model => (
-                      <option key={model} value={model}>{model}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="form-label">Thema</label>
-                  <select
-                    value={filters.topic || ''}
-                    onChange={(e) => handleFilterChange({ topic: e.target.value || undefined })}
-                    className="form-input"
-                  >
-                    <option value="">Alle Themen</option>
-                    {LOGBOOK_TOPICS.map(topic => (
-                      <option key={topic.value} value={topic.value}>
-                        {topic.icon} {topic.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="form-label">Baujahr von</label>
-                  <select
-                    value={filters.year_from || ''}
-                    onChange={(e) => handleFilterChange({ year_from: e.target.value ? parseInt(e.target.value) : undefined })}
-                    className="form-input"
-                  >
-                    <option value="">Alle Jahre</option>
-                    {Array.from({ length: yearRange.max - yearRange.min + 1 }, (_, i) => yearRange.max - i).map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          )}
+          <ExploreFilters
+            filters={filters}
+            onFiltersChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+          />
         </div>
 
         {/* Feed */}
@@ -166,87 +158,83 @@ export default function ExplorePage() {
           <div className="section text-center py-16">
             <div className="text-xl text-red-500 mb-4">{error}</div>
             <button
-              onClick={loadFeed}
+              onClick={() => loadFeed(true)}
               className="bg-[#6A3FFB] hover:bg-[#3F297A] text-white px-4 py-2 rounded-full"
             >
               Erneut versuchen
             </button>
           </div>
-        ) : entries.length === 0 ? (
+        ) : filteredEntries.length === 0 ? (
           <div className="section text-center py-16">
-            <div className="text-xl mb-4">Keine Einträge gefunden</div>
-            <p className="opacity-70">Versuchen Sie andere Filter oder erstellen Sie den ersten Eintrag.</p>
+            <div className="text-xl mb-4">
+              {hasActiveFilters(filters) ? 'Keine Einträge mit diesen Filtern gefunden' : 'Keine Einträge gefunden'}
+            </div>
+            <p className="opacity-70">
+              {hasActiveFilters(filters) 
+                ? 'Versuchen Sie andere Filter oder erstellen Sie den ersten Eintrag.'
+                : 'Erstellen Sie den ersten Eintrag.'
+              }
+            </p>
+            {hasActiveFilters(filters) && (
+              <button
+                onClick={handleClearFilters}
+                className="mt-4 bg-[#6A3FFB] hover:bg-[#3F297A] text-white px-4 py-2 rounded-full"
+              >
+                Filter zurücksetzen
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
-            {entries.map((entry) => (
-              <div key={entry.id} className="section p-4 hover:bg-white/5 transition-colors">
-                <div className="flex gap-4">
-                  {/* Author Avatar */}
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-                      {entry.author_avatar_url ? (
-                        <img 
-                          src={entry.author_avatar_url} 
-                          alt={entry.author_handle} 
-                          className="w-full h-full rounded-full object-cover"
+            {filteredEntries.map((entry) => {
+              const image = getLogbookImage(entry.media_preview);
+              return (
+                <article key={entry.id} className="section grid grid-cols-[80px_1fr] gap-3">
+                  {/* мини-обложка слева */}
+                  <div className="img-rounded w-[80px] h-[100px] relative overflow-hidden">
+                    <StorageImg 
+                      image={image}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  </div>
+                  {/* контент */}
+                  <div className="space-y-2">
+                    <h3 className="text-lg md:text-xl font-extrabold leading-tight">{entry.title}</h3>
+                    {image.src && (
+                      <div className="img-rounded aspect-[16/9] relative overflow-hidden">
+                        <StorageImg 
+                          image={image}
+                          className="absolute inset-0 h-full w-full object-cover"
                         />
-                      ) : (
-                        <span className="text-white/70 font-semibold">
-                          {entry.author_handle.charAt(0).toUpperCase()}
-                        </span>
-                      )}
+                      </div>
+                    )}
+                    <p className="opacity-80 line-clamp-3">{entry.content}</p>
+                    <div className="flex items-center justify-between">
+                      <a href={`/logbuch/${entry.id}`} className="btn-primary">Weiterlesen →</a>
+                      <div className="flex items-center gap-4 text-sm opacity-70">
+                        <LikeButton
+                          entryId={entry.id}
+                          initialLiked={false} // Explore feed doesn't have liked_by_me
+                          initialCount={entry.likes_count}
+                          size="sm"
+                          className="opacity-70 hover:opacity-100"
+                        />
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-primary rounded-full"></div>
+                          <span>{entry.comments_count} Kommentare</span>
+                        </div>
+                        <div className="bg-accent text-black px-2 py-1 rounded-full text-xs font-medium">
+                          @{entry.author_handle}
+                        </div>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    {/* Header */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-semibold text-sm">@{entry.author_handle}</span>
-                      <span className="text-xs opacity-70">•</span>
-                      <span className="text-xs opacity-70">{entry.car_brand} {entry.car_model} ({entry.car_year})</span>
-                      {entry.topic && (
-                        <>
-                          <span className="text-xs opacity-70">•</span>
-                          <span className="text-xs opacity-70 flex items-center gap-1">
-                            <span>{getTopicIcon(entry.topic)}</span>
-                            <span>{getTopicLabel(entry.topic)}</span>
-                          </span>
-                        </>
-                      )}
-                      <span className="text-xs opacity-70">•</span>
-                      <span className="text-xs opacity-70">{formatTimeAgo(entry.publish_date)}</span>
-                    </div>
-
-                    {/* Title */}
-                    <h3 className="font-bold text-base mb-2">{entry.title}</h3>
-
-                    {/* Content Preview */}
-                    <p className="text-sm opacity-80 mb-3 line-clamp-3">{entry.content}</p>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-4">
-                      <button className="flex items-center gap-1 text-sm opacity-70 hover:opacity-100 transition-opacity">
-                        <Heart size={16} />
-                        <span>{entry.like_count}</span>
-                      </button>
-                      <button className="flex items-center gap-1 text-sm opacity-70 hover:opacity-100 transition-opacity">
-                        <MessageCircle size={16} />
-                        <span>{entry.comment_count}</span>
-                      </button>
-                      <button className="flex items-center gap-1 text-sm opacity-70 hover:opacity-100 transition-opacity">
-                        <Eye size={16} />
-                        <span>Ansehen</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                </article>
+              );
+            })}
 
             {/* Load More */}
-            {entries.length >= (filters.limit || 20) && (
+            {!exhausted && (
               <div className="text-center py-8">
                 <button
                   onClick={loadMore}

@@ -1,39 +1,28 @@
+
 import { createClient } from '@supabase/supabase-js'
+import { validateSupabaseEnv, createSupabaseConfig } from './env-validation'
 
-let supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-let supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
+// Валидация переменных окружения
+const validation = validateSupabaseEnv()
 
-// Fix common issues with environment variables
-if (supabaseUrl && supabaseUrl.startsWith(' ')) {
-  console.warn('[supabase] URL starts with space, fixing...');
-  supabaseUrl = supabaseUrl.trim();
+if (!validation.isValid) {
+  console.error('[supabase] Environment validation failed:')
+  validation.errors.forEach(error => console.error(`[supabase] ❌ ${error}`))
+  throw new Error('Supabase environment validation failed')
 }
 
-if (supabaseAnonKey && supabaseAnonKey.startsWith(' ')) {
-  console.warn('[supabase] Key starts with space, fixing...');
-  supabaseAnonKey = supabaseAnonKey.trim();
+if (validation.warnings.length > 0) {
+  console.warn('[supabase] Environment warnings:')
+  validation.warnings.forEach(warning => console.warn(`[supabase] ⚠️  ${warning}`))
 }
+
+// Создание конфигурации с валидацией
+const config = createSupabaseConfig(false) // anon client
+const supabaseUrl = config.url
+const supabaseAnonKey = config.anonKey
 
 console.log('[supabase] URL:', supabaseUrl ? 'Set' : 'Missing')
 console.log('[supabase] Key:', supabaseAnonKey ? 'Set' : 'Missing')
-
-if (!supabaseUrl) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
-}
-
-if (!supabaseAnonKey) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable')
-}
-
-// Validate URL format
-if (!supabaseUrl.startsWith('https://')) {
-  throw new Error(`Invalid Supabase URL format: ${supabaseUrl}. Must start with https://`)
-}
-
-// Validate key format (should be a JWT)
-if (!supabaseAnonKey.startsWith('eyJ')) {
-  throw new Error(`Invalid Supabase key format: ${supabaseAnonKey.substring(0, 20)}... Must be a JWT token`)
-}
 
 // Singleton Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -49,39 +38,81 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// Global auth state listener
-if (typeof window !== 'undefined') {
-  console.log('[supabase] Setting up global auth listener...');
+// Global auth state management
+let globalAuthReady = false;
+let globalUser: { id: string; email?: string; user_metadata?: { name?: string; handle?: string } } | null = null;
+let authCallbacks: Set<(user: { id: string; email?: string; user_metadata?: { name?: string; handle?: string } } | null, ready: boolean) => void> = new Set();
+
+// Export global auth state
+export const getAuthReady = () => globalAuthReady;
+export const getGlobalUser = () => globalUser;
+
+// Subscribe to auth state changes
+export const onAuthStateChange = (callback: (user: { id: string; email?: string; user_metadata?: { name?: string; handle?: string } } | null, ready: boolean) => void) => {
+  authCallbacks.add(callback);
   
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log('[supabase] Global auth state changed:', event, session?.user?.id);
-    console.log('[supabase] Callbacks registered:', window.authStateChangeCallbacks?.size || 0);
-    
-    // Notify all auth services about the change
-    if (window.authStateChangeCallbacks) {
-      console.log('[supabase] Notifying', window.authStateChangeCallbacks.size, 'callbacks');
-      window.authStateChangeCallbacks.forEach(callback => {
+  // Immediately call with current state
+  callback(globalUser, globalAuthReady);
+  
+  return () => {
+    authCallbacks.delete(callback);
+  };
+};
+
+// Global auth state listener - единственный слушатель в приложении
+if (typeof window !== 'undefined') {
+  console.log('[supabase] Setting up unified global auth listener...');
+  
+  // Initialize auth state
+  const initializeAuth = async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error('[supabase] Error getting initial session:', error);
+      } else if (session?.user) {
+        globalUser = session.user;
+        console.info('[supabase] User loaded from session:', session.user.email, 'ID:', session.user.id);
+      }
+      globalAuthReady = true;
+      console.info('[supabase] AuthReady set to true');
+      
+      // Notify all callbacks
+      authCallbacks.forEach(callback => {
         try {
-          // For Supabase, we need to pass the session user directly
-          // The SupabaseAuthService will handle the conversion
-          callback(session?.user || null);
+          callback(globalUser, globalAuthReady);
         } catch (error) {
           console.error('[supabase] Error in auth callback:', error);
         }
       });
-    } else {
-      console.warn('[supabase] No auth callbacks registered yet');
+    } catch (error) {
+      console.error('[supabase] Error initializing auth:', error);
+      globalAuthReady = true;
+      authCallbacks.forEach(callback => {
+        try {
+          callback(globalUser, globalAuthReady);
+        } catch (error) {
+          console.error('[supabase] Error in auth callback:', error);
+        }
+      });
     }
+  };
+  
+  initializeAuth();
+  
+  // Listen to auth state changes
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    console.log('[supabase] Auth state changed:', event, session?.user?.id);
+    
+    globalUser = session?.user || null;
+    globalAuthReady = true;
+    
+    console.log('[supabase] Notifying', authCallbacks.size, 'callbacks');
+    authCallbacks.forEach(callback => {
+      try {
+        callback(globalUser, globalAuthReady);
+      } catch (error) {
+        console.error('[supabase] Error in auth callback:', error);
+      }
+    });
   });
-}
-
-// Global callback system for auth state changes
-declare global {
-  interface Window {
-    authStateChangeCallbacks: Set<(user: { id: string; email?: string; user_metadata?: { name?: string; handle?: string } } | null) => void>;
-  }
-}
-
-if (typeof window !== 'undefined') {
-  window.authStateChangeCallbacks = new Set();
 }

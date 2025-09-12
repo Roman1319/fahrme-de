@@ -1,130 +1,236 @@
-"use client";
+'use client';
 
-import { ArrowUpRight } from "lucide-react";
-import Image from "next/image";
+import { useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Heart, Trophy, Clock, Users, Loader2, CheckCircle } from 'lucide-react';
+import { useCOTD } from '@/hooks/useCOTD';
+import { useAuth } from '@/components/AuthProvider';
 
-interface CarOfTheDayProps {
-  yesterdayCar: {
-    id: string;
-    make: string;
-    model: string;
-    year: number;
-    image: string;
-    description: string;
-    votes: number;
+export default function CarOfTheDay() {
+  const { user } = useAuth();
+  const { 
+    candidates, 
+    myVote, 
+    yesterdayWinner, 
+    hasVoted, 
+    isVotingOpen, 
+    isLoading, 
+    error, 
+    voteForCar 
+  } = useCOTD();
+
+  const [votingCarId, setVotingCarId] = useState<string | null>(null);
+
+  const handleVote = async (carId: string) => {
+    if (!user) {
+      // Перенаправить на страницу входа
+      window.location.href = '/login';
+      return;
+    }
+
+    if (hasVoted || !isVotingOpen) {
+      return;
+    }
+
+    setVotingCarId(carId);
+    const result = await voteForCar(carId);
+    setVotingCarId(null);
+
+    if (!result.success) {
+      alert(`Ошибка голосования: ${result.error}`);
+    }
   };
-  todayCars: {
-    id: string;
-    make: string;
-    model: string;
-    image: string;
-  }[];
-  onVote?: (carId: string) => void;
-}
 
-export default function CarOfTheDay({ yesterdayCar, todayCars, onVote }: CarOfTheDayProps) {
+  const getCarPhotoUrl = (photoPath: string | null) => {
+    if (!photoPath) return '/placeholder-car.jpg';
+    // Здесь должна быть логика получения URL из Supabase Storage
+    return photoPath;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="section">
+        <div className="flex items-center justify-center py-8">
+          <Loader2 size={32} className="animate-spin opacity-50" />
+          <span className="ml-2 opacity-70">Загрузка...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="section">
+        <div className="text-center py-8">
+          <div className="text-red-500 mb-2">Ошибка загрузки</div>
+          <div className="text-sm opacity-70">{error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!candidates || candidates.length === 0) {
+    return (
+      <div className="section">
+        <div className="text-center py-8">
+          <Trophy size={48} className="mx-auto mb-4 opacity-50" />
+          <h2 className="text-lg font-bold mb-2">Машина дня</h2>
+          <p className="text-sm opacity-70">Сегодня нет кандидатов для голосования</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="car-of-the-day">
-      {/* Header с Filter кнопкой */}
+    <div className="section">
+      {/* Заголовок */}
       <div className="flex items-center justify-between mb-4">
-        <div className="ribbon text-lg px-4 py-2">Feed</div>
-        <button className="flex items-center gap-2 px-3 py-1.5 btn-secondary text-sm font-medium">
-          Filter
-          <ArrowUpRight size={14} className="rotate-90" />
-        </button>
+        <div className="flex items-center gap-2">
+          <Trophy size={20} className="text-yellow-500" />
+          <h2 className="text-lg font-bold">Машина дня</h2>
+        </div>
+        <div className="flex items-center gap-1 text-sm opacity-70">
+          <Clock size={14} />
+          <span>
+            {isVotingOpen ? 'Голосование открыто' : 'Голосование закрыто'}
+          </span>
+        </div>
       </div>
 
-      {/* Основной блок с автомобилем дня и выбором */}
-      <div className="section">
-        {/* Вчерашний автомобиль дня */}
-        <div className="mb-6">
-          <h3 className="text-xl font-bold mb-3">Fahrzeug des Tages (Gestern)</h3>
-          <div className="relative rounded-xl overflow-hidden">
-            <div className="relative h-52 md:h-64">
-              <Image 
-                src={yesterdayCar.image} 
-                alt={`${yesterdayCar.make} ${yesterdayCar.model}`}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 50vw"
-                priority
+      {/* Вчерашний победитель */}
+      {yesterdayWinner && (
+        <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <Trophy size={16} className="text-yellow-500" />
+            <span className="text-sm font-semibold text-yellow-500">
+              Вчера победил:
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/10">
+              <Image
+                src={getCarPhotoUrl(yesterdayWinner.car_photo_url)}
+                alt={yesterdayWinner.car_name}
+                width={48}
+                height={48}
+                className="w-full h-full object-cover"
               />
-              
-              {/* Overlay с информацией */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-              
-              {/* Информация об автомобиле */}
-              <div className="absolute bottom-4 left-4 right-4">
-                <h4 className="text-lg font-bold text-white mb-1">
-                  {yesterdayCar.make} {yesterdayCar.model} {yesterdayCar.year}
-                </h4>
-                <p className="text-white/80 text-xs mb-2">
-                  {yesterdayCar.description}
-                </p>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-accent rounded-full"></div>
-                    <span className="text-white/80 text-sm">
-                      {yesterdayCar.votes} Stimmen gewonnen
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-primary rounded-full"></div>
-                    <span className="text-white/80 text-sm">
-                      Fahrzeug des Tages
-                    </span>
-                  </div>
-                </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm truncate">
+                {yesterdayWinner.car_name || `${yesterdayWinner.car_brand} ${yesterdayWinner.car_model}`}
+              </div>
+              <div className="text-xs opacity-70">
+                {yesterdayWinner.car_year} • {yesterdayWinner.owner_handle}
+              </div>
+              <div className="flex items-center gap-1 text-xs text-yellow-500">
+                <Heart size={12} className="fill-current" />
+                <span>{yesterdayWinner.votes} голосов</span>
               </div>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Выбор сегодняшнего автомобиля дня */}
-        <div>
-          <h3 className="text-xl font-bold mb-3">Wähle das Fahrzeug des Tages (Heute)</h3>
-          <p className="opacity-70 text-sm mb-4">
-            Stimme für deinen Favoriten ab! Die Wahl endet in 23h 45m.
-          </p>
-          
-          {/* Сетка автомобилей для выбора */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {todayCars.map((car) => (
-              <button
-                key={car.id}
-                onClick={() => onVote?.(car.id)}
-                className="group relative aspect-square rounded-xl overflow-hidden hover:scale-105 transition-all duration-200"
-              >
-                <Image 
-                  src={car.image} 
-                  alt={`${car.make} ${car.model}`}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 50vw, 25vw"
+      {/* Кандидаты */}
+      <div className="space-y-3">
+        {candidates.map((candidate) => (
+          <div
+            key={candidate.car_id}
+            className={`p-3 rounded-lg border transition-all ${
+              candidate.my_vote
+                ? 'bg-green-500/10 border-green-500/30'
+                : 'bg-white/5 border-white/10 hover:bg-white/10'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {/* Фото машины */}
+              <div className="w-16 h-16 rounded-lg overflow-hidden bg-white/10 flex-shrink-0">
+                <Image
+                  src={getCarPhotoUrl(candidate.car_photo_url)}
+                  alt={candidate.car_name}
+                  width={64}
+                  height={64}
+                  className="w-full h-full object-cover"
                 />
-                
-                {/* Overlay при наведении */}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                  <div className="bg-brand rounded-lg px-2 py-1">
-                    <span className="text-white text-xs font-medium">
-                      {car.make} {car.model}
-                    </span>
+              </div>
+
+              {/* Информация о машине */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <Link
+                    href={`/car/${candidate.car_id}`}
+                    className="font-semibold text-sm hover:opacity-80 transition-opacity truncate"
+                  >
+                    {candidate.car_name || `${candidate.car_brand} ${candidate.car_model}`}
+                  </Link>
+                  {candidate.my_vote && (
+                    <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
+                  )}
+                </div>
+                <div className="text-xs opacity-70 mb-2">
+                  {candidate.car_year} • {candidate.owner_handle}
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1 text-xs">
+                    <Heart size={12} className="fill-current text-red-500" />
+                    <span>{candidate.votes} голосов</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs">
+                    <Users size={12} className="opacity-70" />
+                    <span>Владелец: {candidate.owner_handle}</span>
                   </div>
                 </div>
-              </button>
-            ))}
+              </div>
+
+              {/* Кнопка голосования */}
+              <div className="flex-shrink-0">
+                {candidate.my_vote ? (
+                  <div className="px-3 py-1.5 bg-green-500/20 text-green-500 text-xs rounded-full flex items-center gap-1">
+                    <CheckCircle size={12} />
+                    <span>Голос отдан</span>
+                  </div>
+                ) : hasVoted ? (
+                  <div className="px-3 py-1.5 bg-gray-500/20 text-gray-500 text-xs rounded-full">
+                    Уже голосовали
+                  </div>
+                ) : !isVotingOpen ? (
+                  <div className="px-3 py-1.5 bg-gray-500/20 text-gray-500 text-xs rounded-full">
+                    Голосование закрыто
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleVote(candidate.car_id)}
+                    disabled={votingCarId === candidate.car_id}
+                    className="px-3 py-1.5 bg-[#6A3FFB] hover:bg-[#3F297A] text-white text-xs rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    {votingCarId === candidate.car_id ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <Heart size={12} />
+                    )}
+                    <span>Голосовать</span>
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-          
-          {/* Кнопка "Wahl des Autos des Tages" */}
-          <div className="mt-4 flex justify-center">
-            <button 
-              onClick={() => onVote?.('all')}
-              className="btn-accent flex items-center gap-2"
-            >
-              Wahl des Autos des Tages
-              <ArrowUpRight size={16} />
-            </button>
-          </div>
+        ))}
+      </div>
+
+      {/* Информация о голосовании */}
+      <div className="mt-4 p-3 bg-white/5 rounded-lg">
+        <div className="text-xs opacity-70 text-center">
+          {hasVoted ? (
+            <span className="text-green-500">✓ Вы уже проголосовали сегодня</span>
+          ) : !user ? (
+            <span>Войдите в систему, чтобы проголосовать</span>
+          ) : isVotingOpen ? (
+            <span>Выберите машину и нажмите "Голосовать"</span>
+          ) : (
+            <span>Голосование закрыто. Результаты будут объявлены завтра</span>
+          )}
         </div>
       </div>
     </div>

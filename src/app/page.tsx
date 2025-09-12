@@ -1,6 +1,7 @@
 import BrandList from "@/components/BrandList";
 import SiteFooter from "@/components/SiteFooter";
 import RedirectIfAuthed from "@/components/RedirectIfAuthed";
+import CarOfTheDay from "@/components/CarOfTheDay";
 import { ArrowRight } from "lucide-react";
 
 export default function WelcomePage() {
@@ -32,6 +33,9 @@ export default function WelcomePage() {
                 <img src="/hero-car.jpg" alt="Hero" className="absolute inset-0 h-full w-full object-cover"/>
               </div>
             </div>
+
+            {/* ====== МАШИНА ДНЯ ====== */}
+            <CarOfTheDay />
 
             {/* ====== ВЫБОР МАРКИ (как на твоём скрине) ====== */}
             {/* верхняя светлая панель с фото справа */}

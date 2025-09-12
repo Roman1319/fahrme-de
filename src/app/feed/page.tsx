@@ -5,6 +5,9 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/components/AuthProvider';
 import CarOfTheDay from "@/components/CarOfTheDay";
 import Guard from "@/components/auth/Guard";
+import { getLogbookImage } from '@/lib/storage-helpers';
+import { StorageImg } from '@/components/ui/StorageImage';
+import LikeButton from '@/components/ui/LikeButton';
 
 // Daten für das gestrige Auto des Tages
 const yesterdayCar = {
@@ -42,6 +45,7 @@ interface FeedPost {
   media_preview: string;
   likes_count: number;
   comments_count: number;
+  liked_by_me?: boolean; // Только для персональной ленты
   publish_date: string;
 }
 
@@ -107,13 +111,7 @@ export default function FeedPage(){
     }
   };
 
-  const getMediaUrl = (mediaPreview: string) => {
-    if (!mediaPreview) return null;
-    const { data } = supabase.storage
-      .from('logbook')
-      .getPublicUrl(mediaPreview);
-    return data.publicUrl;
-  };
+  // Удаляем старую функцию getMediaUrl - теперь используем getLogbookImage
 
   const handleVote = (carId: string) => {
     // Logik für die Abstimmung über das Auto des Tages
@@ -139,41 +137,53 @@ export default function FeedPage(){
             </div>
           ) : posts.length === 0 ? (
             <div className="section text-center py-16">
-              <div className="text-xl mb-4">Keine Posts gefunden</div>
-              <p className="opacity-70">Erstelle den ersten Logbuch-Eintrag!</p>
+              <div className="text-xl mb-4">
+                {user ? 'Keine Posts in deiner persönlichen Lente' : 'Keine Posts gefunden'}
+              </div>
+              <p className="opacity-70 mb-4">
+                {user ? 'Folge Autos, um ihre Logbuch-Einträge in deiner persönlichen Lente zu sehen!' : 'Erstelle den ersten Logbuch-Eintrag!'}
+              </p>
+              {user && (
+                <a href="/explore" className="btn-primary">
+                  Autos entdecken →
+                </a>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
               {posts.map((post, index) => {
-                const mediaUrl = getMediaUrl(post.media_preview);
+                const image = getLogbookImage(post.media_preview);
                 return (
                   <article key={`${post.id}-${index}`} className="section grid grid-cols-[80px_1fr] gap-3">
                     {/* мини-обложка слева */}
                     <div className="img-rounded w-[80px] h-[100px] relative overflow-hidden">
-                      {mediaUrl ? (
-                        <img src={mediaUrl} alt="" className="absolute inset-0 h-full w-full object-cover"/>
-                      ) : (
-                        <div className="absolute inset-0 bg-white/10 flex items-center justify-center">
-                          <span className="text-white/50 text-xs">No Image</span>
-                        </div>
-                      )}
+                      <StorageImg 
+                        image={image}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
                     </div>
                     {/* контент */}
                     <div className="space-y-2">
                       <h3 className="text-lg md:text-xl font-extrabold leading-tight">{post.title}</h3>
-                      {mediaUrl && (
+                      {image.src && (
                         <div className="img-rounded aspect-[16/9] relative overflow-hidden">
-                          <img src={mediaUrl} alt={post.title} className="absolute inset-0 h-full w-full object-cover"/>
+                          <StorageImg 
+                            image={image}
+                            className="absolute inset-0 h-full w-full object-cover"
+                          />
                         </div>
                       )}
                       <p className="opacity-80 line-clamp-3">{post.content}</p>
                       <div className="flex items-center justify-between">
                         <a href={`/logbuch/${post.id}`} className="btn-primary">Weiterlesen →</a>
                         <div className="flex items-center gap-4 text-sm opacity-70">
-                          <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 bg-accent rounded-full"></div>
-                            <span>{post.likes_count} Likes</span>
-                          </div>
+                          <LikeButton
+                            entryId={post.id}
+                            initialLiked={post.liked_by_me || false}
+                            initialCount={post.likes_count}
+                            size="sm"
+                            className="opacity-70 hover:opacity-100"
+                          />
                           <div className="flex items-center gap-1">
                             <div className="w-2 h-2 bg-primary rounded-full"></div>
                             <span>{post.comments_count} Kommentare</span>

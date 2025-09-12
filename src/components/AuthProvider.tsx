@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase, onAuthStateChange, getAuthReady, getGlobalUser } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 
 type User = {
@@ -36,38 +36,24 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [authReady, setAuthReady] = useState(false);
   const router = useRouter();
 
-  useEffect(() => { 
-    setMounted(true); 
+  // Initialize with global auth state
+  useEffect(() => {
+    setMounted(true);
     setIsLoading(true);
-    setAuthReady(false);
-    console.info('[auth] Initializing Supabase auth provider...');
+    setAuthReady(getAuthReady());
     
-    const initializeAuth = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error('[auth] Error getting session:', error);
-        } else if (session?.user) {
-          const userData: User = {
-            id: session.user.id,
-            email: session.user.email || '',
-            name: session.user.user_metadata?.name,
-            handle: session.user.user_metadata?.handle
-          };
-          setUser(userData);
-          console.info('[auth] User loaded from session:', userData.email, 'ID:', userData.id);
-        }
-        setAuthReady(true);
-        console.info('[auth] AuthReady set to true');
-      } catch (error) {
-        console.error('[auth] Error initializing auth:', error);
-        setAuthReady(true);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    const globalUser = getGlobalUser();
+    if (globalUser) {
+      const userData: User = {
+        id: globalUser.id,
+        email: globalUser.email || '',
+        name: globalUser.user_metadata?.name,
+        handle: globalUser.user_metadata?.handle
+      };
+      setUser(userData);
+    }
     
-    initializeAuth();
+    setIsLoading(false);
   }, []);
   
   const refresh = () => {
@@ -91,20 +77,23 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     });
   };
   
-  // Listen to Supabase auth state changes
+  // Subscribe to global auth state changes - единственный слушатель
   useEffect(() => {
     if (!mounted) return;
     
-    console.info('[auth] Setting up Supabase auth state listener...');
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.info('[auth] Supabase auth state changed:', event, session?.user?.email);
+    console.info('[auth] Subscribing to global auth state changes...');
+    const unsubscribe = onAuthStateChange((globalUser, ready) => {
+      console.info('[auth] Global auth state changed:', globalUser?.email, 'ready:', ready);
       
-      if (session?.user) {
+      setAuthReady(ready);
+      setIsLoading(!ready);
+      
+      if (globalUser) {
         const userData: User = {
-          id: session.user.id,
-          email: session.user.email || '',
-          name: session.user.user_metadata?.name,
-          handle: session.user.user_metadata?.handle
+          id: globalUser.id,
+          email: globalUser.email || '',
+          name: globalUser.user_metadata?.name,
+          handle: globalUser.user_metadata?.handle
         };
         setUser(userData);
         console.info('[auth] User set:', userData.email);
@@ -112,15 +101,11 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         setUser(null);
         console.info('[auth] User cleared');
       }
-      
-      setIsLoading(false);
-      setAuthReady(true);
-      console.info('[auth] AuthReady set to true (auth state changed)');
     });
     
     return () => {
-      console.info('[auth] Cleaning up Supabase auth listener');
-      subscription.unsubscribe();
+      console.info('[auth] Unsubscribing from global auth state changes');
+      unsubscribe();
     };
   }, [mounted]);
 

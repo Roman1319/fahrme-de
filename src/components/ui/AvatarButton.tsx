@@ -3,6 +3,8 @@
 import Image from 'next/image';
 import * as React from 'react';
 import IconCircle from './IconCircle';
+import { getAvatarImage } from '@/lib/storage-helpers';
+import { StorageImage } from './StorageImage';
 
 type Props = {
   src?: string | null;
@@ -19,12 +21,13 @@ function firstInitialLatin(name?: string | null) {
 }
 
 export default function AvatarButton({ src, name, size = 36, onClick }: Props) {
+  const image = getAvatarImage(src);
+  
   return (
     <IconCircle size={size} onClick={onClick}>
-      {src ? (
-        <Image
-          src={src}
-          alt={name ?? 'Profile'}
+      {image.src ? (
+        <StorageImage
+          image={image}
           fill
           sizes={`${size}px`}
           className="rounded-full object-cover"

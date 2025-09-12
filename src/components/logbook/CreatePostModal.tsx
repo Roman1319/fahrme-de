@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { CreateLogbookEntryData } from '@/lib/logbook';
+import { safeApiCall, waitForAuth } from '@/lib/api-client';
+import { AuthBlockedButton } from '@/components/ui/AuthBlockedButton';
+import { useCarOwnership } from '@/hooks/useCarOwnership';
+import { useToast } from '@/components/ui/Toast';
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -26,15 +30,30 @@ export default function CreatePostModal({
   const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  
+  const { isOwner, loading: ownershipLoading, canCreatePost } = useCarOwnership(carId);
+  const toast = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim() || isSubmitting) return;
+
+    // UI-валидация: проверяем принадлежность автомобиля
+    if (!canCreatePost) {
+      toast.error(
+        'Нет прав на создание поста',
+        'Пост можно создавать только для своих автомобилей'
+      );
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
 
     try {
+      // Ждем готовности аутентификации
+      await waitForAuth();
+
       const entryData: CreateLogbookEntryData = {
         car_id: carId,
         title: title.trim(),
@@ -42,56 +61,72 @@ export default function CreatePostModal({
         allow_comments: allowComments
       };
 
-      // Create logbook entry via API
-      fetch('/api/logbook', {
+      // Create logbook entry via API с безопасным вызовом
+      const entry = await safeApiCall('/api/logbook', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',     // 👈 это важно для Safari/edge-кейсов
         body: JSON.stringify(entryData),
-      })
-        .then(response => response.json())
-        .then((entry) => {
-          // Upload media if any
-          if (selectedFiles.length > 0) {
-            setUploadingMedia(true);
-            const formData = new FormData();
-            selectedFiles.forEach(file => formData.append('file', file));
-            formData.append('entryId', entry.id);
-            
-            fetch('/api/logbook/media', {
-              method: 'POST',
-              body: formData,
-              credentials: 'include',
-            })
-              .then(() => {
-                setUploadingMedia(false);
-                onPostCreated(entry.id);
-                handleClose();
-              })
-              .catch(error => {
-                console.error('Error uploading media:', error);
-                setUploadingMedia(false);
-                onPostCreated(entry.id);
-                handleClose();
-              });
-          } else {
-            onPostCreated(entry.id);
-            handleClose();
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
+      });
+
+      // Upload media if any
+      if (selectedFiles.length > 0) {
+        setUploadingMedia(true);
+        const formData = new FormData();
+        selectedFiles.forEach(file => formData.append('file', file));
+        formData.append('entryId', entry.id);
+        
+        try {
+          await safeApiCall('/api/logbook/media', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          toast.success(
+            'Медиа загружено',
+            'Фотографии успешно добавлены к посту'
+          );
+        } catch (error) {
+          console.error('Error uploading media:', error);
+          toast.warning(
+            'Ошибка загрузки медиа',
+            'Пост создан, но не удалось загрузить фотографии'
+          );
+        } finally {
           setUploadingMedia(false);
-        });
+        }
+      }
+
+      toast.success(
+        'Пост создан',
+        'Ваш пост успешно опубликован'
+      );
+      
+      onPostCreated(entry.id);
+      handleClose();
     } catch (err: unknown) {
       console.error('Error creating post:', err);
+      
+      let errorMessage = 'Произошла ошибка при создании поста';
+      
       if (err && typeof err === 'object' && 'code' in err && err.code === '42501') {
-        setError('Sie können nur Posts für Ihre eigenen Autos erstellen.');
-      } else {
-        setError('Fehler beim Erstellen des Posts. Bitte versuchen Sie es erneut.');
+        errorMessage = 'Пост можно создавать только для своих автомобилей';
+      } else if (err instanceof Error) {
+        if (err.message.includes('403') || err.message.includes('Forbidden')) {
+          errorMessage = 'Пост можно создавать только для своих автомобилей';
+        } else if (err.message.includes('Unauthorized')) {
+          errorMessage = 'Необходимо войти в систему';
+        } else {
+          errorMessage = err.message;
+        }
       }
+      
+      setError(errorMessage);
+      toast.error(
+        'Ошибка создания поста',
+        errorMessage
+      );
     } finally {
       setIsSubmitting(false);
       setUploadingMedia(false);
@@ -134,6 +169,22 @@ export default function CreatePostModal({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {ownershipLoading && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <p className="text-blue-600 dark:text-blue-400 text-sm">
+                Проверка прав на создание поста...
+              </p>
+            </div>
+          )}
+          
+          {!ownershipLoading && !canCreatePost && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+              <p className="text-red-600 dark:text-red-400 text-sm">
+                Пост можно создавать только для своих автомобилей
+              </p>
+            </div>
+          )}
+
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
               <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
@@ -240,9 +291,9 @@ export default function CreatePostModal({
             >
               Abbrechen
             </button>
-            <button
+            <AuthBlockedButton
               type="submit"
-              disabled={!title.trim() || !content.trim() || isSubmitting}
+              disabled={!title.trim() || !content.trim() || isSubmitting || !canCreatePost || ownershipLoading}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
               {isSubmitting ? (
@@ -253,7 +304,7 @@ export default function CreatePostModal({
               ) : (
                 <span>Post erstellen</span>
               )}
-            </button>
+            </AuthBlockedButton>
           </div>
         </form>
       </div>

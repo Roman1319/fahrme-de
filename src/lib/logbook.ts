@@ -291,6 +291,58 @@ export async function addMedia(entryId: string, files: File[], authorId: string)
   }
 }
 
+export async function deleteLogbookMedia(mediaId: string, authorId: string): Promise<boolean> {
+  try {
+    // Получаем информацию о медиа
+    const { data: media, error: mediaError } = await supabase
+      .from('logbook_media')
+      .select('id, storage_path, entry_id, logbook_entries(author_id)')
+      .eq('id', mediaId)
+      .single();
+
+    if (mediaError || !media) {
+      console.error('Error fetching media:', mediaError);
+      throw new Error('Медиа не найдено');
+    }
+
+    // Проверяем права доступа
+    if (media.logbook_entries?.author_id !== authorId) {
+      throw new Error('У вас нет прав на удаление этого медиа');
+    }
+
+    // Валидируем путь
+    if (!media.storage_path.startsWith(`${authorId}/`)) {
+      throw new Error('Недопустимый путь к файлу');
+    }
+
+    // Удаляем файл из Storage
+    const { error: deleteError } = await supabase.storage
+      .from('logbook')
+      .remove([media.storage_path]);
+
+    if (deleteError) {
+      console.error('Error deleting media file:', deleteError);
+      throw new Error(`Ошибка удаления файла: ${deleteError.message}`);
+    }
+
+    // Удаляем запись из базы данных
+    const { error: dbError } = await supabase
+      .from('logbook_media')
+      .delete()
+      .eq('id', mediaId);
+
+    if (dbError) {
+      console.error('Error deleting media record:', dbError);
+      throw new Error('Ошибка удаления записи о медиа');
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error in deleteLogbookMedia:', error);
+    throw error;
+  }
+}
+
 export async function listMedia(entryId: string): Promise<LogbookMedia[]> {
   return getLogbookMedia(entryId);
 }

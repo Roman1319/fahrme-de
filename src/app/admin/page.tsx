@@ -182,7 +182,10 @@ export default function AdminDashboard() {
       {/* Quick Actions */}
       <div className="bg-[#1A1A1A] rounded-2xl p-10">
         <h3 className="text-3xl font-semibold mb-10">Быстрые действия</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <a href="/admin/cotd" className="bg-yellow-600 hover:bg-yellow-700 text-white px-8 py-6 rounded-2xl transition-colors text-xl font-medium hover:scale-105 transform text-center">
+            Машина дня
+          </a>
           <button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-6 rounded-2xl transition-colors text-xl font-medium hover:scale-105 transform">
             Очистить мусорные файлы
           </button>

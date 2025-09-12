@@ -11,7 +11,11 @@ const CreateSchema = z.object({
   topic: z.string().optional(),
   allow_comments: z.boolean().optional(),
   mileage: z.number().int().optional(),
-  mileage_unit: z.enum(['km','mi']).optional(),
+  mileage_unit: z.enum(['km','mi'], {
+    errorMap: () => ({
+      message: 'Mileage unit must be either "km" or "mi". "miles" is not accepted.'
+    })
+  }).optional(),
   cost: z.number().optional(),
   currency: z.string().optional(),
 });
@@ -29,7 +33,21 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const parsed = CreateSchema.parse(body);
+    
+    let parsed;
+    try {
+      parsed = CreateSchema.parse(body);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const errorMessage = error.errors.map(e => e.message).join(', ');
+        return NextResponse.json({ 
+          error: 'Validation error', 
+          details: errorMessage,
+          field: error.errors[0]?.path.join('.')
+        }, { status: 400 });
+      }
+      throw error;
+    }
 
     // проверка владения машиной (политики всё равно проверят, но так дадим понятный текст)
     const { data: car, error: carErr } = await supabase

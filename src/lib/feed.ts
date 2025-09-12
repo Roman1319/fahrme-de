@@ -23,6 +23,24 @@ export interface FeedEntry {
   comment_count: number;
 }
 
+// RPC Feed interfaces
+export interface RPCFeedPost {
+  id: string;
+  title: string;
+  content: string;
+  author_handle: string;
+  author_avatar_url: string;
+  car_brand: string;
+  car_model: string;
+  car_year: number;
+  car_name: string;
+  media_preview: string;
+  likes_count: number;
+  comments_count: number;
+  liked_by_me?: boolean; // Only for personal feed
+  publish_date: string;
+}
+
 export interface FeedFilters {
   limit?: number;
   offset?: number;
@@ -31,6 +49,45 @@ export interface FeedFilters {
   year_from?: number;
   year_to?: number;
   topic?: string;
+}
+
+// RPC-based feed functions
+export async function getRPCExploreFeed(limit: number = 20, offset: number = 0): Promise<RPCFeedPost[]> {
+  try {
+    const { data, error } = await supabase.rpc('feed_explore', {
+      p_limit: limit,
+      p_offset: offset
+    });
+
+    if (error) {
+      console.error('Error fetching RPC explore feed:', error);
+      throw error;
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error in getRPCExploreFeed:', error);
+    throw error;
+  }
+}
+
+export async function getRPCPersonalFeed(limit: number = 20, offset: number = 0): Promise<RPCFeedPost[]> {
+  try {
+    const { data, error } = await supabase.rpc('feed_personal', {
+      p_limit: limit,
+      p_offset: offset
+    });
+
+    if (error) {
+      console.error('Error fetching RPC personal feed:', error);
+      throw error;
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error in getRPCPersonalFeed:', error);
+    throw error;
+  }
 }
 
 export async function getExploreFeed(filters: FeedFilters = {}): Promise<FeedEntry[]> {

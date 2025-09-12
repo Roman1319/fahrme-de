@@ -5,6 +5,7 @@ import { Heart, MessageCircle, Edit2, Trash2, Reply } from 'lucide-react';
 import { Comment } from '@/lib/types';
 import { useAuth } from '@/components/AuthProvider';
 import { profileDisplayName } from '@/lib/format';
+import CommentLikeButton from '@/components/ui/CommentLikeButton';
 
 interface CommentsSectionProps {
   comments: Comment[];
@@ -209,20 +210,13 @@ export default function CommentsSection({
                 )}
 
                 <div className="flex items-center gap-4 mt-3">
-                  <button
-                    onClick={() => onLikeComment(comment.id)}
-                    disabled={!user}
-                    className={`flex items-center gap-1 text-sm transition-colors ${
-                      // TODO: Replace with proper likes field when implemented
-                      (comment as unknown as { likes?: string[] }).likes?.includes(user?.id || '')
-                        ? 'text-accent'
-                        : 'text-white/50 hover:text-white'
-                    }`}
-                  >
-                    <Heart className={`w-4 h-4 ${(comment as unknown as { likes?: string[] }).likes?.includes(user?.id || '') ? 'fill-current' : ''}`} />
-                    {/* TODO: Replace with proper likes field when implemented */}
-                    {(comment as unknown as { likes?: string[] }).likes?.length || 0}
-                  </button>
+                  <CommentLikeButton
+                    commentId={comment.id}
+                    initialLiked={comment.liked_by_me || false}
+                    initialCount={comment.likes_count || 0}
+                    size="sm"
+                    className="text-white/50 hover:text-white"
+                  />
                   
                   {user && (
                     <button

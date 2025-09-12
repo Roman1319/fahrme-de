@@ -106,6 +106,8 @@ export interface Comment {
   created_at: string;
   updated_at: string;
   author: Profile | null;
+  likes_count?: number;
+  liked_by_me?: boolean;
 }
 
 export interface PostLike {
@@ -130,7 +132,7 @@ export interface LegacyLogbookEntry {
   topic: 'repair' | 'tuning' | 'trip' | 'maintenance' | 'event' | 'general';
   photos: string[]; // URLs to photos
   mileage?: number;
-  mileageUnit?: 'km' | 'miles';
+  mileageUnit?: 'km' | 'mi';
   cost?: number;
   currency?: 'RUB' | 'UAH' | 'BYN' | 'KZT' | 'USD' | 'EUR';
   poll?: {
@@ -181,7 +183,7 @@ export interface LogbookDraft {
   type: 'repair' | 'tuning' | 'trip' | 'maintenance' | 'event' | 'general';
   images?: string[];
   mileage?: number;
-  mileageUnit?: 'km' | 'miles';
+  mileageUnit?: 'km' | 'mi';
   cost?: number;
   currency?: 'RUB' | 'UAH' | 'BYN' | 'KZT' | 'USD' | 'EUR';
   poll?: {
