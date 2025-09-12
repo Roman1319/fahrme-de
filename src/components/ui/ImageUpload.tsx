@@ -37,7 +37,12 @@ export default function ImageUpload({
   // Валидация изображения
   const validateImage = (file: File): Promise<boolean> => {
     return new Promise((resolve) => {
-      if (!file.type.startsWith('image/')) {
+      // Проверяем MIME тип или расширение файла для HEIC
+      const isValidImageType = file.type.startsWith('image/') || 
+        file.name.toLowerCase().endsWith('.heic') || 
+        file.name.toLowerCase().endsWith('.heif');
+      
+      if (!isValidImageType) {
         alert('Bitte wählen Sie eine gültige Bilddatei aus.');
         resolve(false);
         return;
@@ -171,7 +176,7 @@ export default function ImageUpload({
           ref={inputRef}
           type="file"
           multiple
-          accept="image/*"
+          accept="image/*,.heic,.heif"
           onChange={handleInputChange}
           className="hidden"
         />
@@ -190,7 +195,7 @@ export default function ImageUpload({
               </button>
             </p>
             <p className="text-xs text-white/60">
-              JPEG, PNG, WebP • Max. {maxSize}MB • Min. {minWidth}×{minHeight}px
+              JPEG, PNG, WebP, HEIC • Max. {maxSize}MB • Min. {minWidth}×{minHeight}px
             </p>
           </div>
         </div>

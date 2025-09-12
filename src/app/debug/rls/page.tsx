@@ -15,7 +15,7 @@ interface TestResult {
 }
 
 interface SessionInfo {
-  user: any;
+  user: { id: string; email?: string } | null;
   isAuthenticated: boolean;
   authReady: boolean;
   role: string;

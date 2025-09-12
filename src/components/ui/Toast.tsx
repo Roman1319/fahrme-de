@@ -107,7 +107,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
 
   // Экспортируем функции через контекст
   useEffect(() => {
-    (window as any).addToast = addToast;
+    (window as Window & { addToast?: (toast: Omit<Toast, 'id'>) => void }).addToast = addToast;
   }, []);
 
   return (
@@ -129,8 +129,8 @@ export function ToastProvider({ children }: ToastProviderProps) {
 // Хук для использования toast
 export function useToast() {
   const addToast = (toast: Omit<Toast, 'id'>) => {
-    if (typeof window !== 'undefined' && (window as any).addToast) {
-      (window as any).addToast(toast);
+    if (typeof window !== 'undefined' && (window as Window & { addToast?: (toast: Omit<Toast, 'id'>) => void }).addToast) {
+      (window as Window & { addToast?: (toast: Omit<Toast, 'id'>) => void }).addToast!(toast);
     }
   };
 

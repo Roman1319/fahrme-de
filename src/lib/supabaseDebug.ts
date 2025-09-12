@@ -1,4 +1,4 @@
-export function logSb(label: string, resp: any) {
+export function logSb(label: string, resp: unknown) {
   const { status, statusText, error } = resp || {};
   // eslint-disable-next-line no-console
   console.group(`[supabase] ${label}`);
@@ -10,9 +10,9 @@ export function logSb(label: string, resp: any) {
     // eslint-disable-next-line no-console
     console.error('error.code:', error.code);
     // eslint-disable-next-line no-console
-    console.error('error.hint:', (error as any)?.hint);
+    console.error('error.hint:', (error as Record<string, unknown>)?.hint);
     // eslint-disable-next-line no-console
-    console.error('error.details:', (error as any)?.details);
+    console.error('error.details:', (error as Record<string, unknown>)?.details);
   }
   // eslint-disable-next-line no-console
   console.groupEnd();

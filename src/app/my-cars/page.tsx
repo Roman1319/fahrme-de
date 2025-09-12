@@ -454,10 +454,24 @@ function AddCarForm({
     const files = event.target.files;
     if (files) {
       const fileArray = Array.from(files);
-      setImageFiles(fileArray);
+      
+      // Валидация файлов (включая HEIC)
+      const validFiles = fileArray.filter(file => {
+        const isValidImageType = file.type.startsWith('image/') || 
+          file.name.toLowerCase().endsWith('.heic') || 
+          file.name.toLowerCase().endsWith('.heif');
+        
+        if (!isValidImageType) {
+          alert(`${file.name} ist kein gültiges Bildformat`);
+          return false;
+        }
+        return true;
+      });
+      
+      setImageFiles(validFiles);
       
       // Also create URLs for preview
-      const urls = fileArray.map(file => URL.createObjectURL(file));
+      const urls = validFiles.map(file => URL.createObjectURL(file));
       setImageUrls(urls);
     }
   };
@@ -663,7 +677,7 @@ function AddCarForm({
                 <input
                   type="file"
                   multiple
-                  accept="image/*"
+                  accept="image/*,.heic,.heif"
                   onChange={handleFileInput}
                   className="block w-full text-sm text-gray-500
                     file:mr-4 file:py-2 file:px-4

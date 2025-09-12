@@ -1,7 +1,7 @@
 import BrandList from "@/components/BrandList";
 import SiteFooter from "@/components/SiteFooter";
 import RedirectIfAuthed from "@/components/RedirectIfAuthed";
-import CarOfTheDay from "@/components/CarOfTheDay";
+import ConditionalCarOfTheDay from "@/components/ConditionalCarOfTheDay";
 import { ArrowRight } from "lucide-react";
 
 export default function WelcomePage() {
@@ -35,7 +35,7 @@ export default function WelcomePage() {
             </div>
 
             {/* ====== МАШИНА ДНЯ ====== */}
-            <CarOfTheDay />
+            <ConditionalCarOfTheDay />
 
             {/* ====== ВЫБОР МАРКИ (как на твоём скрине) ====== */}
             {/* верхняя светлая панель с фото справа */}

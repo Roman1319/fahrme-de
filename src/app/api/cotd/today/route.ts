@@ -1,10 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabaseServer';
+import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = createSupabaseServerClient(request, NextResponse.next());
     const { data: { user } } = await supabase.auth.getUser();
+
+    // Проверить, существует ли сегодняшний день голосования
+    const { error: todayDayError } = await supabase
+      .from('cotd_days')
+      .select('id, status')
+      .eq('date', new Date().toISOString().split('T')[0])
+      .single();
+
+    // Если дня нет, создать его
+    if (todayDayError && todayDayError.code === 'PGRST116') {
+      console.log('Creating today COTD day...');
+      const { error: createError } = await supabase
+        .from('cotd_days')
+        .insert({
+          date: new Date().toISOString().split('T')[0],
+          status: 'voting'
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Error creating today COTD day:', createError);
+        return NextResponse.json({ 
+          error: 'Failed to create today COTD day', 
+          details: createError.message 
+        }, { status: 500 });
+      }
+    } else if (todayDayError) {
+      console.error('Error checking today COTD day:', todayDayError);
+      return NextResponse.json({ 
+        error: 'Failed to check today COTD day', 
+        details: todayDayError.message 
+      }, { status: 500 });
+    }
 
     // Получить сегодняшних кандидатов
     const { data: candidates, error: candidatesError } = await supabase
@@ -12,7 +46,11 @@ export async function GET(request: NextRequest) {
 
     if (candidatesError) {
       console.error('Error fetching COTD candidates:', candidatesError);
-      return NextResponse.json({ error: 'Failed to fetch candidates' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'Failed to fetch candidates', 
+        details: candidatesError.message,
+        code: candidatesError.code 
+      }, { status: 500 });
     }
 
     // Получить вчерашнего победителя
@@ -27,7 +65,7 @@ export async function GET(request: NextRequest) {
     // Определить мой голос (если пользователь аутентифицирован)
     let myVote = null;
     if (user && candidates && candidates.length > 0) {
-      const votedCandidate = candidates.find((c: any) => c.my_vote);
+      const votedCandidate = candidates.find((c: Record<string, unknown>) => c.my_vote);
       if (votedCandidate) {
         myVote = {
           car_id: votedCandidate.car_id,

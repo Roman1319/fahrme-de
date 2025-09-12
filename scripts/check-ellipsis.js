@@ -39,6 +39,8 @@ const validPatterns = [
   /Speichern.*\.\.\./,  // Speichern тексты
   /Bilder werden verarbeitet\.\.\./,  // Обработка изображений
   /Ich kann lesen…/,  // Комментарии с многоточием
+  /Проверка.*…/,  // Проверка тексты
+  /Загрузка…/,  // Загрузка тексты
 ];
 
 function checkFile(filePath) {

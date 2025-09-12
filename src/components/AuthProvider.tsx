@@ -2,26 +2,32 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase, onAuthStateChange, getAuthReady, getGlobalUser } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import { logger } from '@/lib/logger';
 
-type User = {
+interface User {
   id: string;
   email: string;
   name?: string;
   handle?: string;
-};
+  user_metadata?: {
+    name?: string;
+    handle?: string;
+    city?: string;
+  };
+}
 
-type Ctx = {
+interface AuthContext {
   user: User | null;
   refresh: () => void;
-  login: (email:string, pwd:string) => Promise<string | null>;
-  register: (name:string, email:string, pwd:string) => Promise<string | null>;
+  login: (email: string, pwd: string) => Promise<string | null>;
+  register: (name: string, email: string, pwd: string) => Promise<string | null>;
   logout: () => Promise<void>;
   isAuthenticated: () => boolean;
   isGuest: () => boolean;
   isLoading: boolean;
   authReady: boolean;
-};
-const AuthCtx = createContext<Ctx | null>(null);
+}
+const AuthCtx = createContext<AuthContext | null>(null);
 
 export function useAuth() {
   const ctx = useContext(AuthCtx);
@@ -38,11 +44,13 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   // Initialize with global auth state
   useEffect(() => {
+    logger.debug('[AuthProvider] Initializing...');
     setMounted(true);
     setIsLoading(true);
     setAuthReady(getAuthReady());
     
     const globalUser = getGlobalUser();
+    logger.debug('[AuthProvider] Global user:', globalUser);
     if (globalUser) {
       const userData: User = {
         id: globalUser.id,
@@ -50,6 +58,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         name: globalUser.user_metadata?.name,
         handle: globalUser.user_metadata?.handle
       };
+      logger.debug('[AuthProvider] Setting user data:', userData);
       setUser(userData);
     }
     
@@ -60,7 +69,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     // Refresh user data from Supabase
     supabase.auth.getUser().then(({ data: { user: currentUser }, error }) => {
       if (error) {
-        console.error('[auth] Error refreshing user:', error);
+        logger.error('[auth] Error refreshing user:', error);
         return;
       }
       if (currentUser) {
@@ -81,9 +90,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (!mounted) return;
     
-    console.info('[auth] Subscribing to global auth state changes...');
+    logger.debug('[auth] Subscribing to global auth state changes...');
     const unsubscribe = onAuthStateChange((globalUser, ready) => {
-      console.info('[auth] Global auth state changed:', globalUser?.email, 'ready:', ready);
+      logger.debug('[auth] Global auth state changed:', globalUser?.email, 'ready:', ready);
       
       setAuthReady(ready);
       setIsLoading(!ready);

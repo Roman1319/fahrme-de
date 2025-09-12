@@ -70,7 +70,7 @@ export default function CommentForm({
           userInfo={{
             displayName: user.name || user.email || 'User',
             fullName: user.name || user.email || 'User',
-            city: 'München', // TODO: Получать из профиля
+            city: user.user_metadata?.city || 'München',
             about: 'Sie'
           }}
           showActions={false}
@@ -119,13 +119,23 @@ export default function CommentForm({
           <input
             type="file"
             id="comment-image-upload"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             multiple
             onChange={(e) => {
               const files = Array.from(e.target.files || []);
               if (files.length > 0) {
                 // Обрабатываем файлы по одному
                 files.forEach((file, index) => {
+                  // Проверяем MIME тип или расширение файла для HEIC
+                  const isValidImageType = file.type.startsWith('image/') || 
+                    file.name.toLowerCase().endsWith('.heic') || 
+                    file.name.toLowerCase().endsWith('.heif');
+                  
+                  if (!isValidImageType) {
+                    alert('Bitte wählen Sie eine gültige Bilddatei aus.');
+                    return;
+                  }
+                  
                   const reader = new FileReader();
                   reader.onload = (e) => {
                     const result = e.target?.result as string;

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabaseServer';
+import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = createSupabaseServerClient(request, NextResponse.next());
 
     // Получить минимальный и максимальный год из таблицы cars
     const { data: yearData, error } = await supabase

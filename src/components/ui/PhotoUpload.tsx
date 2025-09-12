@@ -26,7 +26,12 @@ export default function PhotoUpload({
     const remainingSlots = maxImages - images.length;
 
     Array.from(files).slice(0, remainingSlots).forEach((file) => {
-      if (file.type.startsWith('image/')) {
+      // Проверяем MIME тип или расширение файла для HEIC
+      const isValidImageType = file.type.startsWith('image/') || 
+        file.name.toLowerCase().endsWith('.heic') || 
+        file.name.toLowerCase().endsWith('.heif');
+      
+      if (isValidImageType) {
         const reader = new FileReader();
         reader.onload = (e) => {
           const result = e.target?.result as string;
@@ -96,7 +101,7 @@ export default function PhotoUpload({
           Fotos auswählen
         </button>
         <p className="text-xs opacity-50 mt-1">
-          Max. {maxImages} Fotos • JPG, PNG, GIF
+          Max. {maxImages} Fotos • JPG, PNG, GIF, HEIC
         </p>
       </div>
 
@@ -105,7 +110,7 @@ export default function PhotoUpload({
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         onChange={(e) => handleFileSelect(e.target.files)}
         className="hidden"
       />

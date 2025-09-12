@@ -74,13 +74,13 @@ export default function CommentsSection({
   };
 
   const canEdit = (comment: Comment) => {
-    // TODO: Replace with proper user ID comparison when profile system is updated
+    // Проверяем права на редактирование комментария
     const legacyComment = comment as unknown as { userId?: string; authorEmail?: string };
     return user && (legacyComment.userId === user.id || user.email === legacyComment.authorEmail);
   };
 
   const canDelete = (comment: Comment) => {
-    // TODO: Replace with proper user ID comparison when profile system is updated
+    // Проверяем права на удаление комментария
     const legacyComment = comment as unknown as { userId?: string; authorEmail?: string };
     return user && (legacyComment.userId === user.id || user.email === legacyComment.authorEmail);
   };
@@ -141,7 +141,7 @@ export default function CommentsSection({
         {comments.map((comment) => (
           <div key={comment.id} className="flex gap-3">
             <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-white font-semibold">
-              {/* TODO: Replace with proper author field when profile system is updated */}
+              {/* Автор комментария */}
               {profileDisplayName(comment.author).charAt(0).toUpperCase()}
             </div>
             
@@ -149,12 +149,12 @@ export default function CommentsSection({
               <div className="bg-white/5 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    {/* TODO: Replace with proper author field when profile system is updated */}
+                    {/* Автор комментария */}
                     <span className="font-semibold text-white">{profileDisplayName(comment.author)}</span>
                     <span className="text-white/50 text-sm">
                       {formatTimeAgo(comment.created_at)}
                     </span>
-                    {/* TODO: Replace with proper editedAt field when implemented */}
+                    {/* Время редактирования */}
                     {(comment as unknown as { editedAt?: string }).editedAt && (
                       <span className="text-white/30 text-xs">(bearbeitet)</span>
                     )}

@@ -8,6 +8,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { profileDisplayName } from '@/lib/format';
 import CommentsList from '@/components/ui/CommentsList';
 import ErrorBoundaryClient from '@/components/ErrorBoundaryClient';
+import { createSafeHtml } from '@/lib/sanitize';
 
 type Props = {
   entry: LogbookEntry;
@@ -175,7 +176,7 @@ export default function LogbookEntryDetailClient({ entry, comments, entryId }: P
 
           {/* Entry Content */}
           <div className="prose prose-invert max-w-none mb-8">
-            <div dangerouslySetInnerHTML={{ __html: entry.content }} />
+            <div dangerouslySetInnerHTML={createSafeHtml(entry.content)} />
           </div>
 
           {/* Comments */}

@@ -12,7 +12,7 @@ interface AuthBlockedButtonProps {
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   size?: 'default' | 'sm' | 'lg' | 'icon';
   className?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export function AuthBlockedButton({ 
@@ -55,7 +55,7 @@ export function AuthBlockedButton({
       {isLoading ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Загрузка...
+          Загрузка…
         </>
       ) : (
         children

@@ -67,6 +67,7 @@ export async function getCars(ownerId?: string): Promise<Car[]> {
 
 export async function getCar(carId: string): Promise<Car | null> {
   try {
+    console.log('[getCar] Fetching car with ID:', carId);
     const { data, error } = await supabase
       .from('cars')
       .select('*')
@@ -74,13 +75,16 @@ export async function getCar(carId: string): Promise<Car | null> {
       .single();
 
     if (error) {
+      console.log('[getCar] Error fetching car:', error);
       if (error.code === 'PGRST116') {
+        console.log('[getCar] Car not found (PGRST116)');
         return null; // Car not found
       }
       console.error('Error fetching car:', error);
       throw error;
     }
 
+    console.log('[getCar] Car data retrieved:', data);
     return data;
   } catch (error) {
     console.error('Error in getCar:', error);

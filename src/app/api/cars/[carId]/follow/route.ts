@@ -1,19 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabaseServer';
+import { createSupabaseApiClient } from '@/lib/supabaseServer';
+import { z } from 'zod';
+import { logger } from '@/lib/logger';
+
+const CarIdSchema = z.object({
+  carId: z.string().uuid('Invalid car ID format')
+});
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { carId: string } }
 ) {
   try {
-    const supabase = createClient();
+    const supabase = createSupabaseApiClient(request);
     const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    // Логирование для отладки
+    logger.debug('[API] Auth check:', { 
+      hasUser: !!user, 
+      userId: user?.id, 
+      authError: authError?.message,
+      cookies: Object.fromEntries(request.cookies.getAll().map(c => [c.name, c.value]))
+    });
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { carId } = params;
+    // Валидация carId
+    const validation = CarIdSchema.safeParse({ carId: params.carId });
+    if (!validation.success) {
+      return NextResponse.json({ 
+        error: 'Invalid car ID format',
+        details: validation.error.errors.map(e => e.message).join(', ')
+      }, { status: 400 });
+    }
+
+    const { carId } = validation.data;
 
     // Проверить, что машина существует
     const { data: car, error: carError } = await supabase
@@ -49,7 +72,7 @@ export async function POST(
 
     return NextResponse.json({ message: 'Successfully followed car' });
   } catch (error) {
-    console.error('Error following car:', error);
+    logger.error('Error following car:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -59,14 +82,23 @@ export async function DELETE(
   { params }: { params: { carId: string } }
 ) {
   try {
-    const supabase = createClient();
+    const supabase = createSupabaseApiClient(request);
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { carId } = params;
+    // Валидация carId
+    const validation = CarIdSchema.safeParse({ carId: params.carId });
+    if (!validation.success) {
+      return NextResponse.json({ 
+        error: 'Invalid car ID format',
+        details: validation.error.errors.map(e => e.message).join(', ')
+      }, { status: 400 });
+    }
+
+    const { carId } = validation.data;
 
     // Удалить подписку
     const { error: unfollowError } = await supabase
@@ -81,7 +113,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Successfully unfollowed car' });
   } catch (error) {
-    console.error('Error unfollowing car:', error);
+    logger.error('Error unfollowing car:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -91,14 +123,23 @@ export async function GET(
   { params }: { params: { carId: string } }
 ) {
   try {
-    const supabase = createClient();
+    const supabase = createSupabaseApiClient(request);
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { carId } = params;
+    // Валидация carId
+    const validation = CarIdSchema.safeParse({ carId: params.carId });
+    if (!validation.success) {
+      return NextResponse.json({ 
+        error: 'Invalid car ID format',
+        details: validation.error.errors.map(e => e.message).join(', ')
+      }, { status: 400 });
+    }
+
+    const { carId } = validation.data;
 
     // Проверить статус подписки
     const { data: follow, error: followError } = await supabase
@@ -117,7 +158,7 @@ export async function GET(
       followersCount: 0 // Будет обновлено отдельным запросом
     });
   } catch (error) {
-    console.error('Error checking follow status:', error);
+    logger.error('Error checking follow status:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

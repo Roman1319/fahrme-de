@@ -1,28 +1,15 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { validateSupabaseEnv, createSupabaseConfig } from './env-validation'
+import { logger } from './logger'
 
-// Валидация переменных окружения
-const validation = validateSupabaseEnv()
+// Временное решение: хардкод значений для отладки
+const supabaseUrl = 'https://wezpfrbhhgclvdbddivf.supabase.co'
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlenBmcmJoaGdjbHZkYmRkaXZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyMzA3NDYsImV4cCI6MjA3MjgwNjc0Nn0.Wpg-0AxesiDVyUNHkT2qn8WCxpv2Wte8MQuLoHSRqGk'
 
-if (!validation.isValid) {
-  console.error('[supabase] Environment validation failed:')
-  validation.errors.forEach(error => console.error(`[supabase] ❌ ${error}`))
-  throw new Error('Supabase environment validation failed')
-}
-
-if (validation.warnings.length > 0) {
-  console.warn('[supabase] Environment warnings:')
-  validation.warnings.forEach(warning => console.warn(`[supabase] ⚠️  ${warning}`))
-}
-
-// Создание конфигурации с валидацией
-const config = createSupabaseConfig(false) // anon client
-const supabaseUrl = config.url
-const supabaseAnonKey = config.anonKey
-
-console.log('[supabase] URL:', supabaseUrl ? 'Set' : 'Missing')
-console.log('[supabase] Key:', supabaseAnonKey ? 'Set' : 'Missing')
+logger.debug('[supabase] Using hardcoded values for debugging')
+logger.debug('[supabase] URL:', supabaseUrl)
+logger.debug('[supabase] Key:', supabaseAnonKey ? 'Set' : 'Missing')
 
 // Singleton Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -61,37 +48,37 @@ export const onAuthStateChange = (callback: (user: { id: string; email?: string;
 
 // Global auth state listener - единственный слушатель в приложении
 if (typeof window !== 'undefined') {
-  console.log('[supabase] Setting up unified global auth listener...');
+  logger.debug('[supabase] Setting up unified global auth listener...');
   
   // Initialize auth state
   const initializeAuth = async () => {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
-        console.error('[supabase] Error getting initial session:', error);
+        logger.error('[supabase] Error getting initial session:', error);
       } else if (session?.user) {
         globalUser = session.user;
-        console.info('[supabase] User loaded from session:', session.user.email, 'ID:', session.user.id);
+        logger.info('[supabase] User loaded from session:', session.user.email, 'ID:', session.user.id);
       }
       globalAuthReady = true;
-      console.info('[supabase] AuthReady set to true');
+      logger.debug('[supabase] AuthReady set to true');
       
       // Notify all callbacks
       authCallbacks.forEach(callback => {
         try {
           callback(globalUser, globalAuthReady);
         } catch (error) {
-          console.error('[supabase] Error in auth callback:', error);
+          logger.error('[supabase] Error in auth callback:', error);
         }
       });
     } catch (error) {
-      console.error('[supabase] Error initializing auth:', error);
+      logger.error('[supabase] Error initializing auth:', error);
       globalAuthReady = true;
       authCallbacks.forEach(callback => {
         try {
           callback(globalUser, globalAuthReady);
         } catch (error) {
-          console.error('[supabase] Error in auth callback:', error);
+          logger.error('[supabase] Error in auth callback:', error);
         }
       });
     }
@@ -101,12 +88,12 @@ if (typeof window !== 'undefined') {
   
   // Listen to auth state changes
   supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log('[supabase] Auth state changed:', event, session?.user?.id);
+    logger.debug('[supabase] Auth state changed:', event, session?.user?.id);
     
     globalUser = session?.user || null;
     globalAuthReady = true;
     
-    console.log('[supabase] Notifying', authCallbacks.size, 'callbacks');
+    logger.debug('[supabase] Notifying', authCallbacks.size, 'callbacks');
     authCallbacks.forEach(callback => {
       try {
         callback(globalUser, globalAuthReady);

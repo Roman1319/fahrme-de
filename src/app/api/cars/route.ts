@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabaseServer';
+import { createSupabaseApiClient } from '@/lib/supabaseServer';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = createSupabaseApiClient(request);
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100); // Максимум 100
+    const offset = Math.max(parseInt(searchParams.get('offset') || '0'), 0); // Минимум 0
+
+    // Логирование для отладки серверной сессии
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    console.log('[Cars API] Auth check:', { 
+      hasUser: !!user, 
+      userId: user?.id, 
+      authError: authError?.message,
+      cookies: Object.fromEntries(request.cookies.entries())
+    });
 
     const { data: cars, error } = await supabase
       .from('cars')

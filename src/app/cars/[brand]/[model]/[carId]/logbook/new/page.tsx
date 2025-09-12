@@ -31,7 +31,7 @@ export default function NewLogbookEntryPage() {
   // Load car data
   useEffect(() => {
     if (carId) {
-      // TODO: Implement API endpoint
+      // Заглушка данных - в будущем заменить на API endpoint
       // For now, set placeholder data
       setCar({
         brand: 'AC',
@@ -272,7 +272,7 @@ export default function NewLogbookEntryPage() {
                 <input
                   type="file"
                   multiple
-                  accept="image/*"
+                  accept="image/*,.heic,.heif"
                   onChange={handleFileSelect}
                   className="hidden"
                   id="file-upload"

@@ -108,7 +108,12 @@ export default function RichTextEditor({
     if (!files) return;
 
     Array.from(files).forEach((file) => {
-      if (file.type.startsWith('image/')) {
+      // Проверяем MIME тип или расширение файла для HEIC
+      const isValidImageType = file.type.startsWith('image/') || 
+        file.name.toLowerCase().endsWith('.heic') || 
+        file.name.toLowerCase().endsWith('.heif');
+      
+      if (isValidImageType) {
         const reader = new FileReader();
         reader.onload = (e) => {
           const result = e.target?.result as string;
@@ -257,7 +262,7 @@ export default function RichTextEditor({
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         onChange={(e) => handleFileSelect(e.target.files)}
         className="hidden"
       />

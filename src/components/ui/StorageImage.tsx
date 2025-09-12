@@ -17,7 +17,7 @@ interface StorageImageProps {
   style?: React.CSSProperties;
 }
 
-export default function StorageImage({
+function StorageImage({
   image,
   className = '',
   fill = false,
@@ -33,8 +33,10 @@ export default function StorageImage({
   const handleError = useImageErrorHandler(image.fallback || '');
 
   const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    setImageError(true);
-    handleError(event);
+    if (!imageError) {
+      setImageError(true);
+      handleError(event);
+    }
   };
 
   const imageSrc = imageError && image.fallback ? image.fallback : image.src;
@@ -86,8 +88,10 @@ export function StorageImg({ image, className = '', style, onClick }: StorageImg
   const handleError = useImageErrorHandler(image.fallback || '');
 
   const handleImageError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    setImageError(true);
-    handleError(event);
+    if (!imageError) {
+      setImageError(true);
+      handleError(event);
+    }
   };
 
   const imageSrc = imageError && image.fallback ? image.fallback : image.src;
@@ -103,3 +107,7 @@ export function StorageImg({ image, className = '', style, onClick }: StorageImg
     />
   );
 }
+
+// Экспорты
+export { StorageImage };
+export default StorageImage;

@@ -6,8 +6,8 @@ import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabaseClient';
 
 interface SessionDetails {
-  user: any;
-  session: any;
+  user: { id: string; email?: string } | null;
+  session: { access_token?: string; refresh_token?: string } | null;
   isAuthenticated: boolean;
   authReady: boolean;
   role: string;

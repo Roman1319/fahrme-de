@@ -8,29 +8,8 @@ import Guard from "@/components/auth/Guard";
 import { getLogbookImage } from '@/lib/storage-helpers';
 import { StorageImg } from '@/components/ui/StorageImage';
 import LikeButton from '@/components/ui/LikeButton';
+import { logger } from '@/lib/logger';
 
-// Daten für das gestrige Auto des Tages
-const yesterdayCar = {
-  id: "yesterday",
-  make: "Nissan",
-  model: "GT-R",
-  year: 2019,
-  image: "/nissan-gtr-2019-4k-zd-3840x2400.jpg",
-  description: "Der legendäre GT-R mit seinem ikonischen Design und brutaler Performance. Ein Traum für jeden Autoliebhaber.",
-  votes: 1247
-};
-
-// Daten für die Auswahl des heutigen Autos des Tages
-const todayCars = [
-  { id: "1", make: "BMW", model: "M3", image: "/bmw-g20.jpg" },
-  { id: "2", make: "Audi", model: "A4", image: "/a4-b9.jpg" },
-  { id: "3", make: "Mini", model: "Cooper S", image: "/mini-r56.jpg" },
-  { id: "4", make: "BMW", model: "M3", image: "/bmw-g20.jpg" },
-  { id: "5", make: "Audi", model: "A4", image: "/a4-b9.jpg" },
-  { id: "6", make: "Mini", model: "Cooper S", image: "/mini-r56.jpg" },
-  { id: "7", make: "BMW", model: "M3", image: "/bmw-g20.jpg" },
-  { id: "8", make: "Audi", model: "A4", image: "/a4-b9.jpg" }
-];
 
 interface FeedPost {
   id: string;
@@ -61,29 +40,82 @@ export default function FeedPage(){
       setLoading(true);
       const currentOffset = reset ? 0 : offset;
       
-      const { data, error } = await supabase.rpc(
-        user ? 'feed_personal' : 'feed_explore',
-        {
+      logger.debug('[Feed] Loading feed:', { 
+        user: !!user, 
+        userId: user?.id, 
+        offset: currentOffset,
+        reset 
+      });
+
+      // Попытка персонального источника
+      let data = null;
+      let error = null;
+
+      if (user) {
+        logger.debug('[Feed] Trying personal feed...');
+        const personalResult = await supabase.rpc('feed_personal', {
           p_limit: 10,
           p_offset: currentOffset
+        });
+        
+        if (personalResult.error) {
+          logger.warn('[Feed] Personal feed failed:', {
+            code: personalResult.error.code,
+            message: personalResult.error.message,
+            details: personalResult.error.details,
+            hint: personalResult.error.hint
+          });
+          
+          // Fallback на explore
+          logger.debug('[Feed] Falling back to explore feed...');
+          const exploreResult = await supabase.rpc('feed_explore', {
+            p_limit: 10,
+            p_offset: currentOffset
+          });
+          
+          data = exploreResult.data;
+          error = exploreResult.error;
+        } else {
+          data = personalResult.data;
+          error = personalResult.error;
         }
-      );
-
-      if (error) {
-        console.error('Error loading feed:', error);
-        return;
+      } else {
+        logger.debug('[Feed] Loading explore feed...');
+        const exploreResult = await supabase.rpc('feed_explore', {
+          p_limit: 10,
+          p_offset: currentOffset
+        });
+        
+        data = exploreResult.data;
+        error = exploreResult.error;
       }
 
+      if (error) {
+        logger.error('[Feed] Error loading feed:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          stack: error.stack
+        });
+        
+        // Всегда показываем пустой массив вместо падения
+        logger.debug('[Feed] Using fallback data due to error');
+        data = [];
+      }
+
+      const postsData = data || [];
+      
       if (reset) {
         // Remove duplicates by ID
-        const uniquePosts = (data || []).filter((post: FeedPost, index: number, self: FeedPost[]) => 
+        const uniquePosts = postsData.filter((post: FeedPost, index: number, self: FeedPost[]) => 
           index === self.findIndex((p: FeedPost) => p.id === post.id)
         );
         setPosts(uniquePosts);
         setOffset(10);
       } else {
         // Remove duplicates when appending
-        const newPosts = (data || []).filter((newPost: FeedPost) => 
+        const newPosts = postsData.filter((newPost: FeedPost) => 
           !posts.some((existingPost: FeedPost) => existingPost.id === newPost.id)
         );
         setPosts(prev => [...prev, ...newPosts]);
@@ -91,11 +123,29 @@ export default function FeedPage(){
       }
 
       // Check if we got less than 10 items (end of feed)
-      if (!data || data.length < 10) {
+      if (postsData.length < 10) {
         setExhausted(true);
       }
     } catch (error) {
-      console.error('Error in loadFeed:', error);
+      logger.error('[Feed] Error in loadFeed:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      // Всегда показываем пустой массив вместо падения
+      logger.debug('[Feed] Using fallback due to catch error');
+      const fallbackData: FeedPost[] = [];
+      
+      if (reset) {
+        setPosts(fallbackData);
+        setOffset(10);
+      } else {
+        setPosts(prev => [...prev, ...fallbackData]);
+        setOffset(prev => prev + 10);
+      }
+      
+      setExhausted(true);
     } finally {
       setLoading(false);
     }
@@ -113,22 +163,12 @@ export default function FeedPage(){
 
   // Удаляем старую функцию getMediaUrl - теперь используем getLogbookImage
 
-  const handleVote = (carId: string) => {
-    // Logik für die Abstimmung über das Auto des Tages
-    console.log('Voting for car:', carId);
-    // Hier kann ein API-Aufruf für die Abstimmung hinzugefügt werden
-  };
-
   return (
     <Guard>
       <main className="pb-12">
         <section className="space-y-4">
           {/* Автомобиль дня - главный раздел */}
-          <CarOfTheDay 
-            yesterdayCar={yesterdayCar} 
-            todayCars={todayCars} 
-            onVote={handleVote} 
-          />
+          <CarOfTheDay />
 
           {/* Лента постов */}
           {loading && posts.length === 0 ? (

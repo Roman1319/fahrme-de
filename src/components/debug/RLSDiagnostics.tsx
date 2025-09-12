@@ -118,8 +118,8 @@ export default function RLSDiagnostics() {
     });
 
     try {
-      let result: any;
-      let error: any;
+      let result: unknown;
+      let error: unknown;
 
       switch (test.category) {
         case 'read':

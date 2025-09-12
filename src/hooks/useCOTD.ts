@@ -58,7 +58,8 @@ export function useCOTD() {
       const response = await fetch('/api/cotd/today');
       
       if (!response.ok) {
-        throw new Error('Failed to load COTD data');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.details || errorData.error || 'Failed to load COTD data');
       }
 
       const data = await response.json();

@@ -20,7 +20,7 @@ export default function AdminSettings() {
     allow_registration: true,
     max_photos_per_car: 10,
     max_file_size_mb: 5,
-    allowed_file_types: ['jpg', 'jpeg', 'png', 'webp']
+    allowed_file_types: ['jpg', 'jpeg', 'png', 'webp', 'heic']
   });
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -52,7 +52,7 @@ export default function AdminSettings() {
       allow_registration: true,
       max_photos_per_car: 10,
       max_file_size_mb: 5,
-      allowed_file_types: ['jpg', 'jpeg', 'png', 'webp']
+      allowed_file_types: ['jpg', 'jpeg', 'png', 'webp', 'heic']
     });
   };
 
@@ -168,7 +168,7 @@ export default function AdminSettings() {
               Разрешенные типы файлов
             </label>
             <div className="flex flex-wrap gap-2">
-              {['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].map((type) => (
+              {['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic'].map((type) => (
                 <label key={type} className="flex items-center space-x-2">
                   <input
                     type="checkbox"

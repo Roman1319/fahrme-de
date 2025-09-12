@@ -1,20 +1,24 @@
 'use client';
 import React from 'react';
 
+interface ErrorBoundaryState {
+  error: Error | null;
+}
+
 export default class ErrorBoundaryClient extends React.Component<
   { children: React.ReactNode },
-  { error: any }
+  ErrorBoundaryState
 > {
-  constructor(props: any) { 
+  constructor(props: { children: React.ReactNode }) { 
     super(props); 
     this.state = { error: null }; 
   }
   
-  static getDerivedStateFromError(error: any) { 
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState { 
     return { error }; 
   }
   
-  componentDidCatch(error: any, info: any) {
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
     // ВАЖНО: печатаем компонентный стек, там будет имя проблемного компонента
     // eslint-disable-next-line no-console
     console.error('[Async Client Component DETECTED]', { 

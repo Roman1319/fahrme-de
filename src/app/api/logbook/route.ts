@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
 
     // возвращаем через res, чтобы не потерять возможные cookie-мутации
     return NextResponse.json(data, { status: 201, headers: res.headers });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[api/logbook] Unexpected:', e);
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }

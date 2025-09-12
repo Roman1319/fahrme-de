@@ -168,7 +168,7 @@ export function getImageByType(
 export function useImageErrorHandler(fallbackUrl: string) {
   return (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
     const img = event.currentTarget;
-    if (img.src !== fallbackUrl) {
+    if (img.src !== fallbackUrl && fallbackUrl) {
       console.warn('Image failed to load, using fallback:', img.src);
       img.src = fallbackUrl;
     }

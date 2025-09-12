@@ -7,6 +7,7 @@ import { MyCar, LogbookEntry, Comment } from '@/lib/types';
 import { profileDisplayName } from '@/lib/format';
 import { ArrowLeft, Heart, MessageCircle, Share2, Edit, Trash2 } from 'lucide-react';
 import ErrorBoundaryClient from '@/components/ErrorBoundaryClient';
+import { createSafeHtml } from '@/lib/sanitize';
 
 // Client-side API functions
 async function fetchCar(carId: string): Promise<MyCar | null> {
@@ -309,7 +310,7 @@ export default function EntryPageClient({ entryId, initialEntry, initialComments
               </div>
 
               <div className="prose prose-invert max-w-none">
-                <div dangerouslySetInnerHTML={{ __html: entry.content }} />
+                <div dangerouslySetInnerHTML={createSafeHtml(entry.content)} />
               </div>
 
               {/* Actions */}

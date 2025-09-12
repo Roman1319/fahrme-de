@@ -43,7 +43,7 @@ export function CarPhotoUploader({ carId, onAdded }: { carId: string; onAdded?: 
     <div className="flex items-center gap-3">
       <label className="px-3 py-2 rounded-xl border cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900">
         {busy ? 'Загрузка…' : 'Добавить фото'}
-        <input type="file" accept="image/*" className="hidden" onChange={onChange} disabled={busy || !user}/>
+        <input type="file" accept="image/*,.heic,.heif" className="hidden" onChange={onChange} disabled={busy || !user}/>
       </label>
       {err && <span className="text-sm text-red-500">{err}</span>}
     </div>

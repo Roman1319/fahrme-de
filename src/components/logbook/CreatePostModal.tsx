@@ -7,6 +7,7 @@ import { safeApiCall, waitForAuth } from '@/lib/api-client';
 import { AuthBlockedButton } from '@/components/ui/AuthBlockedButton';
 import { useCarOwnership } from '@/hooks/useCarOwnership';
 import { useToast } from '@/components/ui/Toast';
+import { logger } from '@/lib/logger';
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -36,7 +37,29 @@ export default function CreatePostModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !content.trim() || isSubmitting) return;
+    
+    // Валидация входных данных
+    if (!title.trim()) {
+      setError('Заголовок обязателен');
+      return;
+    }
+    
+    if (title.length > 200) {
+      setError('Заголовок не должен превышать 200 символов');
+      return;
+    }
+    
+    if (!content.trim()) {
+      setError('Содержимое обязательно');
+      return;
+    }
+    
+    if (content.length > 10000) {
+      setError('Содержимое не должно превышать 10000 символов');
+      return;
+    }
+    
+    if (isSubmitting) return;
 
     // UI-валидация: проверяем принадлежность автомобиля
     if (!canCreatePost) {
@@ -88,7 +111,7 @@ export default function CreatePostModal({
             'Фотографии успешно добавлены к посту'
           );
         } catch (error) {
-          console.error('Error uploading media:', error);
+          logger.error('Error uploading media:', error);
           toast.warning(
             'Ошибка загрузки медиа',
             'Пост создан, но не удалось загрузить фотографии'
@@ -106,7 +129,7 @@ export default function CreatePostModal({
       onPostCreated(entry.id);
       handleClose();
     } catch (err: unknown) {
-      console.error('Error creating post:', err);
+      logger.error('Error creating post:', err);
       
       let errorMessage = 'Произошла ошибка при создании поста';
       
@@ -172,7 +195,7 @@ export default function CreatePostModal({
           {ownershipLoading && (
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <p className="text-blue-600 dark:text-blue-400 text-sm">
-                Проверка прав на создание поста...
+                Проверка прав на создание поста…
               </p>
             </div>
           )}

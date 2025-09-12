@@ -28,7 +28,8 @@ export default function AvatarButton({ src, name, size = 36, onClick }: Props) {
       {image.src ? (
         <StorageImage
           image={image}
-          fill
+          width={size}
+          height={size}
           sizes={`${size}px`}
           className="rounded-full object-cover"
         />

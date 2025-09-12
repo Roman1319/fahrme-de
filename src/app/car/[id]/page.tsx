@@ -69,18 +69,21 @@ export default function CarPage() {
   }, [car]);
 
   function loadCar() {
+    console.log('[CarPage] Loading car with ID:', carId);
     setIsLoading(true);
     setError(null);
     getCar(carId)
       .then(carData => {
+        console.log('[CarPage] Car data received:', carData);
         if (carData) {
           setCar(carData);
         } else {
+          console.log('[CarPage] Car not found');
           setError('Auto nicht gefunden');
         }
       })
       .catch(err => {
-        console.error('Error loading car:', err);
+        console.error('[CarPage] Error loading car:', err);
         setError('Fehler beim Laden des Autos');
       })
       .finally(() => {

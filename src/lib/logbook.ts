@@ -128,7 +128,7 @@ export async function getLogbookEntry(entryId: string) {
       car: carResp?.data || null,
       media: Array.isArray(mediaResp?.data) ? mediaResp.data : [],
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     // eslint-disable-next-line no-console
     console.error('[getLogbookEntry] Unexpected:', {
       message: err?.message,
@@ -363,45 +363,6 @@ export async function listMedia(entryId: string): Promise<LogbookMedia[]> {
   return getLogbookMedia(entryId);
 }
 
-export async function deleteLogbookMedia(mediaId: string): Promise<void> {
-  try {
-    // Get media info first
-    const { data: media, error: fetchError } = await supabase
-      .from('logbook_media')
-      .select('storage_path')
-      .eq('id', mediaId)
-      .single();
-
-    if (fetchError) {
-      console.error('Error fetching media info:', fetchError);
-      throw fetchError;
-    }
-
-    // Delete from storage
-    const { error: storageError } = await supabase.storage
-      .from('logbook')
-      .remove([media.storage_path]);
-
-    if (storageError) {
-      console.error('Error deleting from storage:', storageError);
-      // Continue with database deletion even if storage deletion fails
-    }
-
-    // Delete from database
-    const { error: dbError } = await supabase
-      .from('logbook_media')
-      .delete()
-      .eq('id', mediaId);
-
-    if (dbError) {
-      console.error('Error deleting media record:', dbError);
-      throw dbError;
-    }
-  } catch (error) {
-    console.error('Error in deleteLogbookMedia:', error);
-    throw error;
-  }
-}
 
 export function getLogbookMediaUrl(storagePath: string): string {
   const { data } = supabase.storage
@@ -484,7 +445,7 @@ export async function getComments(entryId: string) {
     });
 
     return withAuthor as Comment[];
-  } catch (err: any) {
+  } catch (err: unknown) {
     // eslint-disable-next-line no-console
     console.error('[getComments] Unexpected:', {
       message: err?.message,

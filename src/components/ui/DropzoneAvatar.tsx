@@ -17,7 +17,12 @@ export default function DropzoneAvatar({
   const [drag, setDrag] = useState(false);
 
   function readFile(file: File) {
-    if (!file.type.startsWith('image/')) {
+    // Проверяем MIME тип или расширение файла для HEIC
+    const isValidImageType = file.type.startsWith('image/') || 
+      file.name.toLowerCase().endsWith('.heic') || 
+      file.name.toLowerCase().endsWith('.heif');
+    
+    if (!isValidImageType) {
       alert('Bitte wählen Sie eine gültige Bilddatei aus.');
       return;
     }
@@ -77,7 +82,7 @@ export default function DropzoneAvatar({
             <input
               ref={inputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,.heic,.heif"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
