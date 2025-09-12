@@ -281,20 +281,8 @@ export class SupabaseAuthService implements AuthService {
         console.error('[supabase-auth] Logout error:', error);
       }
       
-      // Очищаем только временные данные пользователя из localStorage
-      // Автомобили пользователя должны сохраняться
-      if (typeof window !== 'undefined') {
-        try {
-          // Очищаем только временные данные пользователя
-          localStorage.removeItem('mainVehicle'); // legacy
-          localStorage.removeItem('fahrme:mainVehicle'); // new
-          localStorage.removeItem('userProfile');
-          
-          console.info('[supabase-auth] Temporary user data cleared from localStorage (cars preserved)');
-        } catch (error) {
-          console.error('[supabase-auth] Error clearing temporary user data:', error);
-        }
-      }
+      // Supabase handles session cleanup automatically
+      // No localStorage cleanup needed
       
       this.notifyListeners(null);
     } catch (error) {

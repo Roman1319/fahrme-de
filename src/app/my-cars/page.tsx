@@ -12,7 +12,6 @@ import { useAuth } from "@/components/AuthProvider";
 import { getCars, createCar, updateCar, deleteCar, getCarPhotos, getCarPhotoUrl } from "@/lib/cars";
 import { CreateCarData } from "@/lib/cars";
 import { supabase } from "@/lib/supabaseClient";
-import { STORAGE_KEYS } from "@/lib/keys";
 
 export default function MyCarsPage() {
   const { user } = useAuth();
@@ -165,24 +164,11 @@ export default function MyCarsPage() {
         is_main_vehicle: car.id === id
       })));
 
-      // Save to localStorage and dispatch event
+      // Dispatch event for main vehicle change (no localStorage needed)
       try {
-        const main = cars.find(c => c.id === id) ?? null;
-        if (main) {
-          const payload = {
-            id: main.id,
-            make: main.brand,
-            model: main.model,
-            year: main.year,
-            images: [],
-            description: main.description ?? '',
-            isMainVehicle: true,
-          };
-          localStorage.setItem(STORAGE_KEYS.MAIN_VEHICLE_KEY, JSON.stringify(payload));
-          window.dispatchEvent(new Event('mainVehicleChanged'));
-        }
+        window.dispatchEvent(new Event('mainVehicleChanged'));
       } catch (e) {
-        console.warn('[MyCars] Unable to cache main vehicle', e);
+        console.warn('[MyCars] Unable to dispatch main vehicle change event', e);
       }
     } catch (err) {
       console.error('[MyCars] Error setting main vehicle:', err);

@@ -26,7 +26,13 @@ export async function getLogbookEntry(entryId: string): Promise<LogbookEntry | n
   try {
     const { data, error } = await supabase
       .from('logbook_entries')
-      .select('*')
+      .select(`
+        id, car_id, author_id,
+        title, content, topic,
+        mileage, mileage_unit, cost, currency,
+        allow_comments, pin_to_car, publish_date,
+        created_at, updated_at
+      `)
       .eq('id', entryId)
       .single();
 

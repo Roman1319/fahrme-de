@@ -71,7 +71,7 @@ export interface MyCar {
 
 export interface LogbookEntry {
   id: string;
-  car_id: string;
+  car_id: string; // NOT NULL согласно новым RLS политикам
   author_id: string;
   title: string;
   content: string;

@@ -5,7 +5,7 @@ import { logSb } from './supabaseDebug';
 const UUID_RX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export interface CreateLogbookEntryData {
-  car_id: string;
+  car_id: string; // Обязательное поле согласно новым RLS политикам
   title: string;
   content: string;
   topic?: string;
@@ -89,6 +89,12 @@ export async function getLogbookEntry(entryId: string) {
     if (entryResp.error || !entryResp.data) return null;
     const entry = entryResp.data;
 
+    // Проверяем что car_id не null (согласно новым RLS политикам)
+    if (!entry.car_id) {
+      console.error('Logbook entry missing car_id:', entryId);
+      return null;
+    }
+
     // 2) Автор
     const authorResp = await supabase
       .from('profiles')
@@ -138,6 +144,11 @@ export async function createLogbookEntry(
   authorId: string
 ): Promise<LogbookEntry> {
   try {
+    // Проверяем что car_id обязателен согласно новым RLS политикам
+    if (!entryData.car_id) {
+      throw new Error('car_id is required for logbook entries');
+    }
+
     const { data, error } = await supabase
       .from('logbook_entries')
       .insert({
@@ -162,6 +173,11 @@ export async function createLogbookEntry(
 export async function updateLogbookEntry(entryData: UpdateLogbookEntryData): Promise<LogbookEntry> {
   try {
     const { id, ...updateData } = entryData;
+    
+    // Проверяем что car_id не удаляется (согласно новым RLS политикам)
+    if (updateData.car_id === null || updateData.car_id === undefined) {
+      throw new Error('car_id cannot be null or undefined');
+    }
     
     const { data, error } = await supabase
       .from('logbook_entries')
